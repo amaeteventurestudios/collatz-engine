@@ -1,13 +1,18 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { getSeedResult } from "@/lib/collatz/examples";
-import { computeCollatz } from "@/lib/collatz/engine";
-import { getTopLongestTrajectories } from "@/lib/collatz/store";
+import { useMemo, useState } from "react";
 import { formatBigInt, formatSteps } from "@/lib/collatz/format";
 import type { CollatzResult } from "@/lib/collatz/types";
 
-// ─── Constants ─────────────────────────────────────────────────────────────────
+// ─── Props ────────────────────────────────────────────────────────────────────
+
+interface TrajectoryVisualizerProps {
+  result: CollatzResult;
+  displayLabel: string;
+  helperCopy?: string | null;
+}
+
+// ─── Constants ────────────────────────────────────────────────────────────────
 
 const VIEW_MODES = ["Trajectory", "Tree View", "Sequence", "Odd-Only (3n+1)"] as const;
 type ViewMode = (typeof VIEW_MODES)[number];
@@ -16,10 +21,6 @@ const SVG_W = 600;
 const SVG_H = 200;
 const Y_BOTTOM = 185;
 const Y_RANGE = 160;
-const POLL_MS = 5_000;
-
-// Stable fallback — computed once at module load
-const FALLBACK: CollatzResult = getSeedResult(27);
 
 // ─── SVG helpers ──────────────────────────────────────────────────────────────
 
@@ -83,7 +84,7 @@ function SequenceView({ result }: { result: CollatzResult }) {
                   key={i}
                   className="transition-colors hover:bg-slate-50/70 dark:hover:bg-slate-800/30"
                 >
-                  <td className="px-3 py-2 font-mono text-slate-400 dark:text-slate-500">{i}</td>
+                  <td className="px-3 py-2 font-mono text-slate-400 dark:text-slate-400">{i}</td>
                   <td className="px-3 py-2 font-mono font-semibold text-slate-900 dark:text-slate-100">
                     {formatBigInt(val)}
                   </td>
@@ -96,8 +97,8 @@ function SequenceView({ result }: { result: CollatzResult }) {
                       <span
                         className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
                           isOdd
-                            ? "bg-violet-500/15 text-violet-700 dark:text-violet-400"
-                            : "bg-sky-500/15 text-sky-700 dark:text-sky-400"
+                            ? "bg-violet-500/15 text-violet-700 dark:text-violet-300"
+                            : "bg-sky-500/15 text-sky-700 dark:text-sky-300"
                         }`}
                       >
                         {isOdd ? "Odd" : "Even"}
@@ -139,7 +140,6 @@ function OddOnlyView({ result }: { result: CollatzResult }) {
   const [showAll, setShowAll] = useState(false);
   const PREVIEW = 40;
   const visible = showAll ? oddSteps : oddSteps.slice(0, PREVIEW);
-
   const evenCount = result.steps_to_1 - oddSteps.length;
   const pct =
     result.steps_to_1 > 0
@@ -150,31 +150,16 @@ function OddOnlyView({ result }: { result: CollatzResult }) {
     <div>
       <div className="mb-3 flex flex-wrap gap-2">
         {[
-          {
-            label: "Odd steps",
-            value: oddSteps.length.toLocaleString("en-US"),
-            cls: "bg-violet-500/10 text-violet-700 dark:text-violet-300",
-          },
-          {
-            label: "Even steps",
-            value: evenCount.toLocaleString("en-US"),
-            cls: "bg-sky-500/10 text-sky-700 dark:text-sky-300",
-          },
-          {
-            label: "Odd density",
-            value: `${pct}%`,
-            cls: "bg-slate-100 text-slate-700 dark:bg-slate-800/60 dark:text-slate-300",
-          },
+          { label: "Odd steps", value: oddSteps.length.toLocaleString("en-US"), cls: "bg-violet-500/10 text-violet-600 dark:text-violet-300" },
+          { label: "Even steps", value: evenCount.toLocaleString("en-US"), cls: "bg-sky-500/10 text-sky-600 dark:text-sky-300" },
+          { label: "Odd density", value: `${pct}%`, cls: "bg-slate-100 text-slate-600 dark:bg-slate-800/60 dark:text-slate-300" },
         ].map((s) => (
           <div key={s.label} className={`rounded-xl px-3 py-2 ${s.cls}`}>
-            <p className="text-[9px] font-semibold uppercase tracking-wider opacity-70">
-              {s.label}
-            </p>
+            <p className="text-[9px] font-semibold uppercase tracking-wider opacity-70">{s.label}</p>
             <p className="mt-0.5 font-mono text-base font-bold">{s.value}</p>
           </div>
         ))}
       </div>
-
       <div
         className="overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-800"
         style={{ maxHeight: 280 }}
@@ -183,44 +168,27 @@ function OddOnlyView({ result }: { result: CollatzResult }) {
           <thead className="sticky top-0 z-10">
             <tr className="border-b border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-800">
               {["Original step", "Odd value (n)", "→ 3n+1 result"].map((h) => (
-                <th
-                  key={h}
-                  className="px-3 py-2.5 text-left font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400"
-                >
-                  {h}
-                </th>
+                <th key={h} className="px-3 py-2.5 text-left font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
             {visible.map(({ step, val }) => (
-              <tr
-                key={step}
-                className="transition-colors hover:bg-violet-50/30 dark:hover:bg-violet-900/10"
-              >
-                <td className="px-3 py-2 font-mono text-slate-400 dark:text-slate-500">
-                  {step}
-                </td>
-                <td className="px-3 py-2 font-mono font-bold text-violet-700 dark:text-violet-300">
-                  {formatBigInt(val)}
-                </td>
-                <td className="px-3 py-2 font-mono text-teal-600 dark:text-teal-400">
-                  {formatBigInt(3n * val + 1n)}
-                </td>
+              <tr key={step} className="transition-colors hover:bg-violet-50/30 dark:hover:bg-violet-900/10">
+                <td className="px-3 py-2 font-mono text-slate-400 dark:text-slate-400">{step}</td>
+                <td className="px-3 py-2 font-mono font-bold text-violet-700 dark:text-violet-300">{formatBigInt(val)}</td>
+                <td className="px-3 py-2 font-mono text-teal-600 dark:text-teal-400">{formatBigInt(3n * val + 1n)}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-
       {oddSteps.length > PREVIEW && (
         <button
           onClick={() => setShowAll((v) => !v)}
           className="mt-3 w-full rounded-lg border border-slate-200 py-2 text-xs font-medium text-slate-500 transition-colors hover:bg-slate-50 dark:border-slate-800 dark:text-slate-400 dark:hover:bg-slate-800/40"
         >
-          {showAll
-            ? `↑ Show first ${PREVIEW} odd steps`
-            : `↓ Show all ${oddSteps.length} odd steps`}
+          {showAll ? `↑ Show first ${PREVIEW} odd steps` : `↓ Show all ${oddSteps.length} odd steps`}
         </button>
       )}
     </div>
@@ -255,63 +223,38 @@ function TreeView({ result }: { result: CollatzResult }) {
           const isEnd = i === seq.length - 1;
           const prev = sampled[idx - 1];
           const skipped = prev !== undefined && prev.i < i - 1;
-
           return (
             <div key={i} className="flex flex-col items-center">
               {skipped && (
-                <div className="flex flex-col items-center py-0.5 text-slate-400 dark:text-slate-600">
+                <div className="flex flex-col items-center py-0.5 text-slate-400 dark:text-slate-500">
                   <span className="text-base leading-none">⋮</span>
-                  <span className="text-[9px]">
-                    {i - prev.i - 1} step{i - prev.i - 1 !== 1 ? "s" : ""}
-                  </span>
+                  <span className="text-[9px]">{i - prev.i - 1} step{i - prev.i - 1 !== 1 ? "s" : ""}</span>
                   <span className="text-base leading-none">⋮</span>
                 </div>
               )}
               <div
                 className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 text-[11px] ${
-                  isStart
-                    ? "border-teal-500/40 bg-teal-500/10"
-                    : isEnd
-                      ? "border-green-500/40 bg-green-500/10"
-                      : isPeak
-                        ? "border-yellow-500/40 bg-yellow-400/10"
-                        : isOdd
-                          ? "border-violet-500/30 bg-violet-500/8"
-                          : "border-sky-500/20 bg-sky-500/5"
+                  isStart ? "border-teal-500/40 bg-teal-500/10"
+                    : isEnd ? "border-green-500/40 bg-green-500/10"
+                    : isPeak ? "border-yellow-500/40 bg-yellow-400/10"
+                    : isOdd ? "border-violet-500/30 bg-violet-500/8"
+                    : "border-sky-500/20 bg-sky-500/5"
                 }`}
               >
-                <span className="w-8 text-right font-mono text-[9px] text-slate-400 dark:text-slate-600">
-                  {i}
-                </span>
-                <span
-                  className={`font-mono font-bold ${
-                    isStart
-                      ? "text-teal-600 dark:text-teal-400"
-                      : isEnd
-                        ? "text-green-600 dark:text-green-400"
-                        : isPeak
-                          ? "text-yellow-600 dark:text-yellow-400"
-                          : isOdd
-                            ? "text-violet-700 dark:text-violet-300"
-                            : "text-sky-700 dark:text-sky-300"
-                  }`}
-                >
-                  {formatBigInt(val)}
-                </span>
-                {!isEnd && (
-                  <span className="text-[9px] text-slate-400 dark:text-slate-500">
-                    {isOdd ? "→ 3n+1" : "→ n/2"}
-                  </span>
-                )}
+                <span className="w-8 text-right font-mono text-[9px] text-slate-400 dark:text-slate-500">{i}</span>
+                <span className={`font-mono font-bold ${
+                  isStart ? "text-teal-600 dark:text-teal-400"
+                    : isEnd ? "text-green-600 dark:text-green-400"
+                    : isPeak ? "text-yellow-600 dark:text-yellow-300"
+                    : isOdd ? "text-violet-700 dark:text-violet-300"
+                    : "text-sky-700 dark:text-sky-300"
+                }`}>{formatBigInt(val)}</span>
+                {!isEnd && <span className="text-[9px] text-slate-400 dark:text-slate-400">{isOdd ? "→ 3n+1" : "→ n/2"}</span>}
                 {isPeak && !isEnd && (
-                  <span className="rounded bg-yellow-400/20 px-1 text-[8px] font-bold text-yellow-600 dark:text-yellow-400">
-                    PEAK
-                  </span>
+                  <span className="rounded bg-yellow-400/20 px-1 text-[8px] font-bold text-yellow-600 dark:text-yellow-300">PEAK</span>
                 )}
               </div>
-              {idx < sampled.length - 1 && (
-                <div className="h-3 w-px bg-slate-200 dark:bg-slate-800" />
-              )}
+              {idx < sampled.length - 1 && <div className="h-3 w-px bg-slate-200 dark:bg-slate-800" />}
             </div>
           );
         })}
@@ -322,51 +265,18 @@ function TreeView({ result }: { result: CollatzResult }) {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export function TrajectoryVisualizer() {
-  const [result, setResult] = useState<CollatzResult>(FALLBACK);
-  const [isLive, setIsLive] = useState(false);
+export function TrajectoryVisualizer({
+  result,
+  displayLabel,
+  helperCopy,
+}: TrajectoryVisualizerProps) {
   const [activeView, setActiveView] = useState<ViewMode>("Trajectory");
-
-  // Trajectory overlay toggles
   const [showOddSteps, setShowOddSteps] = useState(false);
   const [showEvenSteps, setShowEvenSteps] = useState(false);
   const [showPeaks, setShowPeaks] = useState(true);
   const [showFirstDescent, setShowFirstDescent] = useState(false);
   const [logScale, setLogScale] = useState(true);
 
-  const mountedRef = useRef(false);
-
-  // ── Polling ─────────────────────────────────────────────────────────────────
-  useEffect(() => {
-    mountedRef.current = true;
-
-    async function poll() {
-      try {
-        const rows = await getTopLongestTrajectories(1);
-        if (!mountedRef.current || !rows || rows.length === 0) return;
-        const computed = computeCollatz(rows[0].n);
-        if (
-          mountedRef.current &&
-          computed.reached_one &&
-          computed.full_sequence.length > 1
-        ) {
-          setResult(computed);
-          setIsLive(true);
-        }
-      } catch {
-        // Keep last known data on transient errors
-      }
-    }
-
-    poll();
-    const pollId = window.setInterval(poll, POLL_MS);
-    return () => {
-      mountedRef.current = false;
-      window.clearInterval(pollId);
-    };
-  }, []);
-
-  // ── Derived SVG data ─────────────────────────────────────────────────────────
   const seq = result.full_sequence;
   const peakN = Number(result.peak_value);
   const logPeak = Math.log10(Math.max(peakN, 2));
@@ -382,15 +292,10 @@ export function TrajectoryVisualizer() {
     [seq, result.peak_value],
   );
 
-  const firstDescentIdx = useMemo(() => {
-    const startN = result.start_number;
-    for (let i = 1; i < seq.length; i++) {
-      if (seq[i] < startN) return i;
-    }
-    return -1;
-  }, [seq, result.start_number]);
+  // Use pre-computed first_descent_step from the result
+  const firstDescentIdx = result.first_descent_step;
 
-  // Sampled dots for odd/even overlays (capped to avoid SVG bloat)
+  // Sampled odd/even dots (capped to avoid SVG bloat)
   const stepDots = useMemo(() => {
     if (!showOddSteps && !showEvenSteps) return [];
     const MAX_DOTS = 200;
@@ -408,37 +313,27 @@ export function TrajectoryVisualizer() {
     return out;
   }, [seq, showOddSteps, showEvenSteps, logScale, logPeak, peakN]);
 
-  // Positioned values
   const peakX = (Math.max(peakIdx, 0) / Math.max(seq.length - 1, 1)) * SVG_W;
   const peakY = logScale ? yLog(result.peak_value, logPeak) : yLinear(result.peak_value, peakN);
   const startY = logScale ? yLog(result.start_number, logPeak) : yLinear(result.start_number, peakN);
 
   const descentX =
-    firstDescentIdx >= 0
+    firstDescentIdx !== null && firstDescentIdx >= 0
       ? (firstDescentIdx / Math.max(seq.length - 1, 1)) * SVG_W
       : null;
   const descentY =
-    firstDescentIdx >= 0
+    firstDescentIdx !== null && firstDescentIdx >= 0
       ? logScale
         ? yLog(seq[firstDescentIdx], logPeak)
         : yLinear(seq[firstDescentIdx], peakN)
       : null;
 
-  // Grid lines
   const gridLines = logScale
-    ? [10, 100, 1_000].map((v) => ({
-        v,
-        y: yLog(v, logPeak),
-        label: v >= 1_000 ? `${v / 1_000}K` : String(v),
-      }))
+    ? [10, 100, 1_000].map((v) => ({ v, y: yLog(v, logPeak), label: v >= 1_000 ? `${v / 1_000}K` : String(v) }))
     : [0.25, 0.5, 0.75].map((frac) => {
         const v = Math.round(peakN * frac);
         return { v, y: yLinear(v, peakN), label: v >= 1_000 ? `${(v / 1_000).toFixed(0)}K` : String(v) };
       });
-
-  const badge = isLive
-    ? `Live — n=${nLabel.toLocaleString("en-US")}`
-    : "Worked example — n=27";
 
   const checkboxes: { label: string; checked: boolean; setter: (v: boolean) => void }[] = [
     { label: "Odd steps", checked: showOddSteps, setter: setShowOddSteps },
@@ -449,42 +344,45 @@ export function TrajectoryVisualizer() {
   ];
 
   return (
-    <section id="visualizer" className="scroll-mt-20 px-4 py-10 sm:py-14">
+    <section id="visualizer" className="scroll-mt-20 px-4 pb-10 sm:pb-14">
       <div className="mx-auto max-w-7xl">
         <div className="engine-card">
           {/* ── Header ──────────────────────────────────────────────────────── */}
           <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <p className="section-heading">Collatz Trajectory Visualizer</p>
-              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              <p className="mt-1 text-xs text-slate-400 dark:text-slate-400">
                 n={formatSteps(nLabel)} · {formatSteps(result.steps_to_1)} steps ·
                 peak {formatBigInt(result.peak_value)} · {logScale ? "log" : "linear"} scale
               </p>
+              {helperCopy && (
+                <p className="mt-1 text-[11px] text-amber-600 dark:text-amber-400">{helperCopy}</p>
+              )}
             </div>
 
             {/* View mode tabs */}
             <div className="-mx-5 flex gap-1.5 overflow-x-auto px-5 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:pb-0">
-              {VIEW_MODES.map((mode) => (
+              {VIEW_MODES.map((m) => (
                 <button
-                  key={mode}
-                  onClick={() => setActiveView(mode)}
+                  key={m}
+                  onClick={() => setActiveView(m)}
                   className={`flex-shrink-0 rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
-                    activeView === mode
-                      ? "bg-teal-500/20 text-teal-600 ring-1 ring-teal-500/40 dark:text-teal-400"
+                    activeView === m
+                      ? "bg-teal-500/20 text-teal-500 ring-1 ring-teal-500/40 dark:text-teal-300"
                       : "text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
                   }`}
                 >
-                  {mode}
+                  {m}
                 </button>
               ))}
             </div>
           </div>
 
-          {/* ── Trajectory view ──────────────────────────────────────────────── */}
+          {/* ── Trajectory tab ────────────────────────────────────────────── */}
           {activeView === "Trajectory" && (
             <>
               {/* Legend */}
-              <div className="mb-5 grid grid-cols-2 gap-x-4 gap-y-2 sm:flex sm:flex-wrap sm:items-center sm:gap-x-5 sm:gap-y-2">
+              <div className="mb-5 grid grid-cols-2 gap-x-4 gap-y-2 sm:flex sm:flex-wrap sm:items-center sm:gap-x-5">
                 {[
                   { color: "bg-violet-500", label: "Odd steps (3n+1)" },
                   { color: "bg-sky-500", label: "Even steps (n/2)" },
@@ -498,7 +396,7 @@ export function TrajectoryVisualizer() {
                 ))}
               </div>
 
-              {/* SVG chart */}
+              {/* SVG */}
               <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900/60">
                 <svg
                   viewBox={`0 0 ${SVG_W} ${SVG_H}`}
@@ -507,136 +405,51 @@ export function TrajectoryVisualizer() {
                   className="block"
                   aria-label={`Collatz trajectory for n=${nLabel}, ${logScale ? "log" : "linear"} scale, ${result.steps_to_1} steps`}
                 >
-                  {/* Grid lines */}
                   {gridLines.map(({ v, y }) => (
-                    <line
-                      key={v}
-                      x1="0" y1={y} x2={SVG_W} y2={y}
-                      stroke="currentColor" strokeOpacity="0.07" strokeWidth="1"
-                    />
+                    <line key={v} x1="0" y1={y} x2={SVG_W} y2={y} stroke="currentColor" strokeOpacity="0.07" strokeWidth="1" />
                   ))}
-                  {/* Y-axis labels */}
                   {gridLines.map(({ v, y, label }) => (
-                    <text key={v} x="4" y={y + 4} fontSize="8" fill="currentColor" opacity="0.3">
-                      {label}
-                    </text>
+                    <text key={v} x="4" y={y + 4} fontSize="8" fill="currentColor" opacity="0.4">{label}</text>
                   ))}
-                  {/* Y-axis title */}
-                  <text x="4" y="12" fontSize="7" fill="currentColor" opacity="0.25">
+                  <text x="4" y="12" fontSize="7" fill="currentColor" opacity="0.35">
                     Value ({logScale ? "log" : "linear"})
                   </text>
 
-                  {/* Area fill */}
-                  <polyline
-                    points={`0,${Y_BOTTOM} ${points} ${SVG_W},${Y_BOTTOM}`}
-                    fill="url(#trailFill)"
-                    stroke="none"
-                  />
-                  {/* Trajectory line */}
-                  <polyline
-                    points={points}
-                    fill="none"
-                    stroke="url(#trailLine)"
-                    strokeWidth="1.8"
-                    strokeLinejoin="round"
-                    strokeLinecap="round"
-                  />
+                  <polyline points={`0,${Y_BOTTOM} ${points} ${SVG_W},${Y_BOTTOM}`} fill="url(#trailFill)" stroke="none" />
+                  <polyline points={points} fill="none" stroke="url(#trailLine)" strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round" />
 
-                  {/* Odd/even step dots */}
                   {stepDots.map((d, i) => (
-                    <circle
-                      key={i}
-                      cx={d.x}
-                      cy={d.y}
-                      r="2"
-                      fill={d.isOdd ? "#a855f7" : "#0ea5e9"}
-                      opacity="0.65"
-                    />
+                    <circle key={i} cx={d.x} cy={d.y} r="2" fill={d.isOdd ? "#a855f7" : "#0ea5e9"} opacity="0.65" />
                   ))}
 
-                  {/* First descent marker */}
                   {showFirstDescent && descentX !== null && descentY !== null && (
                     <>
-                      <circle
-                        cx={descentX}
-                        cy={descentY}
-                        r="4"
-                        fill="#fb923c"
-                        stroke="#ffffff"
-                        strokeWidth="1.5"
-                        opacity="0.9"
-                      />
-                      <text
-                        x={descentX + 6}
-                        y={descentY - 4}
-                        fontSize="7"
-                        fill="#f97316"
-                        fontWeight="600"
-                      >
-                        First descent
-                      </text>
+                      <circle cx={descentX} cy={descentY} r="4" fill="#fb923c" stroke="#ffffff" strokeWidth="1.5" opacity="0.9" />
+                      <text x={descentX + 6} y={descentY - 4} fontSize="7" fill="#f97316" fontWeight="600">First descent</text>
                     </>
                   )}
 
-                  {/* Peak marker */}
                   {showPeaks && (
                     <>
-                      <circle
-                        cx={peakX}
-                        cy={peakY}
-                        r="4"
-                        fill="#facc15"
-                        stroke="#ffffff"
-                        strokeWidth="1.5"
-                        opacity="0.9"
-                      />
-                      <line
-                        x1={peakX} y1={peakY + 5} x2={peakX} y2={Y_BOTTOM}
-                        stroke="#facc15" strokeOpacity="0.15" strokeWidth="1" strokeDasharray="3 3"
-                      />
-                      <rect
-                        x={peakX + 6}
-                        y={peakY - 3}
-                        width="62"
-                        height="14"
-                        rx="3"
-                        fill="#facc15"
-                        fillOpacity="0.15"
-                      />
-                      <text
-                        x={peakX + 9}
-                        y={peakY + 7}
-                        fontSize="8.5"
-                        fill="#ca8a04"
-                        fontWeight="600"
-                      >
+                      <circle cx={peakX} cy={peakY} r="4" fill="#facc15" stroke="#ffffff" strokeWidth="1.5" opacity="0.9" />
+                      <line x1={peakX} y1={peakY + 5} x2={peakX} y2={Y_BOTTOM} stroke="#facc15" strokeOpacity="0.15" strokeWidth="1" strokeDasharray="3 3" />
+                      <rect x={peakX + 6} y={peakY - 3} width="62" height="14" rx="3" fill="#facc15" fillOpacity="0.15" />
+                      <text x={peakX + 9} y={peakY + 7} fontSize="8.5" fill="#ca8a04" fontWeight="600">
                         Peak: {formatBigInt(result.peak_value)}
                       </text>
                     </>
                   )}
 
-                  {/* Start marker */}
                   <circle cx="0" cy={startY} r="3" fill="#14b8a6" stroke="#ffffff" strokeWidth="1.5" opacity="0.9" />
-                  <text x="4" y={startY - 4} fontSize="8" fill="#14b8a6" fontWeight="600">
-                    n={nLabel}
-                  </text>
-                  {/* End marker */}
+                  <text x="4" y={startY - 4} fontSize="8" fill="#14b8a6" fontWeight="600">n={nLabel}</text>
                   <circle cx={SVG_W} cy={Y_BOTTOM} r="3" fill="#22c55e" stroke="#ffffff" strokeWidth="1.5" opacity="0.9" />
 
-                  {/* X-axis step labels */}
                   {[0, 20, 40, 60, 80, 100, result.steps_to_1]
                     .filter((s, i, arr) => s <= result.steps_to_1 && arr.indexOf(s) === i)
-                    .map((s) => {
-                      const x = (s / Math.max(result.steps_to_1, 1)) * SVG_W;
-                      return (
-                        <text key={s} x={x} y={SVG_H - 2} fontSize="8" fill="currentColor" opacity="0.3">
-                          {s}
-                        </text>
-                      );
-                    })}
-                  <text x={SVG_W / 2} y={SVG_H - 2} fontSize="8" fill="currentColor" opacity="0.25" textAnchor="middle">
-                    Step
-                  </text>
+                    .map((s) => (
+                      <text key={s} x={(s / Math.max(result.steps_to_1, 1)) * SVG_W} y={SVG_H - 2} fontSize="8" fill="currentColor" opacity="0.35">{s}</text>
+                    ))}
+                  <text x={SVG_W / 2} y={SVG_H - 2} fontSize="8" fill="currentColor" opacity="0.3" textAnchor="middle">Step</text>
 
                   <defs>
                     <linearGradient id="trailLine" x1="0%" y1="0%" x2="100%" y2="0%">
@@ -651,15 +464,14 @@ export function TrajectoryVisualizer() {
                   </defs>
                 </svg>
 
-                {/* Badge */}
                 <div className="absolute right-3 top-2">
-                  <span className="rounded-full bg-teal-500/15 px-2.5 py-1 text-[10px] font-semibold text-teal-600 dark:text-teal-400">
-                    {badge}
+                  <span className="rounded-full bg-teal-500/15 px-2.5 py-1 text-[10px] font-semibold text-teal-500 dark:text-teal-300">
+                    {displayLabel}
                   </span>
                 </div>
               </div>
 
-              {/* Checkbox options */}
+              {/* Checkboxes */}
               <div className="mt-4 flex flex-col gap-3 border-t border-slate-200 pt-4 dark:border-slate-800 sm:flex-row sm:flex-wrap sm:items-center">
                 {checkboxes.map(({ label, checked, setter }) => (
                   <label key={label} className="flex cursor-pointer items-center gap-2">
@@ -681,10 +493,8 @@ export function TrajectoryVisualizer() {
           {activeView === "Odd-Only (3n+1)" && <OddOnlyView result={result} />}
 
           {/* Footer */}
-          <p className="mt-3 text-center text-[11px] text-slate-400 dark:text-slate-500">
-            {isLive
-              ? `Computed from live catalog — n=${nLabel.toLocaleString("en-US")}, ${result.steps_to_1} steps, peak ${formatBigInt(result.peak_value)}.`
-              : `Worked example — n=27, ${FALLBACK.steps_to_1} steps, peak ${formatBigInt(FALLBACK.peak_value)}. Updates automatically as the catalog grows.`}
+          <p className="mt-3 text-center text-[11px] text-slate-400 dark:text-slate-400">
+            {displayLabel} · {result.steps_to_1} steps · peak {formatBigInt(result.peak_value)}
           </p>
         </div>
       </div>

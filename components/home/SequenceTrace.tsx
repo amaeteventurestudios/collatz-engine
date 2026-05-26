@@ -1,49 +1,18 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { getSeedResult } from "@/lib/collatz/examples";
-import { computeCollatz } from "@/lib/collatz/engine";
-import { getTopLongestTrajectories } from "@/lib/collatz/store";
-import { formatBigInt, formatDensity } from "@/lib/collatz/format";
+import { useMemo, useState } from "react";
+import { formatBigInt, formatDensity, formatLargeNumber, formatLargeNumberTitle } from "@/lib/collatz/format";
 import type { CollatzResult } from "@/lib/collatz/types";
 
 const INITIAL_ROWS = 10;
-const POLL_MS = 5_000;
 
-// Stable fallback — computed once at module load
-const FALLBACK: CollatzResult = getSeedResult(27);
+interface SequenceTraceProps {
+  result: CollatzResult;
+  displayLabel: string;
+}
 
-export function SequenceTrace() {
-  const [result, setResult] = useState<CollatzResult>(FALLBACK);
-  const [isLive, setIsLive] = useState(false);
+export function SequenceTrace({ result, displayLabel }: SequenceTraceProps) {
   const [showAll, setShowAll] = useState(false);
-  const mountedRef = useRef(false);
-
-  useEffect(() => {
-    mountedRef.current = true;
-
-    async function poll() {
-      try {
-        const rows = await getTopLongestTrajectories(1);
-        if (!mountedRef.current || !rows || rows.length === 0) return;
-        const computed = computeCollatz(rows[0].n);
-        if (mountedRef.current && computed.reached_one && computed.full_sequence.length > 1) {
-          setResult(computed);
-          setIsLive(true);
-        }
-      } catch {
-        // Keep last known data on transient errors
-      }
-    }
-
-    poll();
-    const pollId = window.setInterval(poll, POLL_MS);
-
-    return () => {
-      mountedRef.current = false;
-      window.clearInterval(pollId);
-    };
-  }, []);
 
   const visibleCount = showAll ? result.full_sequence.length - 1 : INITIAL_ROWS;
 
@@ -78,7 +47,6 @@ export function SequenceTrace() {
   const currentValue = result.full_sequence[visibleCount - 1];
   const isCurrentOdd = currentValue !== undefined && currentValue % 2n !== 0n;
   const n = Number(result.start_number);
-  const badgeLabel = isLive ? `Live — n=${n.toLocaleString("en-US")}` : "Example — n=27";
   const totalSteps = result.steps_to_1;
   const hasMore = totalSteps > INITIAL_ROWS;
 
@@ -91,24 +59,31 @@ export function SequenceTrace() {
             <p className="section-heading">Sequence Trace</p>
             <span className="inline-flex items-center gap-1.5 rounded-full bg-teal-500/10 px-2.5 py-1 text-[10px] font-semibold text-teal-600 dark:text-teal-400">
               <span className="h-1.5 w-1.5 rounded-full bg-teal-500" />
-              Computed · {badgeLabel}
+              Computed · {displayLabel}
             </span>
           </div>
 
           {/* Stats row */}
           <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {[
-              { label: "Start Number", value: n.toLocaleString("en-US") },
-              { label: "Steps to 1", value: String(result.steps_to_1) },
-              { label: "Peak Value", value: formatBigInt(result.peak_value) },
-              { label: "Odd Step Density", value: formatDensity(result.odd_step_density) },
-            ].map((s) => (
+            {([
+              { label: "Start Number", value: n.toLocaleString("en-US"), title: undefined },
+              { label: "Steps to 1", value: totalSteps.toLocaleString("en-US"), title: undefined },
+              {
+                label: "Peak Value",
+                value: formatLargeNumber(result.peak_value),
+                title: formatLargeNumberTitle(result.peak_value) || undefined,
+              },
+              { label: "Odd Step Density", value: formatDensity(result.odd_step_density), title: undefined },
+            ] as { label: string; value: string; title?: string }[]).map((s) => (
               <div
                 key={s.label}
                 className="rounded-xl bg-slate-50 p-3 text-center dark:bg-slate-800/60"
               >
                 <p className="stat-label">{s.label}</p>
-                <p className="mt-1.5 text-xl font-bold tabular-nums text-slate-900 dark:text-slate-50">
+                <p
+                  className="mt-1.5 text-xl font-bold tabular-nums text-slate-900 dark:text-slate-50"
+                  title={s.title}
+                >
                   {s.value}
                 </p>
               </div>
@@ -221,9 +196,8 @@ export function SequenceTrace() {
           )}
 
           <p className="mt-4 text-center text-[11px] text-slate-400 dark:text-slate-500">
-            {isLive
-              ? `Showing ${tableRows.length} of ${totalSteps} steps for n=${n.toLocaleString("en-US")} — the current longest cataloged trajectory.`
-              : `Showing ${tableRows.length} of ${totalSteps} steps for n=${n}. Updates to the longest trajectory as the catalog grows.`}
+            Showing {tableRows.length} of {totalSteps.toLocaleString("en-US")} steps ·{" "}
+            {displayLabel} · All trajectories verified to reach 1
           </p>
         </div>
       </div>

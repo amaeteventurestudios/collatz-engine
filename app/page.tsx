@@ -3,8 +3,7 @@ import { Footer } from "@/components/layout/Footer";
 import { HeroSection } from "@/components/home/HeroSection";
 import { StatusStrip } from "@/components/home/StatusStrip";
 import { LiveEngineStatus } from "@/components/home/LiveEngineStatus";
-import { TrajectoryVisualizer } from "@/components/home/TrajectoryVisualizer";
-import { SequenceTrace } from "@/components/home/SequenceTrace";
+import { TrajectorySection } from "@/components/home/TrajectorySection";
 import { RecordsPreview } from "@/components/home/RecordsPreview";
 import { AIResearchLog } from "@/components/home/AIResearchLog";
 import { PatternViews } from "@/components/home/PatternViews";
@@ -24,8 +23,7 @@ export default function HomePage() {
         <HeroSection />
         <StatusStrip />
         <LiveEngineStatus />
-        <TrajectoryVisualizer />
-        <SequenceTrace />
+        <TrajectorySection />
         <RecordsPreview />
         <AIResearchLog />
         <PatternViews />

@@ -2,6 +2,7 @@
 
 import { useCollatzLiveState } from "@/hooks/useCollatzLiveState";
 import type { HealthStatus } from "@/hooks/useCollatzLiveState";
+import { formatLargeNumber, formatLargeNumberTitle } from "@/lib/collatz/format";
 
 // ─── Format helpers ───────────────────────────────────────────────────────────
 
@@ -233,8 +234,8 @@ export function LiveEngineStatus() {
             <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.25em] text-slate-500">
               Autonomous Collatz Explorer
             </p>
-            <p className="mt-0.5 text-[11px] text-slate-600">
-              Hetzner Cloud worker · persistent database · public read-only
+            <p className="mt-0.5 font-mono text-[10px] text-slate-600">
+              Sequentially cataloging Collatz trajectories from 1 upward
             </p>
           </div>
           <HealthBadge status={healthStatus} />
@@ -405,8 +406,11 @@ export function LiveEngineStatus() {
             <div className="border-t border-slate-800/70 pt-5 sm:border-l sm:border-t-0 sm:pl-8 sm:pt-0">
               <Label>Highest Peak Value on Record</Label>
               <div className="mt-2 flex items-baseline gap-3">
-                <span className="font-mono text-2xl font-bold text-slate-100 tabular-nums">
-                  {fmtN(state.highest_peak)}
+                <span
+                  className="font-mono text-2xl font-bold text-slate-100 tabular-nums"
+                  title={state.highest_peak != null ? formatLargeNumberTitle(state.highest_peak) : undefined}
+                >
+                  {state.highest_peak != null ? formatLargeNumber(state.highest_peak) : "—"}
                 </span>
                 <span className="font-mono text-[11px] text-slate-500">largest value encountered</span>
               </div>
