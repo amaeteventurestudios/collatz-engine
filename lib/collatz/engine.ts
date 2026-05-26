@@ -1,21 +1,25 @@
-import type { CollatzOptions, CollatzResult, StoppedReason } from "./types";
+import type { CollatzOptions, CollatzResult, CollatzSummary, StoppedReason } from "./types";
 
 const DEFAULT_MAX_STEPS = 10_000_000;
 
-export function computeCollatz(
-  input: bigint | number | string,
-  options: CollatzOptions = {},
-): CollatzResult {
-  const maxSteps = options.maxSteps ?? DEFAULT_MAX_STEPS;
+// ── Shared inner loop ──────────────────────────────────────────────────────
 
-  const parsed = parseInput(input);
-  if (parsed === null) return invalidResult();
+interface LoopResult {
+  sequence: bigint[] | null;
+  steps: number;
+  peakValue: bigint;
+  firstDescentStep: number | null;
+  oddSteps: number;
+  evenSteps: number;
+  reachedOne: boolean;
+  cycleDetected: boolean;
+  cycleAt: number | null;
+  stoppedReason: StoppedReason;
+}
 
-  const start = parsed;
+function runLoop(start: bigint, maxSteps: number, storeSequence: boolean): LoopResult {
   let n = start;
-
-  const sequence: bigint[] = [n];
-  // Track seen values for defensive cycle detection (value → step index)
+  const sequence = storeSequence ? [n] : null;
   const seen = new Map<bigint, number>();
   seen.set(n, 0);
 
@@ -34,66 +38,112 @@ export function computeCollatz(
       oddSteps++;
     }
     step++;
-    sequence.push(n);
+    if (sequence) sequence.push(n);
 
     if (n > peakValue) peakValue = n;
     if (firstDescentStep === null && n < start) firstDescentStep = step;
 
     if (n !== 1n) {
       if (seen.has(n)) {
-        return buildResult(
-          start, sequence, step, peakValue, firstDescentStep,
-          oddSteps, evenSteps, false, true, seen.get(n)!, "cycle_detected",
-        );
+        return {
+          sequence,
+          steps: step,
+          peakValue,
+          firstDescentStep,
+          oddSteps,
+          evenSteps,
+          reachedOne: false,
+          cycleDetected: true,
+          cycleAt: seen.get(n)!,
+          stoppedReason: "cycle_detected",
+        };
       }
       seen.set(n, step);
     }
   }
 
-  if (n !== 1n) {
-    return buildResult(
-      start, sequence, step, peakValue, firstDescentStep,
-      oddSteps, evenSteps, false, false, null, "max_steps_exceeded",
-    );
-  }
-
-  return buildResult(
-    start, sequence, step, peakValue, firstDescentStep,
-    oddSteps, evenSteps, true, false, null, "reached_one",
-  );
+  return {
+    sequence,
+    steps: step,
+    peakValue,
+    firstDescentStep,
+    oddSteps,
+    evenSteps,
+    reachedOne: n === 1n,
+    cycleDetected: false,
+    cycleAt: null,
+    stoppedReason: n === 1n ? "reached_one" : "max_steps_exceeded",
+  };
 }
 
-function buildResult(
-  start: bigint,
-  sequence: bigint[],
-  steps: number,
-  peakValue: bigint,
-  firstDescentStep: number | null,
-  oddSteps: number,
-  evenSteps: number,
-  reachedOne: boolean,
-  cycleDetected: boolean,
-  cycleAt: number | null,
-  stoppedReason: StoppedReason,
+// ── Public API ─────────────────────────────────────────────────────────────
+
+export function computeCollatz(
+  input: bigint | number | string,
+  options: CollatzOptions = {},
 ): CollatzResult {
-  const total = steps;
+  const maxSteps = options.maxSteps ?? DEFAULT_MAX_STEPS;
+  const parsed = parseInput(input);
+  if (parsed === null) return invalidResult();
+
+  const loop = runLoop(parsed, maxSteps, true);
+  const seq = loop.sequence!;
+  const total = loop.steps;
+
   return {
-    start_number: start,
-    full_sequence: sequence,
+    start_number: parsed,
+    full_sequence: seq,
     steps_to_1: total,
-    peak_value: peakValue,
-    peak_ratio: total === 0 && start === peakValue ? 1 : Number(peakValue) / Number(start),
-    first_descent_step: firstDescentStep,
-    odd_steps: oddSteps,
-    even_steps: evenSteps,
-    odd_step_density: total > 0 ? oddSteps / total : 0,
-    even_step_density: total > 0 ? evenSteps / total : 0,
-    compressed_odd_only_path: sequence.filter((v) => v % 2n !== 0n),
-    reached_one: reachedOne,
-    cycle_detected: cycleDetected,
-    cycle_at: cycleAt,
-    stopped_reason: stoppedReason,
+    peak_value: loop.peakValue,
+    peak_ratio: computeRatio(loop.peakValue, parsed, total),
+    first_descent_step: loop.firstDescentStep,
+    odd_steps: loop.oddSteps,
+    even_steps: loop.evenSteps,
+    odd_step_density: total > 0 ? loop.oddSteps / total : 0,
+    even_step_density: total > 0 ? loop.evenSteps / total : 0,
+    compressed_odd_only_path: seq.filter((v) => v % 2n !== 0n),
+    reached_one: loop.reachedOne,
+    cycle_detected: loop.cycleDetected,
+    cycle_at: loop.cycleAt,
+    stopped_reason: loop.stoppedReason,
   };
+}
+
+/** Memory-efficient variant — no full_sequence or compressed path stored.
+ *  Recommended for batch processing. */
+export function computeCollatzSummary(
+  input: bigint | number | string,
+  options: CollatzOptions = {},
+): CollatzSummary {
+  const maxSteps = options.maxSteps ?? DEFAULT_MAX_STEPS;
+  const parsed = parseInput(input);
+  if (parsed === null) return invalidSummary();
+
+  const loop = runLoop(parsed, maxSteps, false);
+  const total = loop.steps;
+
+  return {
+    start_number: parsed,
+    steps_to_1: total,
+    peak_value: loop.peakValue,
+    peak_ratio: computeRatio(loop.peakValue, parsed, total),
+    first_descent_step: loop.firstDescentStep,
+    odd_steps: loop.oddSteps,
+    even_steps: loop.evenSteps,
+    odd_step_density: total > 0 ? loop.oddSteps / total : 0,
+    even_step_density: total > 0 ? loop.evenSteps / total : 0,
+    reached_one: loop.reachedOne,
+    cycle_detected: loop.cycleDetected,
+    cycle_at: loop.cycleAt,
+    stopped_reason: loop.stoppedReason,
+  };
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+
+function computeRatio(peakValue: bigint, start: bigint, steps: number): number {
+  if (steps === 0 && start === peakValue) return 1;
+  return Number(peakValue) / Number(start);
 }
 
 function parseInput(input: bigint | number | string): bigint | null {
@@ -128,6 +178,24 @@ function invalidResult(): CollatzResult {
     odd_step_density: 0,
     even_step_density: 0,
     compressed_odd_only_path: [],
+    reached_one: false,
+    cycle_detected: false,
+    cycle_at: null,
+    stopped_reason: "invalid_input",
+  };
+}
+
+function invalidSummary(): CollatzSummary {
+  return {
+    start_number: 0n,
+    steps_to_1: 0,
+    peak_value: 0n,
+    peak_ratio: 0,
+    first_descent_step: null,
+    odd_steps: 0,
+    even_steps: 0,
+    odd_step_density: 0,
+    even_step_density: 0,
     reached_one: false,
     cycle_detected: false,
     cycle_at: null,

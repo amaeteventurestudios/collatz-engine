@@ -18,6 +18,72 @@ Despite decades of effort and billions of numbers tested by computers, this conj
 
 ---
 
+## Phase 4 Status — Complete
+
+Phase 4 builds the autonomous batch runner foundation. The engine can now process ranges of numbers locally, summarize batches, detect records, detect near-escape candidates, and generate compact batch data.
+
+**New library files — `lib/collatz/`:**
+- `batch-types.ts` — `BatchInput`, `BatchSummary`, `RecordBreaker`, `NearEscapeCandidate`, `ResidueClassStats`, `TrajectorySample` types
+- `batch-runner.ts` — `runBatch()` — processes a range, returns a compact `BatchSummary` without storing full sequences
+- `batch-records.ts` — Running record tracking and final record extraction
+- `near-escape.ts` — Configurable near-escape candidate detection with 4 flag types
+- `residue-stats.ts` — Per-residue accumulation and finalization for any set of moduli
+- `demo-batch.ts` — Cached demo batch result for range 1–1,000
+
+**Updated library — `lib/collatz/engine.ts`:**
+- Refactored shared inner loop (`runLoop`) used by both `computeCollatz` and the new `computeCollatzSummary`
+- `computeCollatzSummary` — memory-efficient variant: same metrics as `computeCollatz` but no `full_sequence` or `compressed_odd_only_path` stored
+
+**CLI script:**
+```bash
+npm run collatz:batch -- 1 10000
+```
+Example output for 1–1,000:
+```
+Numbers tested:          1,000
+Duration:                14 ms
+Avg steps to 1:          59.54
+Max steps:               178  (n = 871)
+Max peak:                250,504  (n = 703)
+Max peak ratio:          356.34×  (n = 703)
+Longest first descent:   132 steps  (n = 703)
+Near-escape candidates:  250
+Final record holders:    5
+```
+
+**Memory rules enforced:**
+- Full sequences are NOT stored for every number in batch mode
+- Full trajectories are only computed for final record holders and near-escape samples
+- Batch summaries store only compact metrics per batch
+
+**Near-escape default thresholds:**
+| Threshold | Default |
+|---|---|
+| `min_peak_ratio` | 200 |
+| `min_first_descent_step` | 70 |
+| `min_odd_step_density` | 0.47 |
+| `min_steps_to_1` | 100 |
+
+**Residue class analysis moduli:** 3, 4, 6, 8, 12, 24, 36
+
+**Dashboard wiring (Phase 4):**
+- `StatusStrip` — Engine Library: Ready · Batch Runner: Ready · Demo Batch: 1–1,000 · Autonomous Cataloging: Phase 5/6
+- `RecordsPreview` — Demo records from batch 1–1,000 (labeled as demo, not global records)
+- `NearEscapeCandidates` — Top 8 candidates by peak ratio from demo batch
+- `DiscoveryFeed` — 2 new events: batch runner available + demo batch generated
+- `DataMethodology` — Updated to explain compact summaries and sequence storage policy
+
+**Test suite:**
+```bash
+npm test
+```
+- 136 tests total (95 Phase 3 + 41 new Phase 4)
+- Covers: engine refactor, batch range validation, known exact values (1–10), record detection, near-escape flagging, residue stats, sample limit, batch 1–1,000
+
+**Note:** No data written to Supabase. Autonomous cataloging is NOT active in Phase 4. All computation is local and on-demand.
+
+---
+
 ## Phase 3 Status — Complete
 
 Phase 3 builds the core deterministic Collatz calculation engine and wires accurate local computation into the existing dashboard shell.

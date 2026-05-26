@@ -1,15 +1,15 @@
-import { getSeedDemoRecords } from "@/lib/collatz/examples";
+import { getDemoBatch, DEMO_BATCH_START, DEMO_BATCH_END } from "@/lib/collatz/demo-batch";
 import { formatBigInt, formatRatio, formatDensity, formatSteps } from "@/lib/collatz/format";
 
-// Computed from the seed examples by the Collatz engine
-const demoRecords = getSeedDemoRecords();
+// Pre-computed batch records for the demo range
+const demo = getDemoBatch();
 
 const records = [
   {
     icon: "⏱",
     label: "Longest Path",
-    value: `${formatSteps(demoRecords.longestPath.steps_to_1)} steps`,
-    sub: `n = ${formatBigInt(demoRecords.longestPath.start_number)} · Demo seed examples`,
+    value: `${formatSteps(demo.max_steps)} steps`,
+    sub: `n = ${demo.max_steps_number.toLocaleString("en-US")} · Demo batch`,
     color: "text-orange-500 dark:text-orange-400",
     ring: "ring-orange-500/20 dark:ring-orange-400/20",
     bg: "bg-orange-500/5 dark:bg-orange-500/5",
@@ -17,8 +17,8 @@ const records = [
   {
     icon: "▲",
     label: "Highest Peak",
-    value: formatBigInt(demoRecords.highestPeak.peak_value),
-    sub: `n = ${formatBigInt(demoRecords.highestPeak.start_number)} · Demo seed examples`,
+    value: formatBigInt(BigInt(demo.max_peak)),
+    sub: `n = ${demo.max_peak_number.toLocaleString("en-US")} · Demo batch`,
     color: "text-blue-500 dark:text-blue-400",
     ring: "ring-blue-500/20 dark:ring-blue-400/20",
     bg: "bg-blue-500/5 dark:bg-blue-500/5",
@@ -26,35 +26,41 @@ const records = [
   {
     icon: "↗",
     label: "Highest Peak Ratio",
-    value: `×${formatRatio(demoRecords.highestPeakRatio.peak_ratio, 0)}`,
-    sub: `n = ${formatBigInt(demoRecords.highestPeakRatio.start_number)} · peak ÷ n`,
+    value: `×${formatRatio(demo.max_peak_ratio, 0)}`,
+    sub: `n = ${demo.max_peak_ratio_number.toLocaleString("en-US")} · peak ÷ n`,
     color: "text-green-500 dark:text-green-400",
     ring: "ring-green-500/20 dark:ring-green-400/20",
     bg: "bg-green-500/5 dark:bg-green-500/5",
   },
   {
-    icon: "≡",
-    label: "Highest Odd-Step Density",
-    value: formatDensity(demoRecords.highestOddDensity.odd_step_density),
-    sub: `n = ${formatBigInt(demoRecords.highestOddDensity.start_number)} · odd steps ÷ total`,
-    color: "text-violet-500 dark:text-violet-400",
-    ring: "ring-violet-500/20 dark:ring-violet-400/20",
-    bg: "bg-violet-500/5 dark:bg-violet-500/5",
-  },
-  {
     icon: "↘",
     label: "Longest First Descent",
-    value: "No records yet",
-    sub: "Awaiting engine data",
+    value:
+      demo.longest_first_descent_delay !== null
+        ? `${formatSteps(demo.longest_first_descent_delay)} steps`
+        : "—",
+    sub:
+      demo.longest_first_descent_number !== null
+        ? `n = ${demo.longest_first_descent_number.toLocaleString("en-US")} · Demo batch`
+        : "No data yet",
     color: "text-yellow-500 dark:text-yellow-400",
     ring: "ring-yellow-500/20 dark:ring-yellow-400/20",
     bg: "bg-yellow-500/5 dark:bg-yellow-500/5",
   },
   {
+    icon: "≡",
+    label: "Highest Odd-Step Density",
+    value: formatDensity(demo.highest_odd_step_density),
+    sub: `n = ${demo.highest_odd_density_number.toLocaleString("en-US")} · odd steps ÷ total`,
+    color: "text-violet-500 dark:text-violet-400",
+    ring: "ring-violet-500/20 dark:ring-violet-400/20",
+    bg: "bg-violet-500/5 dark:bg-violet-500/5",
+  },
+  {
     icon: "★",
     label: "Records in This Dataset",
-    value: "Phase 4",
-    sub: "Autonomous cataloging begins in Phase 4",
+    value: "Phase 5/6",
+    sub: "Autonomous cataloging pending",
     color: "text-teal-500 dark:text-teal-400",
     ring: "ring-teal-500/20 dark:ring-teal-400/20",
     bg: "bg-teal-500/5 dark:bg-teal-500/5",
@@ -71,7 +77,9 @@ export function RecordsPreview() {
             Key Records
           </h2>
           <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
-            Records from demo seed examples · Computed by the Collatz engine · No live dataset yet
+            Demo records from local seed batch (
+            {DEMO_BATCH_START.toLocaleString("en-US")}–{DEMO_BATCH_END.toLocaleString("en-US")}) ·
+            Computed by the batch runner · No live dataset yet
           </p>
         </div>
 
@@ -94,9 +102,9 @@ export function RecordsPreview() {
         </div>
 
         <p className="mt-4 text-center text-[11px] text-slate-400 dark:text-slate-500">
-          Values marked &ldquo;Demo seed examples&rdquo; are computed locally from{" "}
-          {[1, 2, 3, 6, 7, 27, 97, 871, 6171, 77031, 837799].length} known starting numbers. Live
-          dataset records begin in Phase 4.
+          Demo records from local batch ({DEMO_BATCH_START.toLocaleString("en-US")}–
+          {DEMO_BATCH_END.toLocaleString("en-US")}). These are not global records. Live dataset
+          records begin when autonomous cataloging starts in Phase 5/6.
         </p>
       </div>
     </section>

@@ -1,3 +1,8 @@
+import { getDemoBatch, DEMO_BATCH_START, DEMO_BATCH_END } from "@/lib/collatz/demo-batch";
+
+// Pre-computed at module load (fast: ~15 ms for 1–1,000)
+const demo = getDemoBatch();
+
 const stats = [
   {
     label: "Engine Library",
@@ -6,22 +11,22 @@ const stats = [
     valueClass: "text-teal-600 dark:text-teal-400",
   },
   {
-    label: "Demo Trajectory",
-    value: "n = 27",
-    sub: "111 steps · peak 9,232",
+    label: "Batch Runner",
+    value: "Ready",
+    sub: `${demo.numbers_tested.toLocaleString("en-US")} computed · ${demo.duration_ms} ms`,
+    valueClass: "text-teal-600 dark:text-teal-400",
+  },
+  {
+    label: "Demo Batch",
+    value: `${DEMO_BATCH_START.toLocaleString("en-US")}–${DEMO_BATCH_END.toLocaleString("en-US")}`,
+    sub: `${demo.max_steps} step max · ${demo.near_escape_candidates.length} candidates`,
     valueClass: "text-slate-900 dark:text-slate-100",
   },
   {
-    label: "Cataloging",
-    value: "Not Connected",
-    sub: "Autonomous runner in Phase 4",
+    label: "Autonomous Cataloging",
+    value: "Pending",
+    sub: "Phase 5/6 — not yet active",
     valueClass: "text-slate-500 dark:text-slate-400",
-  },
-  {
-    label: "Numbers Analyzed",
-    value: "11",
-    sub: "Seed examples only",
-    valueClass: "text-slate-900 dark:text-slate-100",
   },
   {
     label: "Dataset Records",
@@ -42,11 +47,11 @@ export function StatusStrip() {
             Live
           </span>
           <span className="hidden text-[11px] text-slate-500 dark:text-slate-400 sm:inline">
-            — Engine library loaded
+            — Engine library loaded · batch runner ready
           </span>
         </div>
         <span className="rounded-full bg-teal-500/10 px-2.5 py-1 text-[10px] font-semibold text-teal-600 dark:text-teal-400">
-          Phase 3 — Engine ready · Autonomous cataloging in Phase 4
+          Phase 4 — Batch runner ready · Autonomous cataloging Phase 5/6
         </span>
       </div>
 

@@ -21,9 +21,10 @@ const methodSections = [
     ring: "ring-blue-500/20",
     title: "What data is stored",
     items: [
-      "Per-trajectory summary statistics (not every intermediate value by default)",
+      "Compact batch summaries: max steps, peak values, ratios, and residue stats — not full sequences for every number",
+      "Full sequences are reserved for record breakers, near-escape candidates, and selected demo samples",
+      "Batch summary data is local until persistence is added in Phase 5",
       "Record-breaking trajectories are flagged and stored in full for inspection",
-      "Near-escape candidates are stored with full sequence data",
       "AI-drafted observation notes remain private until admin-approved",
       "No personally identifiable data is collected from visitors",
     ],
