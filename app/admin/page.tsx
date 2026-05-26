@@ -13,7 +13,7 @@ const cards = [
     icon: "✦",
     title: "AI Notes Review",
     description:
-      "Review and approve AI-generated observations before they appear on the public Research Log.",
+      "Review and approve AI-generated observations before they appear on the public Research Log. Human review required.",
     badge: "0 pending",
     badgeColor: "blue" as const,
   },
@@ -46,7 +46,7 @@ const cards = [
     title: "Site Settings",
     description:
       "Configure public-facing display options, maintenance mode, footer content, and feature flags.",
-    badge: "Phase 1",
+    badge: "Phase 2",
     badgeColor: "yellow" as const,
   },
   {
@@ -63,40 +63,54 @@ export default function AdminDashboardPage() {
   return (
     <div className="mx-auto max-w-5xl">
       {/* Page header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">Admin Dashboard</h1>
+      <div className="mb-6 sm:mb-8">
+        <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50 sm:text-2xl">
+          Admin Dashboard
+        </h1>
         <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
           Manage the Collatz Engine, review AI notes, and configure public-facing settings.
         </p>
       </div>
 
       {/* Summary strip */}
-      <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="mb-6 grid grid-cols-2 gap-3 sm:mb-8 sm:grid-cols-4">
         {[
-          { label: "Engine Status", value: "Offline", color: "text-slate-500" },
-          { label: "Trajectories", value: "—", color: "text-slate-900 dark:text-slate-100" },
-          { label: "AI Notes Pending", value: "0", color: "text-slate-900 dark:text-slate-100" },
-          { label: "Submissions", value: "0", color: "text-slate-900 dark:text-slate-100" },
+          { label: "Engine Status", value: "Offline", valueClass: "text-slate-500" },
+          {
+            label: "Trajectories Catalogued",
+            value: "—",
+            valueClass: "text-slate-900 dark:text-slate-100",
+          },
+          {
+            label: "AI Notes Pending",
+            value: "0",
+            valueClass: "text-slate-900 dark:text-slate-100",
+          },
+          {
+            label: "Submissions",
+            value: "0",
+            valueClass: "text-slate-900 dark:text-slate-100",
+          },
         ].map((s) => (
           <div
             key={s.label}
-            className="rounded-lg border border-slate-200 bg-white p-4 text-center dark:border-slate-800 dark:bg-slate-900"
+            className="rounded-xl border border-slate-200 bg-white p-4 text-center dark:border-slate-800 dark:bg-slate-900"
           >
             <p className="stat-label">{s.label}</p>
-            <p className={`mt-1 text-xl font-bold ${s.color}`}>{s.value}</p>
+            <p className={`mt-1.5 text-xl font-bold tabular-nums ${s.valueClass}`}>{s.value}</p>
           </div>
         ))}
       </div>
 
       {/* Cards grid */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
         {cards.map((card) => (
           <AdminCard key={card.title} {...card} />
         ))}
       </div>
 
       <p className="mt-8 text-center text-xs text-slate-400 dark:text-slate-500">
-        Full admin functionality arrives in Phase 2. All controls are placeholders in Phase 1.
+        Full admin functionality arrives in Phase 3. All controls shown are placeholders in Phase 2.
       </p>
     </div>
   );

@@ -8,15 +8,15 @@ export const metadata: Metadata = {
 
 export default function AdminLoginPage() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-slate-100 px-4 dark:bg-slate-950">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-slate-100 px-4 py-12 dark:bg-slate-950">
       <div className="w-full max-w-sm">
         {/* Brand */}
         <div className="mb-8 text-center">
           <Link href="/" className="inline-block">
-            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-teal-500/10 ring-1 ring-teal-500/30">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-teal-500/10 ring-1 ring-teal-500/30">
               <svg
                 viewBox="0 0 24 24"
-                className="h-6 w-6 text-teal-500"
+                className="h-7 w-7 text-teal-500"
                 fill="none"
                 stroke="currentColor"
                 strokeWidth={2}
@@ -33,11 +33,12 @@ export default function AdminLoginPage() {
           </p>
         </div>
 
-        {/* Card */}
+        {/* Login card */}
         <div className="engine-card">
-          <div className="mb-5 rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-4 py-3">
+          {/* Phase notice */}
+          <div className="mb-5 rounded-xl border border-yellow-500/30 bg-yellow-500/10 px-4 py-3">
             <p className="text-xs font-medium text-yellow-700 dark:text-yellow-400">
-              Phase 1 placeholder — authentication not yet implemented.
+              Phase 2 placeholder — authentication arrives in Phase 3.
             </p>
           </div>
 
@@ -45,7 +46,7 @@ export default function AdminLoginPage() {
             <div>
               <label
                 htmlFor="email"
-                className="mb-1 block text-xs font-semibold text-slate-700 dark:text-slate-300"
+                className="mb-1.5 block text-xs font-semibold text-slate-700 dark:text-slate-300"
               >
                 Email
               </label>
@@ -54,14 +55,14 @@ export default function AdminLoginPage() {
                 type="email"
                 disabled
                 placeholder="admin@example.com"
-                className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-500 placeholder-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400 dark:placeholder-slate-500"
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-sm text-slate-500 placeholder-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400 dark:placeholder-slate-500"
               />
             </div>
 
             <div>
               <label
                 htmlFor="password"
-                className="mb-1 block text-xs font-semibold text-slate-700 dark:text-slate-300"
+                className="mb-1.5 block text-xs font-semibold text-slate-700 dark:text-slate-300"
               >
                 Password
               </label>
@@ -70,14 +71,14 @@ export default function AdminLoginPage() {
                 type="password"
                 disabled
                 placeholder="••••••••"
-                className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-500 placeholder-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400 dark:placeholder-slate-500"
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-sm text-slate-500 placeholder-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400 dark:placeholder-slate-500"
               />
             </div>
 
             <button
               type="button"
               disabled
-              className="w-full rounded-lg bg-teal-500 px-4 py-2.5 text-sm font-semibold text-white opacity-50 cursor-not-allowed"
+              className="w-full cursor-not-allowed rounded-xl bg-teal-500 px-4 py-3 text-sm font-semibold text-white opacity-50"
             >
               Sign In
             </button>
@@ -88,12 +89,12 @@ export default function AdminLoginPage() {
               href="/admin"
               className="text-xs text-teal-600 hover:underline dark:text-teal-400"
             >
-              Skip to admin shell (Phase 1 only) →
+              Skip to admin shell (Phase 2 only) →
             </Link>
           </div>
         </div>
 
-        <div className="mt-4 text-center">
+        <div className="mt-5 text-center">
           <Link
             href="/"
             className="text-xs text-slate-400 transition-colors hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"

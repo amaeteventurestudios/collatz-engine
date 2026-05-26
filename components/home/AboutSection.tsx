@@ -26,40 +26,43 @@ const sections = [
   {
     num: "5",
     title: "FAQs",
-    body: "Common questions: Is the Collatz Conjecture proven? What is the largest number tested? How are records determined? Can I contribute? Where can I see more data?",
+    body: "Is the Collatz Conjecture proven? What is the largest number tested? How are records determined? Can I contribute? Where can I see more data? All questions answered in our FAQ section.",
     cta: "View all FAQs →",
   },
 ];
 
 export function AboutSection() {
   return (
-    <section id="about" className="scroll-mt-20 bg-slate-50 px-4 py-12 dark:bg-slate-900/40 sm:py-16">
+    <section
+      id="about"
+      className="scroll-mt-20 bg-slate-50 px-4 py-12 dark:bg-slate-900/40 sm:py-16"
+    >
       <div className="mx-auto max-w-7xl">
-        <h2 className="mb-2 text-center text-2xl font-bold text-slate-900 dark:text-slate-50 sm:text-3xl">
-          The Collatz Conjecture: An Introduction
-        </h2>
-        <p className="mb-8 text-center text-sm text-slate-500 dark:text-slate-400">
-          A plain-language guide to one of mathematics&apos; most intriguing open problems
-        </p>
+        {/* Section header */}
+        <div className="mb-10 text-center">
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-50 sm:text-3xl">
+            The Collatz Conjecture
+          </h2>
+          <p className="mx-auto mt-2 max-w-lg text-sm leading-relaxed text-slate-500 dark:text-slate-400">
+            A plain-language guide to one of mathematics&apos; most intriguing open problems
+          </p>
+        </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {sections.map((sec) => (
-            <div
-              key={sec.num}
-              className="engine-card flex flex-col gap-3"
-            >
-              <div className="flex items-center gap-3">
+            <div key={sec.num} className="engine-card flex flex-col gap-3">
+              <div className="flex items-start gap-3">
                 <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-teal-500/15 text-xs font-bold text-teal-600 dark:text-teal-400">
                   {sec.num}
                 </span>
-                <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                <p className="text-sm font-semibold leading-snug text-slate-900 dark:text-slate-100">
                   {sec.title}
                 </p>
               </div>
               <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
                 {sec.body}
               </p>
-              <button className="mt-auto text-left text-xs font-medium text-teal-600 hover:underline dark:text-teal-400">
+              <button className="mt-auto text-left text-xs font-medium text-teal-600 transition-colors hover:text-teal-500 dark:text-teal-400 dark:hover:text-teal-300">
                 {sec.cta}
               </button>
             </div>
@@ -67,39 +70,39 @@ export function AboutSection() {
 
           {/* Table of contents card */}
           <div className="engine-card">
-            <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400">
               Table of Contents
             </p>
-            <ol className="space-y-1.5">
+            <ol className="space-y-2">
               {sections.map((sec) => (
                 <li key={sec.num}>
                   <a
-                    href={`#about`}
-                    className="flex items-start gap-2 text-xs text-slate-600 hover:text-teal-600 dark:text-slate-400 dark:hover:text-teal-400"
+                    href="#about"
+                    className="flex items-start gap-2 rounded-md px-1 py-0.5 text-xs text-slate-600 transition-colors hover:text-teal-600 dark:text-slate-400 dark:hover:text-teal-400"
                   >
-                    <span className="shrink-0 text-slate-400">{sec.num}.</span>
-                    {sec.title}
+                    <span className="mt-px shrink-0 text-slate-400 dark:text-slate-600">
+                      {sec.num}.
+                    </span>
+                    <span>{sec.title}</span>
                   </a>
                 </li>
               ))}
-              <li>
-                <a
-                  href="#contribute"
-                  className="flex items-start gap-2 text-xs text-slate-600 hover:text-teal-600 dark:text-slate-400 dark:hover:text-teal-400"
-                >
-                  <span className="shrink-0 text-slate-400">6.</span>
-                  Data, Records &amp; Methodology
-                </a>
-              </li>
-              <li>
-                <a
-                  href="#contribute"
-                  className="flex items-start gap-2 text-xs text-slate-600 hover:text-teal-600 dark:text-slate-400 dark:hover:text-teal-400"
-                >
-                  <span className="shrink-0 text-slate-400">7.</span>
-                  Contact / Contribute / Support
-                </a>
-              </li>
+              {[
+                { num: "6", label: "Data, Records & Methodology", href: "#records" },
+                { num: "7", label: "Contact / Contribute / Support", href: "#contribute" },
+              ].map((extra) => (
+                <li key={extra.num}>
+                  <a
+                    href={extra.href}
+                    className="flex items-start gap-2 rounded-md px-1 py-0.5 text-xs text-slate-600 transition-colors hover:text-teal-600 dark:text-slate-400 dark:hover:text-teal-400"
+                  >
+                    <span className="mt-px shrink-0 text-slate-400 dark:text-slate-600">
+                      {extra.num}.
+                    </span>
+                    <span>{extra.label}</span>
+                  </a>
+                </li>
+              ))}
             </ol>
           </div>
         </div>

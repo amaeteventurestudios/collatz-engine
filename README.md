@@ -18,36 +18,65 @@ Despite decades of effort and billions of numbers tested by computers, this conj
 
 ---
 
+## Phase 2 Status — Complete
+
+Phase 2 polishes the mobile-first design system so every page looks excellent on mobile, tablet, desktop, and ultrawide screens.
+
+**What changed in Phase 2:**
+- **Header:** Mobile layout rebuilt as a 3-column grid — hamburger | centred brand | theme toggle. No left-heavy mobile header. Desktop unchanged.
+- **Hero:** Full-width CTA buttons on mobile (`w-full sm:w-auto`), improved spacing, scroll hint animation.
+- **Status strip:** Redesigned with a dedicated "LIVE" status header row + 5-stat grid (`grid-cols-2 sm:grid-cols-3 lg:grid-cols-5`). Updated stat labels to: Trajectories Catalogued, Current Catalog Range, Latest Batch Completed, Numbers Analyzed by This Engine, Records in This Dataset.
+- **Trajectory Visualizer:** Scrollable tab row on mobile with `flex-shrink-0` tab buttons and 44px tap targets. Legend changed to 2-col grid on mobile. Placeholder copy updated ("Phase 3").
+- **Sequence Trace:** Added "Current Rule" callout panel. Table wrapped in horizontal scroll container for narrow screens. Updated placeholder copy.
+- **AI Research Log:** Added `"use client"` + active-tab state. Tabs changed to horizontal scroll row on mobile. Added human-review notice. Updated placeholder copy.
+- **Pattern Views:** Added `"use client"` + active-tab state. Tabs horizontal scroll. Placeholder title reflects selected view. Updated copy.
+- **Records Preview:** Added section heading with subtitle. Cards now show a subtle accent ring. Icon scaled up.
+- **About Section:** Section heading centred with intro paragraph. Minor card spacing improvements.
+- **Contribute Section:** Added section heading. Ko-fi button is `w-full` on mobile. Get-involved links have larger tap targets. Social links moved to contact row.
+- **Footer:** Consistent centering on mobile. Social links added. Live status indicator.
+- **Admin layout:** Added horizontally-scrollable mobile tab nav (visible below `lg`). Desktop sidebar unchanged. Content padding scaled to `lg:p-8`.
+- **Admin pages:** Updated placeholder notices from "Phase 1" to "Phase 2". Updated footer note.
+- **globals.css:** Added `.scroll-tabs`, `.tab-btn-active`, `.tab-btn-inactive`, `.no-scrollbar` component/utility classes. Added `scrollbar-gutter: stable` and `focus-visible` ring.
+
+---
+
 ## Phase 1 Status — Complete
 
-Phase 1 establishes the full app shell, brand foundation, and visual dashboard structure.
+Phase 1 established the full app shell, brand foundation, and visual dashboard structure.
 
-**What is built:**
+**Built in Phase 1:**
 - Next.js 16 App Router with TypeScript
 - Tailwind CSS v4 with dark/light theme toggle (dark default)
 - Framer Motion animations
-- Mobile-first responsive layout
-- Public homepage with all placeholder sections:
-  - Hero / header with live engine badge
-  - Live status strip
-  - Trajectory Visualizer placeholder
-  - Live Sequence Trace placeholder (demo: n=27)
-  - Key Records preview
-  - AI Research Log placeholder
-  - Heatmaps & Pattern Views placeholder
-  - Educational About section
-  - Contribute / Support / Contact section
-  - Footer
-- Admin shell at `/admin` and `/admin/login` with placeholder cards for:
-  - Engine Controls, AI Notes Review, Records Manager
-  - Near-Escape Manager, Submission Inbox, Site Settings, Audit Log
+- Public homepage with all placeholder sections
+- Admin shell at `/admin` and `/admin/login`
 - Supabase client placeholder (env-gated, no keys committed)
 
-**Coming in Phase 2:**
+---
+
+## Responsive QA Notes
+
+| Breakpoint | Layout behavior |
+|---|---|
+| `< 640px` (mobile) | Single-column stacking, centred brand in header, full-width buttons, horizontal-scroll tab rows, 2-col stats grid |
+| `640px–1024px` (tablet) | 2–3 column grids, desktop header nav visible at `md` |
+| `≥ 1024px` (desktop) | Full dashboard grids (up to 6 col), admin sidebar visible |
+| `≥ 1280px` (ultrawide) | Max-width container (`max-w-7xl`) keeps content centred |
+
+**Theme:**
+- Default: dark mode
+- Toggle: Sun/Moon icon in header (top-right on desktop, right cell on mobile)
+- Persisted via `next-themes` with `attribute="class"`
+- `suppressHydrationWarning` on `<html>` prevents flash
+
+---
+
+## Coming in Phase 3
+
 - Live Collatz computation engine
 - Real trajectory charts (Recharts / D3)
 - Supabase schema and data persistence
-- AI-assisted batch analysis notes
+- AI-assisted batch analysis notes (human-reviewed before publishing)
 - Near-escape candidate tracking
 - Full admin authentication
 
@@ -61,8 +90,8 @@ Phase 1 establishes the full app shell, brand foundation, and visual dashboard s
 | Language | TypeScript |
 | Styling | Tailwind CSS v4 |
 | Animation | Framer Motion |
-| Charts | Recharts / D3 (Phase 2) |
-| Database | Supabase (Phase 2) |
+| Charts | Recharts / D3 (Phase 3) |
+| Database | Supabase (Phase 3) |
 | Theme | next-themes (dark default) |
 | Icons | lucide-react |
 
