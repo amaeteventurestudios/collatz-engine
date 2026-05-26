@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "collatz:batch": "tsx scripts/run-collatz-batch.ts",
-    "collatz:auto": "tsx scripts/run-autonomous-batch.ts"
+    "collatz:auto": "tsx scripts/run-autonomous-batch.ts",
+    "collatz:worker": "tsx scripts/run-collatz-worker.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.106.2",
