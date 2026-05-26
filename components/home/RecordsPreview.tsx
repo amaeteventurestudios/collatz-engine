@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   getEngineState,
   getTopLongestTrajectories,
   getTopHighestPeaks,
 } from "@/lib/collatz/store";
 import type { EngineState, CollatzResultRow } from "@/lib/collatz/store";
+
+const POLL_MS = 5_000;
 
 function fmt(n: number | null | undefined) {
   return Number(n ?? 0).toLocaleString("en-US");
@@ -27,7 +29,6 @@ function buildRecords(
   topTrajectory: CollatzResultRow | null,
   topPeaks: CollatzResultRow[],
 ): RecordCard[] {
-  // Compute best ratio from the top peaks sample
   let bestRatio = { ratio: 0, n: 0 };
   for (const row of topPeaks) {
     const ratio = row.n > 0 ? row.peak / row.n : 0;
@@ -117,22 +118,34 @@ export function RecordsPreview() {
   const [engineState, setEngineState] = useState<EngineState | null>(null);
   const [topTrajectory, setTopTrajectory] = useState<CollatzResultRow | null>(null);
   const [topPeaks, setTopPeaks] = useState<CollatzResultRow[]>([]);
+  const mountedRef = useRef(false);
 
   useEffect(() => {
-    let isMounted = true;
-    async function load() {
-      const [state, trajectories, peaks] = await Promise.all([
-        getEngineState(),
-        getTopLongestTrajectories(1),
-        getTopHighestPeaks(20),
-      ]);
-      if (!isMounted) return;
-      setEngineState(state);
-      setTopTrajectory(trajectories[0] ?? null);
-      setTopPeaks(peaks);
+    mountedRef.current = true;
+
+    async function poll() {
+      try {
+        const [state, trajectories, peaks] = await Promise.all([
+          getEngineState(),
+          getTopLongestTrajectories(1),
+          getTopHighestPeaks(20),
+        ]);
+        if (!mountedRef.current) return;
+        setEngineState(state);
+        setTopTrajectory(trajectories[0] ?? null);
+        setTopPeaks(peaks);
+      } catch {
+        // Keep last known data on transient errors
+      }
     }
-    load();
-    return () => { isMounted = false; };
+
+    poll();
+    const pollId = window.setInterval(poll, POLL_MS);
+
+    return () => {
+      mountedRef.current = false;
+      window.clearInterval(pollId);
+    };
   }, []);
 
   const records = buildRecords(engineState, topTrajectory, topPeaks);

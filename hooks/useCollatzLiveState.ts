@@ -13,7 +13,7 @@ export interface LiveEngineStateResult {
   state: EngineState | null;
   /** True until the first successful fetch completes. */
   loading: boolean;
-  /** Non-null only when Supabase itself throws (misconfigured client, network). */
+  /** Non-null only when the database itself throws (misconfigured client, network). */
   error: string | null;
   /** Whole seconds since state.started_at. Ticks every second. 0 if unknown. */
   runtimeSeconds: number;
@@ -31,6 +31,17 @@ export interface LiveEngineStateResult {
    *   "error"   — last_error is set (takes priority over all other states)
    */
   healthStatus: HealthStatus;
+  /**
+   * Batch range fields — derived from engine state.
+   * lastVerifiedStart/End: the n-range of the most recently completed batch.
+   * nextBatchStart/End:    the n-range of the batch currently queued.
+   * batchSize:             numbers processed per batch.
+   */
+  lastVerifiedStart: number;
+  lastVerifiedEnd: number;
+  nextBatchStart: number;
+  nextBatchEnd: number;
+  batchSize: number;
 }
 
 // ─── Health derivation ────────────────────────────────────────────────────────
@@ -49,7 +60,7 @@ function deriveHealth(
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
-const DEFAULT_POLL_MS = 5_000;
+const DEFAULT_POLL_MS = 2_000;
 
 export function useCollatzLiveState(
   pollMs: number = DEFAULT_POLL_MS,
@@ -101,7 +112,7 @@ export function useCollatzLiveState(
     return () => window.clearInterval(id);
   }, []);
 
-  // ── Derived values ──────────────────────────────────────────────────────────
+  // ── Derived time values ──────────────────────────────────────────────────────
   const runtimeSeconds =
     now > 0 && state?.started_at
       ? Math.max(
@@ -122,6 +133,13 @@ export function useCollatzLiveState(
 
   const healthStatus = deriveHealth(state, heartbeatAgeSeconds);
 
+  // ── Batch range computation ──────────────────────────────────────────────────
+  const lastVerifiedEnd = state?.total_numbers_checked ?? 0;
+  const batchSize = state?.last_batch_size ?? 100;
+  const lastVerifiedStart = lastVerifiedEnd > 0 ? Math.max(1, lastVerifiedEnd - batchSize + 1) : 0;
+  const nextBatchStart = lastVerifiedEnd + 1;
+  const nextBatchEnd = lastVerifiedEnd + batchSize;
+
   return {
     state,
     loading,
@@ -129,5 +147,10 @@ export function useCollatzLiveState(
     runtimeSeconds,
     heartbeatAgeSeconds,
     healthStatus,
+    lastVerifiedStart,
+    lastVerifiedEnd,
+    nextBatchStart,
+    nextBatchEnd,
+    batchSize,
   };
 }

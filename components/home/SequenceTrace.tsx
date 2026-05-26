@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { getSeedResult } from "@/lib/collatz/examples";
 import { computeCollatz } from "@/lib/collatz/engine";
 import { getTopLongestTrajectories } from "@/lib/collatz/store";
 import { formatBigInt, formatDensity } from "@/lib/collatz/format";
 import type { CollatzResult } from "@/lib/collatz/types";
 
-const ROWS_TO_SHOW = 10;
+const INITIAL_ROWS = 10;
+const POLL_MS = 5_000;
 
 // Stable fallback — computed once at module load
 const FALLBACK: CollatzResult = getSeedResult(27);
@@ -15,25 +16,40 @@ const FALLBACK: CollatzResult = getSeedResult(27);
 export function SequenceTrace() {
   const [result, setResult] = useState<CollatzResult>(FALLBACK);
   const [isLive, setIsLive] = useState(false);
+  const [showAll, setShowAll] = useState(false);
+  const mountedRef = useRef(false);
 
   useEffect(() => {
-    let isMounted = true;
-    async function load() {
-      const rows = await getTopLongestTrajectories(1);
-      if (!isMounted || !rows || rows.length === 0) return;
-      const computed = computeCollatz(rows[0].n);
-      if (isMounted && computed.reached_one && computed.full_sequence.length > 1) {
-        setResult(computed);
-        setIsLive(true);
+    mountedRef.current = true;
+
+    async function poll() {
+      try {
+        const rows = await getTopLongestTrajectories(1);
+        if (!mountedRef.current || !rows || rows.length === 0) return;
+        const computed = computeCollatz(rows[0].n);
+        if (mountedRef.current && computed.reached_one && computed.full_sequence.length > 1) {
+          setResult(computed);
+          setIsLive(true);
+        }
+      } catch {
+        // Keep last known data on transient errors
       }
     }
-    load();
-    return () => { isMounted = false; };
+
+    poll();
+    const pollId = window.setInterval(poll, POLL_MS);
+
+    return () => {
+      mountedRef.current = false;
+      window.clearInterval(pollId);
+    };
   }, []);
+
+  const visibleCount = showAll ? result.full_sequence.length - 1 : INITIAL_ROWS;
 
   const tableRows = useMemo(() => {
     return result.full_sequence
-      .slice(0, ROWS_TO_SHOW)
+      .slice(0, visibleCount)
       .map((val, i) => {
         if (i === result.full_sequence.length - 1) return null;
         const nextVal = result.full_sequence[i + 1];
@@ -45,16 +61,26 @@ export function SequenceTrace() {
           type: isOdd ? "Odd" : "Even",
           op: isOdd ? "3n + 1" : "n / 2",
           next: formatBigInt(nextVal),
+          isOdd,
         };
       })
-      .filter(Boolean) as { step: string; value: string; type: string; op: string; next: string }[];
-  }, [result]);
+      .filter(Boolean) as {
+        step: string;
+        value: string;
+        type: string;
+        op: string;
+        next: string;
+        isOdd: boolean;
+      }[];
+  }, [result, visibleCount]);
 
   const currentRuleRow = tableRows[tableRows.length - 1];
-  const currentValue = result.full_sequence[ROWS_TO_SHOW - 1];
+  const currentValue = result.full_sequence[visibleCount - 1];
   const isCurrentOdd = currentValue !== undefined && currentValue % 2n !== 0n;
   const n = Number(result.start_number);
   const badgeLabel = isLive ? `Live — n=${n.toLocaleString("en-US")}` : "Example — n=27";
+  const totalSteps = result.steps_to_1;
+  const hasMore = totalSteps > INITIAL_ROWS;
 
   return (
     <section className="px-4 pb-10 sm:pb-14">
@@ -95,7 +121,7 @@ export function SequenceTrace() {
               <div className="flex items-center gap-2">
                 <span className="h-2 w-2 rounded-full bg-sky-500" />
                 <span className="text-[10px] font-semibold uppercase tracking-widest text-sky-600 dark:text-sky-400">
-                  Current Rule (Step {Number(currentRuleRow.step)})
+                  Step {Number(currentRuleRow.step)}
                 </span>
               </div>
               <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm font-medium text-slate-700 dark:text-slate-300">
@@ -155,14 +181,14 @@ export function SequenceTrace() {
                         <td className="px-4 py-3">
                           <span
                             className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${
-                              row.type === "Odd"
+                              row.isOdd
                                 ? "bg-violet-500/15 text-violet-700 dark:text-violet-400"
                                 : "bg-sky-500/15 text-sky-700 dark:text-sky-400"
                             }`}
                           >
                             <span
                               className={`h-1.5 w-1.5 rounded-full ${
-                                row.type === "Odd" ? "bg-violet-500" : "bg-sky-500"
+                                row.isOdd ? "bg-violet-500" : "bg-sky-500"
                               }`}
                             />
                             {row.type}
@@ -182,10 +208,22 @@ export function SequenceTrace() {
             </div>
           </div>
 
+          {/* Show more / less */}
+          {hasMore && (
+            <button
+              onClick={() => setShowAll((v) => !v)}
+              className="mt-3 w-full rounded-lg border border-slate-200 py-2 text-xs font-medium text-slate-500 transition-colors hover:bg-slate-50 dark:border-slate-800 dark:text-slate-400 dark:hover:bg-slate-800/40"
+            >
+              {showAll
+                ? `↑ Show first ${INITIAL_ROWS} steps`
+                : `↓ Show all ${totalSteps} steps`}
+            </button>
+          )}
+
           <p className="mt-4 text-center text-[11px] text-slate-400 dark:text-slate-500">
             {isLive
-              ? `Showing first ${tableRows.length} of ${result.steps_to_1} steps for n=${n.toLocaleString("en-US")} — the current longest cataloged trajectory.`
-              : `Showing first ${tableRows.length} of ${result.steps_to_1} steps for n=${n}. Updates to the longest trajectory as the catalog grows.`}
+              ? `Showing ${tableRows.length} of ${totalSteps} steps for n=${n.toLocaleString("en-US")} — the current longest cataloged trajectory.`
+              : `Showing ${tableRows.length} of ${totalSteps} steps for n=${n}. Updates to the longest trajectory as the catalog grows.`}
           </p>
         </div>
       </div>

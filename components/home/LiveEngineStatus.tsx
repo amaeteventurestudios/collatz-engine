@@ -135,7 +135,6 @@ function HealthBadge({ status }: { status: HealthStatus }) {
     <span
       className={`inline-flex items-center gap-2 rounded border px-3 py-1.5 ${cfg.bg} ${cfg.border}`}
     >
-      {/* Ping dot */}
       <span className="relative flex h-2 w-2 shrink-0">
         <span
           className={`absolute inline-flex h-full w-full rounded-full opacity-75 ${cfg.dot}`}
@@ -185,7 +184,7 @@ function NoDataState({ error }: { error: string | null }) {
             Engine State
           </span>
           <p className="font-mono text-sm font-semibold text-slate-400">
-            {error ? "Supabase connection error" : "No engine state found"}
+            {error ? "Database connection error" : "No engine state found"}
           </p>
           {error && (
             <p className="max-w-md font-mono text-[11px] text-red-500">{error}</p>
@@ -193,7 +192,7 @@ function NoDataState({ error }: { error: string | null }) {
           {!error && (
             <p className="max-w-md text-xs leading-relaxed text-slate-600">
               The engine state row has not been initialised. Run the Collatz
-              worker once to create the initial state in Supabase.
+              worker once to create the initial state.
             </p>
           )}
         </div>
@@ -205,8 +204,19 @@ function NoDataState({ error }: { error: string | null }) {
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function LiveEngineStatus() {
-  const { state, loading, error, runtimeSeconds, heartbeatAgeSeconds, healthStatus } =
-    useCollatzLiveState(5_000);
+  const {
+    state,
+    loading,
+    error,
+    runtimeSeconds,
+    heartbeatAgeSeconds,
+    healthStatus,
+    lastVerifiedStart,
+    lastVerifiedEnd,
+    nextBatchStart,
+    nextBatchEnd,
+    batchSize,
+  } = useCollatzLiveState();
 
   if (loading) return <LoadingSkeleton />;
   if (!state) return <NoDataState error={error} />;
@@ -224,7 +234,7 @@ export function LiveEngineStatus() {
               Autonomous Collatz Explorer
             </p>
             <p className="mt-0.5 text-[11px] text-slate-600">
-              Hetzner Cloud worker · Supabase persistence · public read-only
+              Hetzner Cloud worker · persistent database · public read-only
             </p>
           </div>
           <HealthBadge status={healthStatus} />
@@ -255,6 +265,67 @@ export function LiveEngineStatus() {
           </div>
         </div>
 
+        {/* ── Sequential Batch Processing ──────────────────────────────────── */}
+        <div className="border-b border-slate-800/70 py-5">
+          <div className="mb-3 flex items-center gap-2">
+            <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+              Sequential Batch Processing
+            </p>
+            <span className="font-mono text-[9px] text-slate-700">
+              · integers processed in order from n=1 upward
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            {/* Last verified batch */}
+            <div className="rounded border border-slate-800 bg-slate-900/60 px-4 py-3">
+              <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-600">
+                Last Verified Batch
+              </p>
+              {lastVerifiedEnd > 0 ? (
+                <>
+                  <p className="mt-1.5 font-mono text-sm font-bold text-slate-200 tabular-nums">
+                    n = {fmtN(lastVerifiedStart)} → {fmtN(lastVerifiedEnd)}
+                  </p>
+                  <p className="mt-0.5 font-mono text-[10px] text-slate-600">
+                    {fmtN(batchSize)} numbers · all reached 1
+                  </p>
+                </>
+              ) : (
+                <p className="mt-1.5 font-mono text-sm text-slate-600">
+                  Not yet started
+                </p>
+              )}
+            </div>
+
+            {/* Currently processing */}
+            <div className="rounded border border-teal-800/40 bg-teal-900/20 px-4 py-3">
+              <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.15em] text-teal-600">
+                Currently Processing
+              </p>
+              <p className="mt-1.5 font-mono text-sm font-bold text-teal-300 tabular-nums">
+                n = {fmtN(nextBatchStart)} → {fmtN(nextBatchEnd)}
+              </p>
+              <p className="mt-0.5 font-mono text-[10px] text-teal-800">
+                {fmtN(batchSize)} numbers per batch
+              </p>
+            </div>
+
+            {/* Next queued */}
+            <div className="rounded border border-slate-800 bg-slate-900/40 px-4 py-3">
+              <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-600">
+                Next Queued
+              </p>
+              <p className="mt-1.5 font-mono text-sm font-bold text-slate-400 tabular-nums">
+                n = {fmtN(nextBatchEnd + 1)} → {fmtN(nextBatchEnd + batchSize)}
+              </p>
+              <p className="mt-0.5 font-mono text-[10px] text-slate-700">
+                queued after current batch
+              </p>
+            </div>
+          </div>
+        </div>
+
         {/* ── Operational metrics ──────────────────────────────────────────── */}
         <div className="border-b border-slate-800/70 py-5">
           <div className="grid grid-cols-2 gap-x-6 gap-y-5 sm:grid-cols-3 lg:grid-cols-5">
@@ -264,7 +335,7 @@ export function LiveEngineStatus() {
                 {fmtRuntime(runtimeSeconds)}
               </Value>
               <p className="mt-0.5 font-mono text-[9px] text-slate-700">
-                from started_at
+                from engine start
               </p>
             </div>
 
@@ -312,7 +383,7 @@ export function LiveEngineStatus() {
                 {fmtAge(heartbeatAgeSeconds)}
               </Value>
               <p className="mt-0.5 font-mono text-[9px] text-slate-700">
-                worker_heartbeat_at
+                last worker ping
               </p>
             </div>
           </div>
@@ -354,7 +425,7 @@ export function LiveEngineStatus() {
             </div>
             {state.worker_heartbeat_at && (
               <div className="flex items-center gap-2.5">
-                <Label>Heartbeat at</Label>
+                <Label>Last Heartbeat</Label>
                 <span className="font-mono text-[11px] text-slate-500">
                   {fmtDateTime(state.worker_heartbeat_at)}
                 </span>

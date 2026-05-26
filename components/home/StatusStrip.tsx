@@ -62,7 +62,7 @@ export function StatusStrip() {
 
     async function loadEngineState() {
       if (!supabase) {
-        if (isMounted) setLoadError("Supabase not configured");
+        if (isMounted) setLoadError("Database not configured");
         return;
       }
 
@@ -137,13 +137,13 @@ export function StatusStrip() {
     {
       label: "Engine Status",
       value: status.toUpperCase(),
-      sub: loadError ?? (state?.last_error ? `⚠ ${state.last_error.slice(0, 36)}` : "Supabase persistence active"),
+      sub: loadError ?? (state?.last_error ? `⚠ ${state.last_error.slice(0, 36)}` : "Persistent database active"),
       valueClass: statusValueClass,
     },
     {
       label: "Runtime",
       value: runtime,
-      sub: state?.started_at ? "Database-backed uptime" : "Waiting for engine start",
+      sub: state?.started_at ? "Persistent runtime" : "Waiting for engine start",
       valueClass: "text-teal-600 dark:text-teal-400",
     },
     {
@@ -190,7 +190,7 @@ export function StatusStrip() {
             Live
           </span>
           <span className="hidden text-[11px] text-slate-500 dark:text-slate-400 sm:inline">
-            — Supabase persistence active · autonomous runner connected
+            — Persistent database active · autonomous runner connected
           </span>
         </div>
 
