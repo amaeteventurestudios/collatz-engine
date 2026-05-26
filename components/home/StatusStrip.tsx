@@ -1,32 +1,32 @@
 const stats = [
   {
-    label: "Trajectories Catalogued",
-    value: "Demo Mode",
-    sub: "Engine not yet connected",
+    label: "Engine Library",
+    value: "Ready",
+    sub: "Core computation loaded",
+    valueClass: "text-teal-600 dark:text-teal-400",
+  },
+  {
+    label: "Demo Trajectory",
+    value: "n = 27",
+    sub: "111 steps · peak 9,232",
+    valueClass: "text-slate-900 dark:text-slate-100",
+  },
+  {
+    label: "Cataloging",
+    value: "Not Connected",
+    sub: "Autonomous runner in Phase 4",
     valueClass: "text-slate-500 dark:text-slate-400",
   },
   {
-    label: "Current Catalog Range",
-    value: "Awaiting Engine",
-    sub: "Range set in Phase 3",
-    valueClass: "text-slate-500 dark:text-slate-400",
+    label: "Numbers Analyzed",
+    value: "11",
+    sub: "Seed examples only",
+    valueClass: "text-slate-900 dark:text-slate-100",
   },
   {
-    label: "Latest Batch Completed",
-    value: "Phase 2 Shell",
-    sub: "Batches begin in Phase 3",
-    valueClass: "text-slate-500 dark:text-slate-400",
-  },
-  {
-    label: "Numbers Analyzed by This Engine",
-    value: "Not Yet Connected",
-    sub: "Analysis begins in Phase 3",
-    valueClass: "text-slate-500 dark:text-slate-400",
-  },
-  {
-    label: "Records in This Dataset",
+    label: "Dataset Records",
     value: "0",
-    sub: "No records catalogued yet",
+    sub: "No live records catalogued",
     valueClass: "text-2xl font-bold text-slate-900 dark:text-slate-100",
   },
 ];
@@ -42,11 +42,11 @@ export function StatusStrip() {
             Live
           </span>
           <span className="hidden text-[11px] text-slate-500 dark:text-slate-400 sm:inline">
-            — All systems operational
+            — Engine library loaded
           </span>
         </div>
-        <span className="rounded-full bg-yellow-500/10 px-2.5 py-1 text-[10px] font-semibold text-yellow-600 dark:text-yellow-400">
-          Demo Mode — Engine connects in Phase 3
+        <span className="rounded-full bg-teal-500/10 px-2.5 py-1 text-[10px] font-semibold text-teal-600 dark:text-teal-400">
+          Phase 3 — Engine ready · Autonomous cataloging in Phase 4
         </span>
       </div>
 

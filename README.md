@@ -18,6 +18,75 @@ Despite decades of effort and billions of numbers tested by computers, this conj
 
 ---
 
+## Phase 3 Status — Complete
+
+Phase 3 builds the core deterministic Collatz calculation engine and wires accurate local computation into the existing dashboard shell.
+
+**Core engine — `lib/collatz/`:**
+- `types.ts` — TypeScript interfaces for `CollatzResult` and `CollatzOptions`
+- `engine.ts` — `computeCollatz(n)` with full metric output and defensive guards
+- `examples.ts` — Pre-computed results for 11 seed examples with lazy caching and demo record helpers
+- `format.ts` — Display formatting utilities (locale numbers, ratios, densities)
+
+**What `computeCollatz` returns for any starting number:**
+| Field | Description |
+|---|---|
+| `start_number` | Input as BigInt |
+| `full_sequence` | Every value in the trajectory (BigInt[]) |
+| `steps_to_1` | Total steps to reach 1 |
+| `peak_value` | Maximum value reached |
+| `peak_ratio` | peak_value / start_number |
+| `first_descent_step` | Step when value first drops below start_number |
+| `odd_steps` / `even_steps` | Counts of each rule application |
+| `odd_step_density` / `even_step_density` | Ratios |
+| `compressed_odd_only_path` | Only the odd values in the trajectory |
+| `reached_one` | Boolean success flag |
+| `cycle_detected` | Defensive cycle detection |
+| `stopped_reason` | `reached_one` · `cycle_detected` · `max_steps_exceeded` · `invalid_input` |
+
+**Input validation:** Rejects zero, negative numbers, decimals, non-numeric strings, and negative BigInts. Returns a result with `stopped_reason: "invalid_input"`.
+
+**Known tested seed examples:**
+
+| n | Steps to 1 | Peak value |
+|---|---|---|
+| 1 | 0 | 1 |
+| 2 | 1 | 2 |
+| 3 | 7 | 16 |
+| 6 | 8 | 16 |
+| 7 | 16 | 52 |
+| 27 | 111 | 9,232 |
+| 97 | 118 | 9,232 |
+| 871 | 178 | — |
+| 6,171 | 261 | — |
+| 77,031 | 350 | — |
+| 837,799 | 524 | — |
+
+**Dashboard wiring:**
+- `TrajectoryVisualizer` — SVG log-scale chart generated from real computed n=27 sequence (no hardcoded points)
+- `SequenceTrace` — First 10 steps from engine output with accurate step/value/rule/result columns
+- `RecordsPreview` — Longest path, highest peak, highest peak ratio, highest odd-step density from seed examples (labeled "Demo seed examples")
+- `StatusStrip` — Updated to show "Engine Library: Ready" · "Demo Trajectory: n=27" · "Cataloging: Not Connected"
+
+**Test suite:**
+```bash
+npm test
+```
+- 95 tests across: known values, metric invariants, sequence correctness, input validation, max-steps guard
+- Framework: Vitest 4
+
+**How to run checks:**
+```bash
+npm run lint       # ESLint
+npm run typecheck  # tsc --noEmit
+npm run build      # Next.js production build
+npm test           # Vitest test suite
+```
+
+**Note:** Autonomous cataloging does not start in Phase 3. The engine computes on demand for the 11 seed examples only. Supabase, GitHub Actions, admin auth, and AI notes are all Phase 4+.
+
+---
+
 ## Phase 2B Status — Complete
 
 Phase 2B completes the dashboard sections so the public homepage matches the approved mockup concept with all placeholder content in place before the engine connects in Phase 3.

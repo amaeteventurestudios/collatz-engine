@@ -1,41 +1,74 @@
-const demoRows = [
-  { step: "001", value: "27", type: "Odd", op: "3n + 1", result: "82" },
-  { step: "002", value: "82", type: "Even", op: "n / 2", result: "41" },
-  { step: "003", value: "41", type: "Odd", op: "3n + 1", result: "124" },
-  { step: "004", value: "124", type: "Even", op: "n / 2", result: "62" },
-  { step: "005", value: "62", type: "Even", op: "n / 2", result: "31" },
-  { step: "006", value: "31", type: "Odd", op: "3n + 1", result: "94" },
-  { step: "007", value: "94", type: "Even", op: "n / 2", result: "47" },
-];
+"use client";
+
+import { getSeedResult } from "@/lib/collatz/examples";
+import { formatBigInt, formatDensity } from "@/lib/collatz/format";
+
+const DEMO_N = 27;
+const ROWS_TO_SHOW = 10;
+
+// Pre-compute from engine (runs once at module load)
+const demo = getSeedResult(DEMO_N);
+
+// Build the row display data from the computed sequence
+const demoRows = demo.full_sequence
+  .slice(0, ROWS_TO_SHOW)
+  .map((val, i) => {
+    if (i === demo.full_sequence.length - 1) return null; // skip if last
+    const nextVal = demo.full_sequence[i + 1];
+    if (!nextVal) return null;
+    const isOdd = val % 2n !== 0n;
+    return {
+      step: String(i + 1).padStart(3, "0"),
+      value: formatBigInt(val),
+      rawValue: val,
+      type: isOdd ? "Odd" : "Even",
+      op: isOdd ? "3n + 1" : "n / 2",
+      result: formatBigInt(nextVal),
+    };
+  })
+  .filter(Boolean) as {
+    step: string;
+    value: string;
+    rawValue: bigint;
+    type: string;
+    op: string;
+    result: string;
+  }[];
+
+// Current rule: the last row shown (step 10 → applying rule to value at index 9)
+const currentRuleRow = demoRows[demoRows.length - 1];
 
 export function SequenceTrace() {
+  const currentValue = demo.full_sequence[ROWS_TO_SHOW - 1];
+  const isCurrentOdd = currentValue !== undefined && currentValue % 2n !== 0n;
+
   return (
     <section className="px-4 pb-10 sm:pb-14">
       <div className="mx-auto max-w-7xl">
         <div className="engine-card">
           {/* Header */}
           <div className="mb-5 flex flex-wrap items-center justify-between gap-2">
-            <p className="section-heading">Live Sequence Trace</p>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-500 dark:bg-slate-800 dark:text-slate-400">
-              <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />
-              Static demo — live engine in Phase 3
+            <p className="section-heading">Sequence Trace</p>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-teal-500/10 px-2.5 py-1 text-[10px] font-semibold text-teal-600 dark:text-teal-400">
+              <span className="h-1.5 w-1.5 rounded-full bg-teal-500" />
+              Computed · n={DEMO_N}
             </span>
           </div>
 
           {/* Stats row */}
           <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
             {[
-              { label: "Start Number", value: "27" },
-              { label: "Current Value", value: "—" },
-              { label: "Step", value: "—" },
-              { label: "Peak So Far", value: "—" },
+              { label: "Start Number", value: String(DEMO_N) },
+              { label: "Steps to 1", value: String(demo.steps_to_1) },
+              { label: "Peak Value", value: formatBigInt(demo.peak_value) },
+              { label: "Odd Step Density", value: formatDensity(demo.odd_step_density) },
             ].map((s) => (
               <div
                 key={s.label}
                 className="rounded-xl bg-slate-50 p-3 text-center dark:bg-slate-800/60"
               >
                 <p className="stat-label">{s.label}</p>
-                <p className="mt-1.5 text-2xl font-bold tabular-nums text-slate-900 dark:text-slate-50">
+                <p className="mt-1.5 text-xl font-bold tabular-nums text-slate-900 dark:text-slate-50">
                   {s.value}
                 </p>
               </div>
@@ -43,28 +76,40 @@ export function SequenceTrace() {
           </div>
 
           {/* Current rule callout */}
-          <div className="mb-5 flex flex-col items-start gap-2 rounded-xl border border-sky-500/20 bg-sky-500/5 p-4 dark:border-sky-500/20 dark:bg-sky-500/5 sm:flex-row sm:items-center sm:gap-4">
-            <div className="flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-sky-500" />
-              <span className="text-[10px] font-semibold uppercase tracking-widest text-sky-600 dark:text-sky-400">
-                Current Rule
-              </span>
+          {currentRuleRow && (
+            <div className="mb-5 flex flex-col items-start gap-2 rounded-xl border border-sky-500/20 bg-sky-500/5 p-4 dark:border-sky-500/20 dark:bg-sky-500/5 sm:flex-row sm:items-center sm:gap-4">
+              <div className="flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-sky-500" />
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-sky-600 dark:text-sky-400">
+                  Current Rule (Step {Number(currentRuleRow.step)})
+                </span>
+              </div>
+              <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm font-medium text-slate-700 dark:text-slate-300">
+                <span className="font-mono text-base font-bold text-slate-900 dark:text-slate-100">
+                  {currentRuleRow.value}
+                </span>
+                <span className="text-slate-500 dark:text-slate-400">
+                  is {isCurrentOdd ? "odd" : "even"} →
+                </span>
+                <span className="font-mono text-base font-bold text-teal-600 dark:text-teal-400">
+                  {isCurrentOdd
+                    ? `3 × ${currentRuleRow.value} + 1 = ${currentRuleRow.result}`
+                    : `${currentRuleRow.value} ÷ 2 = ${currentRuleRow.result}`}
+                </span>
+                <span
+                  className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                    isCurrentOdd
+                      ? "bg-violet-500/15 text-violet-600 dark:text-violet-400"
+                      : "bg-sky-500/15 text-sky-600 dark:text-sky-400"
+                  }`}
+                >
+                  {isCurrentOdd ? "Odd rule: 3n + 1" : "Even rule: n / 2"}
+                </span>
+              </div>
             </div>
-            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm font-medium text-slate-700 dark:text-slate-300">
-              <span className="font-mono text-base font-bold text-slate-900 dark:text-slate-100">
-                62
-              </span>
-              <span className="text-slate-500 dark:text-slate-400">is even →</span>
-              <span className="font-mono text-base font-bold text-teal-600 dark:text-teal-400">
-                62 ÷ 2 = 31
-              </span>
-              <span className="rounded-full bg-sky-500/15 px-2 py-0.5 text-[10px] font-semibold text-sky-600 dark:text-sky-400">
-                Even rule: n / 2
-              </span>
-            </div>
-          </div>
+          )}
 
-          {/* Table with horizontal scroll on narrow screens */}
+          {/* Table */}
           <div className="-mx-5 overflow-x-auto px-5 sm:mx-0 sm:px-0">
             <div className="min-w-[500px] sm:min-w-0">
               <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800">
@@ -124,7 +169,8 @@ export function SequenceTrace() {
           </div>
 
           <p className="mt-4 text-center text-[11px] text-slate-400 dark:text-slate-500">
-            Static demo using n=27. The live computation engine arrives in Phase 3.
+            Showing first {demoRows.length} of {demo.steps_to_1} steps for n={DEMO_N}. Sequence
+            computed by the Collatz engine. Autonomous live computation begins in Phase 4.
           </p>
         </div>
       </div>
