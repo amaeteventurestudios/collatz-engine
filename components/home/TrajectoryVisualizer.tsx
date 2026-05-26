@@ -1,7 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { formatBigInt, formatSteps } from "@/lib/collatz/format";
+import {
+  formatLargeNumber,
+  formatLargeNumberTitle,
+  formatSteps,
+} from "@/lib/collatz/format";
 import type { CollatzResult } from "@/lib/collatz/types";
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -86,7 +90,9 @@ function SequenceView({ result }: { result: CollatzResult }) {
                 >
                   <td className="px-3 py-2 font-mono text-slate-400 dark:text-slate-400">{i}</td>
                   <td className="px-3 py-2 font-mono font-semibold text-slate-900 dark:text-slate-100">
-                    {formatBigInt(val)}
+                    <span title={formatLargeNumberTitle(val)}>
+                      {formatLargeNumber(val)}
+                    </span>
                   </td>
                   <td className="px-3 py-2">
                     {isLast ? (
@@ -176,8 +182,16 @@ function OddOnlyView({ result }: { result: CollatzResult }) {
             {visible.map(({ step, val }) => (
               <tr key={step} className="transition-colors hover:bg-violet-50/30 dark:hover:bg-violet-900/10">
                 <td className="px-3 py-2 font-mono text-slate-400 dark:text-slate-400">{step}</td>
-                <td className="px-3 py-2 font-mono font-bold text-violet-700 dark:text-violet-300">{formatBigInt(val)}</td>
-                <td className="px-3 py-2 font-mono text-teal-600 dark:text-teal-400">{formatBigInt(3n * val + 1n)}</td>
+                <td className="px-3 py-2 font-mono font-bold text-violet-700 dark:text-violet-300">
+                  <span title={formatLargeNumberTitle(val)}>
+                    {formatLargeNumber(val)}
+                  </span>
+                </td>
+                <td className="px-3 py-2 font-mono text-teal-600 dark:text-teal-400">
+                  <span title={formatLargeNumberTitle(3n * val + 1n)}>
+                    {formatLargeNumber(3n * val + 1n)}
+                  </span>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -248,7 +262,7 @@ function TreeView({ result }: { result: CollatzResult }) {
                     : isPeak ? "text-yellow-600 dark:text-yellow-300"
                     : isOdd ? "text-violet-700 dark:text-violet-300"
                     : "text-sky-700 dark:text-sky-300"
-                }`}>{formatBigInt(val)}</span>
+                }`} title={formatLargeNumberTitle(val)}>{formatLargeNumber(val)}</span>
                 {!isEnd && <span className="text-[9px] text-slate-400 dark:text-slate-400">{isOdd ? "→ 3n+1" : "→ n/2"}</span>}
                 {isPeak && !isEnd && (
                   <span className="rounded bg-yellow-400/20 px-1 text-[8px] font-bold text-yellow-600 dark:text-yellow-300">PEAK</span>
@@ -280,7 +294,10 @@ export function TrajectoryVisualizer({
   const seq = result.full_sequence;
   const peakN = Number(result.peak_value);
   const logPeak = Math.log10(Math.max(peakN, 2));
-  const nLabel = Number(result.start_number);
+  const startDisplay = formatLargeNumber(result.start_number);
+  const startTitle = formatLargeNumberTitle(result.start_number);
+  const peakDisplay = formatLargeNumber(result.peak_value);
+  const peakTitle = formatLargeNumberTitle(result.peak_value);
 
   const points = useMemo(
     () => seqToPoints(seq, result.peak_value, logScale),
@@ -351,9 +368,12 @@ export function TrajectoryVisualizer({
           <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <p className="section-heading">Collatz Trajectory Visualizer</p>
-              <p className="mt-1 text-xs text-slate-400 dark:text-slate-400">
-                n={formatSteps(nLabel)} · {formatSteps(result.steps_to_1)} steps ·
-                peak {formatBigInt(result.peak_value)} · {logScale ? "log" : "linear"} scale
+              <p
+                className="mt-1 text-xs text-slate-400 dark:text-slate-400"
+                title={`n=${startTitle} · peak ${peakTitle}`}
+              >
+                n={startDisplay} · {formatSteps(result.steps_to_1)} steps ·
+                peak {peakDisplay} · {logScale ? "log" : "linear"} scale
               </p>
               {helperCopy && (
                 <p className="mt-1 text-[11px] text-amber-600 dark:text-amber-400">{helperCopy}</p>
@@ -403,7 +423,7 @@ export function TrajectoryVisualizer({
                   width="100%"
                   height="auto"
                   className="block"
-                  aria-label={`Collatz trajectory for n=${nLabel}, ${logScale ? "log" : "linear"} scale, ${result.steps_to_1} steps`}
+                  aria-label={`Collatz trajectory for n=${startTitle}, ${logScale ? "log" : "linear"} scale, ${result.steps_to_1} steps`}
                 >
                   {gridLines.map(({ v, y }) => (
                     <line key={v} x1="0" y1={y} x2={SVG_W} y2={y} stroke="currentColor" strokeOpacity="0.07" strokeWidth="1" />
@@ -435,13 +455,17 @@ export function TrajectoryVisualizer({
                       <line x1={peakX} y1={peakY + 5} x2={peakX} y2={Y_BOTTOM} stroke="#facc15" strokeOpacity="0.15" strokeWidth="1" strokeDasharray="3 3" />
                       <rect x={peakX + 6} y={peakY - 3} width="62" height="14" rx="3" fill="#facc15" fillOpacity="0.15" />
                       <text x={peakX + 9} y={peakY + 7} fontSize="8.5" fill="#ca8a04" fontWeight="600">
-                        Peak: {formatBigInt(result.peak_value)}
+                        Peak: {peakDisplay}
+                        <title>{peakTitle}</title>
                       </text>
                     </>
                   )}
 
                   <circle cx="0" cy={startY} r="3" fill="#14b8a6" stroke="#ffffff" strokeWidth="1.5" opacity="0.9" />
-                  <text x="4" y={startY - 4} fontSize="8" fill="#14b8a6" fontWeight="600">n={nLabel}</text>
+                  <text x="4" y={startY - 4} fontSize="8" fill="#14b8a6" fontWeight="600">
+                    n={startDisplay}
+                    <title>{startTitle}</title>
+                  </text>
                   <circle cx={SVG_W} cy={Y_BOTTOM} r="3" fill="#22c55e" stroke="#ffffff" strokeWidth="1.5" opacity="0.9" />
 
                   {[0, 20, 40, 60, 80, 100, result.steps_to_1]
@@ -493,8 +517,11 @@ export function TrajectoryVisualizer({
           {activeView === "Odd-Only (3n+1)" && <OddOnlyView result={result} />}
 
           {/* Footer */}
-          <p className="mt-3 text-center text-[11px] text-slate-400 dark:text-slate-400">
-            {displayLabel} · {result.steps_to_1} steps · peak {formatBigInt(result.peak_value)}
+          <p
+            className="mt-3 text-center text-[11px] text-slate-400 dark:text-slate-400"
+            title={`peak ${peakTitle}`}
+          >
+            {displayLabel} · {result.steps_to_1} steps · peak {peakDisplay}
           </p>
         </div>
       </div>

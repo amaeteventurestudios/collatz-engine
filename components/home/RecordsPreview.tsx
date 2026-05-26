@@ -7,6 +7,7 @@ import {
   getTopHighestPeaks,
 } from "@/lib/collatz/store";
 import type { EngineState, CollatzResultRow } from "@/lib/collatz/store";
+import { formatLargeNumber, formatLargeNumberTitle } from "@/lib/collatz/format";
 
 const POLL_MS = 5_000;
 
@@ -18,7 +19,9 @@ interface RecordCard {
   icon: string;
   label: string;
   value: string;
+  valueTitle?: string;
   sub: string;
+  subTitle?: string;
   color: string;
   ring: string;
   bg: string;
@@ -50,7 +53,8 @@ function buildRecords(
     {
       icon: "▲",
       label: "Highest Peak",
-      value: topPeaks[0] ? fmt(topPeaks[0].peak) : "—",
+      value: topPeaks[0] ? formatLargeNumber(topPeaks[0].peak) : "—",
+      valueTitle: topPeaks[0] ? formatLargeNumberTitle(topPeaks[0].peak) : undefined,
       sub: topPeaks[0]
         ? `n = ${fmt(topPeaks[0].n)}`
         : "Awaiting dataset growth",
@@ -177,10 +181,10 @@ export function RecordsPreview() {
                 {rec.label}
               </p>
               <p className={`mt-2 text-sm font-bold leading-tight tabular-nums ${rec.color}`}>
-                {rec.value}
+                <span title={rec.valueTitle}>{rec.value}</span>
               </p>
               <p className="mt-1 text-[9px] leading-snug text-slate-400 dark:text-slate-500">
-                {rec.sub}
+                <span title={rec.subTitle}>{rec.sub}</span>
               </p>
             </div>
           ))}

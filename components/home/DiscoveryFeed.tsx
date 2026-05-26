@@ -158,7 +158,7 @@ export function DiscoveryFeed() {
             <div>
               <p className="section-heading">Discovery Feed</p>
               <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-                Operational activity logs — live from persistent database
+                Operational activity log from the live catalog
               </p>
             </div>
             {logs.length > 0 && (
@@ -177,12 +177,8 @@ export function DiscoveryFeed() {
                 Awaiting operational activity logs
               </p>
               <p className="mt-1.5 max-w-sm text-xs leading-relaxed text-slate-400 dark:text-slate-500">
-                Batch events will appear here once the engine runs its first cron job.
-                Make sure{" "}
-                <code className="rounded bg-slate-100 px-1 py-0.5 font-mono text-[10px] dark:bg-slate-800">
-                  supabase/phase-6-activity-logs.sql
-                </code>{" "}
-                has been applied to the database.
+                Batch events will appear here once the engine records its first
+                completed run.
               </p>
             </div>
           ) : (

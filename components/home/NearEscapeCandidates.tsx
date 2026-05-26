@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { getTopHighestPeaks } from "@/lib/collatz/store";
 import type { CollatzResultRow } from "@/lib/collatz/store";
 import { Modal } from "@/components/ui/Modal";
+import { formatLargeNumber, formatLargeNumberTitle } from "@/lib/collatz/format";
 
 const TOP_N = 8;
 const FETCH_N = 40;
@@ -70,7 +71,9 @@ function CandidateTable({ candidates }: { candidates: Candidate[] }) {
           >
             <div>
               <span className="font-mono text-sm font-bold text-slate-900 dark:text-slate-100">
-                {c.n.toLocaleString("en-US")}
+                <span title={formatLargeNumberTitle(c.n)}>
+                  {formatLargeNumber(c.n)}
+                </span>
               </span>
             </div>
             <div>
@@ -83,7 +86,10 @@ function CandidateTable({ candidates }: { candidates: Candidate[] }) {
                 ×{c.ratio.toFixed(0)}
               </span>
               <p className="text-[10px] text-slate-400 dark:text-slate-500">
-                peak: {c.peak.toLocaleString("en-US")}
+                peak:{" "}
+                <span title={formatLargeNumberTitle(c.peak)}>
+                  {formatLargeNumber(c.peak)}
+                </span>
               </p>
             </div>
             <div className="flex flex-wrap gap-1">
@@ -140,13 +146,17 @@ function AllCandidatesModal({ candidates }: { candidates: Candidate[] }) {
             {candidates.map((c) => (
               <tr key={c.n} className="hover:bg-slate-800/50">
                 <td className="px-3 py-2 font-mono font-bold text-slate-100">
-                  {c.n.toLocaleString("en-US")}
+                  <span title={formatLargeNumberTitle(c.n)}>
+                    {formatLargeNumber(c.n)}
+                  </span>
                 </td>
                 <td className="px-3 py-2 font-mono text-slate-300">
                   {c.steps.toLocaleString("en-US")}
                 </td>
                 <td className="px-3 py-2 font-mono text-blue-400">
-                  {c.peak.toLocaleString("en-US")}
+                  <span title={formatLargeNumberTitle(c.peak)}>
+                    {formatLargeNumber(c.peak)}
+                  </span>
                 </td>
                 <td className="px-3 py-2 font-mono font-bold text-orange-400">
                   ×{c.ratio.toFixed(0)}

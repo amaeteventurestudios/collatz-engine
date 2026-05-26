@@ -185,7 +185,7 @@ function NoDataState({ error }: { error: string | null }) {
             Engine State
           </span>
           <p className="font-mono text-sm font-semibold text-slate-400">
-            {error ? "Database connection error" : "No engine state found"}
+            {error ? "Live catalog connection error" : "No engine state found"}
           </p>
           {error && (
             <p className="max-w-md font-mono text-[11px] text-red-500">{error}</p>
@@ -451,9 +451,10 @@ export function LiveEngineStatus() {
 
           {/* Disclaimer */}
           <p className="mt-3 font-mono text-[9px] leading-relaxed text-slate-700">
-            This system explores the Collatz sequence autonomously.
-            It does not claim to prove the Collatz Conjecture.
-            All displayed trajectories are verified computations.
+            The engine processes integers sequentially in verified batches.
+            Completed results are stored in the catalog and displayed here as a
+            live computational record. This system does not claim to prove the
+            Collatz Conjecture.
           </p>
         </div>
 

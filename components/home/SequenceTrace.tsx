@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { formatBigInt, formatDensity, formatLargeNumber, formatLargeNumberTitle } from "@/lib/collatz/format";
+import { formatDensity, formatLargeNumber, formatLargeNumberTitle } from "@/lib/collatz/format";
 import type { CollatzResult } from "@/lib/collatz/types";
 
 const INITIAL_ROWS = 10;
@@ -26,19 +26,23 @@ export function SequenceTrace({ result, displayLabel }: SequenceTraceProps) {
         const isOdd = val % 2n !== 0n;
         return {
           step: String(i + 1).padStart(3, "0"),
-          value: formatBigInt(val),
+          value: formatLargeNumber(val),
+          valueTitle: formatLargeNumberTitle(val),
           type: isOdd ? "Odd" : "Even",
           op: isOdd ? "3n + 1" : "n / 2",
-          next: formatBigInt(nextVal),
+          next: formatLargeNumber(nextVal),
+          nextTitle: formatLargeNumberTitle(nextVal),
           isOdd,
         };
       })
       .filter(Boolean) as {
         step: string;
         value: string;
+        valueTitle: string;
         type: string;
         op: string;
         next: string;
+        nextTitle: string;
         isOdd: boolean;
       }[];
   }, [result, visibleCount]);
@@ -101,15 +105,19 @@ export function SequenceTrace({ result, displayLabel }: SequenceTraceProps) {
               </div>
               <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm font-medium text-slate-700 dark:text-slate-300">
                 <span className="font-mono text-base font-bold text-slate-900 dark:text-slate-100">
-                  {currentRuleRow.value}
+                  <span title={currentRuleRow.valueTitle}>
+                    {currentRuleRow.value}
+                  </span>
                 </span>
                 <span className="text-slate-500 dark:text-slate-400">
                   is {isCurrentOdd ? "odd" : "even"} →
                 </span>
                 <span className="font-mono text-base font-bold text-teal-600 dark:text-teal-400">
-                  {isCurrentOdd
-                    ? `3 × ${currentRuleRow.value} + 1 = ${currentRuleRow.next}`
-                    : `${currentRuleRow.value} ÷ 2 = ${currentRuleRow.next}`}
+                  <span title={`${currentRuleRow.valueTitle} → ${currentRuleRow.nextTitle}`}>
+                    {isCurrentOdd
+                      ? `3 × ${currentRuleRow.value} + 1 = ${currentRuleRow.next}`
+                      : `${currentRuleRow.value} ÷ 2 = ${currentRuleRow.next}`}
+                  </span>
                 </span>
                 <span
                   className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
@@ -151,7 +159,7 @@ export function SequenceTrace({ result, displayLabel }: SequenceTraceProps) {
                           {row.step}
                         </td>
                         <td className="px-4 py-3 font-mono font-semibold text-slate-900 dark:text-slate-100">
-                          {row.value}
+                          <span title={row.valueTitle}>{row.value}</span>
                         </td>
                         <td className="px-4 py-3">
                           <span
@@ -173,7 +181,7 @@ export function SequenceTrace({ result, displayLabel }: SequenceTraceProps) {
                           {row.op}
                         </td>
                         <td className="px-4 py-3 font-mono font-bold text-teal-600 dark:text-teal-400">
-                          {row.next}
+                          <span title={row.nextTitle}>{row.next}</span>
                         </td>
                       </tr>
                     ))}

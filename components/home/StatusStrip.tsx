@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { LocalTimeCard } from "@/components/home/TimeStatusCards";
 import type { EngineState } from "@/lib/collatz/store";
+import { formatLargeNumber, formatLargeNumberTitle } from "@/lib/collatz/format";
 
 function formatNumber(value: number | null | undefined) {
   return Number(value ?? 0).toLocaleString("en-US");
@@ -29,18 +30,23 @@ function formatRuntime(startedAt: string | null) {
 function StatusCard({
   label,
   value,
+  valueTitle,
   sub,
   valueClass = "text-slate-900 dark:text-slate-100",
 }: {
   label: string;
   value: string;
+  valueTitle?: string;
   sub: string;
   valueClass?: string;
 }) {
   return (
     <div className="flex flex-col items-center justify-center rounded-xl px-3 py-3 text-center">
       <p className="stat-label">{label}</p>
-      <p className={`mt-1.5 text-sm font-bold leading-tight tabular-nums ${valueClass}`}>
+      <p
+        className={`mt-1.5 text-sm font-bold leading-tight tabular-nums ${valueClass}`}
+        title={valueTitle}
+      >
         {value}
       </p>
       <p className="mt-0.5 text-[10px] leading-snug text-slate-400 dark:text-slate-500">{sub}</p>
@@ -62,7 +68,7 @@ export function StatusStrip() {
 
     async function loadEngineState() {
       if (!supabase) {
-        if (isMounted) setLoadError("Database not configured");
+        if (isMounted) setLoadError("Catalog unavailable");
         return;
       }
 
@@ -76,7 +82,7 @@ export function StatusStrip() {
 
       if (error) {
         console.error("[Collatz Engine] Failed to load dashboard state", error);
-        setLoadError("Unable to load engine state");
+        setLoadError("Unable to load live catalog");
         return;
       }
 
@@ -137,7 +143,7 @@ export function StatusStrip() {
     {
       label: "Engine Status",
       value: status.toUpperCase(),
-      sub: loadError ?? (state?.last_error ? `⚠ ${state.last_error.slice(0, 36)}` : "Persistent database active"),
+      sub: loadError ?? (state?.last_error ? `Issue: ${state.last_error.slice(0, 36)}` : "Live catalog active"),
       valueClass: statusValueClass,
     },
     {
@@ -160,7 +166,8 @@ export function StatusStrip() {
     },
     {
       label: "Highest Peak",
-      value: formatNumber(state?.highest_peak),
+      value: state?.highest_peak != null ? formatLargeNumber(state.highest_peak) : "—",
+      valueTitle: state?.highest_peak != null ? formatLargeNumberTitle(state.highest_peak) : undefined,
       sub: "Largest value encountered",
       valueClass: "text-slate-900 dark:text-slate-100",
     },
@@ -190,7 +197,7 @@ export function StatusStrip() {
             Live
           </span>
           <span className="hidden text-[11px] text-slate-500 dark:text-slate-400 sm:inline">
-            — Persistent database active · autonomous runner connected
+            — Live catalog active · autonomous runner connected
           </span>
         </div>
 

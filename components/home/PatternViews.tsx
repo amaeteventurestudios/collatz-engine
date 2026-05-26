@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { getSampleResults } from "@/lib/collatz/store";
 import type { CollatzResultRow } from "@/lib/collatz/store";
 import { Modal } from "@/components/ui/Modal";
+import { formatLargeNumber, formatLargeNumberTitle } from "@/lib/collatz/format";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -251,13 +252,17 @@ function AllResultsTable({ results }: { results: CollatzResultRow[] }) {
               return (
                 <tr key={r.n} className="hover:bg-slate-800/50">
                   <td className="px-3 py-2 font-mono font-bold text-slate-100">
-                    {r.n.toLocaleString("en-US")}
+                    <span title={formatLargeNumberTitle(r.n)}>
+                      {formatLargeNumber(r.n)}
+                    </span>
                   </td>
                   <td className="px-3 py-2 font-mono text-orange-400">
                     {r.steps.toLocaleString("en-US")}
                   </td>
                   <td className="px-3 py-2 font-mono text-blue-400">
-                    {r.peak.toLocaleString("en-US")}
+                    <span title={formatLargeNumberTitle(r.peak)}>
+                      {formatLargeNumber(r.peak)}
+                    </span>
                   </td>
                   <td className="px-3 py-2 font-mono text-slate-400">
                     ×{ratio}

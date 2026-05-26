@@ -1,5 +1,22 @@
+const BILLION_BIG = 1_000_000_000n;
+const TRILLION_BIG = 1_000_000_000_000n;
+const BILLION = 1_000_000_000;
+const TRILLION = 1_000_000_000_000;
+
+function commaString(raw: string): string {
+  const sign = raw.startsWith("-") ? "-" : "";
+  const digits = sign ? raw.slice(1) : raw;
+  return `${sign}${digits.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`;
+}
+
+function exactIntegerString(n: number | bigint): string {
+  if (typeof n === "bigint") return commaString(n.toString());
+  if (!Number.isFinite(n) || Number.isNaN(n)) return "";
+  return Math.trunc(n).toLocaleString("en-US");
+}
+
 export function formatBigInt(n: bigint): string {
-  return Number(n).toLocaleString("en-US");
+  return exactIntegerString(n);
 }
 
 export function formatSteps(n: number): string {
@@ -20,9 +37,6 @@ export function formatSequenceSummary(steps: number, peak: bigint): string {
 
 // ─── Large number formatting ────────────────────────────────────────────────
 
-const BILLION = 1_000_000_000;
-const TRILLION = 1_000_000_000_000;
-
 /**
  * Format a potentially large integer for public display.
  *
@@ -32,19 +46,29 @@ const TRILLION = 1_000_000_000_000;
  *   ≥ 1 T   → scientific notation          (e.g. 1.24 × 10^12)
  */
 export function formatLargeNumber(n: number | bigint): string {
-  const v = typeof n === "bigint" ? Number(n) : n;
-  if (!isFinite(v) || isNaN(v)) return "—";
-  if (v < BILLION) return v.toLocaleString("en-US");
-  if (v < TRILLION) return `${(v / BILLION).toFixed(2)}B`;
-  const exp = Math.floor(Math.log10(v));
+  if (typeof n === "bigint") {
+    const abs = n < 0n ? -n : n;
+    const sign = n < 0n ? "-" : "";
+    if (abs < BILLION_BIG) return commaString(n.toString());
+    if (abs < TRILLION_BIG) {
+      const whole = abs / BILLION_BIG;
+      const hundredths = ((abs % BILLION_BIG) * 100n) / BILLION_BIG;
+      return `${sign}${whole}.${hundredths.toString().padStart(2, "0")}B`;
+    }
+    const digits = abs.toString();
+    const exp = digits.length - 1;
+    const decimal = digits.slice(1, 3).padEnd(2, "0");
+    return `${sign}${digits[0]}.${decimal} × 10^${exp}`;
+  }
+
+  if (!Number.isFinite(n) || Number.isNaN(n)) return "—";
+  const v = Math.trunc(n);
+  const abs = Math.abs(v);
+  if (abs < BILLION) return v.toLocaleString("en-US");
+  if (abs < TRILLION) return `${(v / BILLION).toFixed(2)}B`;
+  const exp = Math.floor(Math.log10(abs));
   const mantissa = v / Math.pow(10, exp);
-  return `${mantissa.toFixed(2)} × 10ⁿ`.replace(
-    "ⁿ",
-    String(exp)
-      .split("")
-      .map((c) => "⁰¹²³⁴⁵⁶⁷⁸⁹"[Number(c)] ?? c)
-      .join(""),
-  );
+  return `${mantissa.toFixed(2)} × 10^${exp}`;
 }
 
 /**
@@ -52,7 +76,5 @@ export function formatLargeNumber(n: number | bigint): string {
  * Returns empty string for non-finite values.
  */
 export function formatLargeNumberTitle(n: number | bigint): string {
-  const v = typeof n === "bigint" ? Number(n) : n;
-  if (!isFinite(v) || isNaN(v)) return "";
-  return v.toLocaleString("en-US");
+  return exactIntegerString(n);
 }
