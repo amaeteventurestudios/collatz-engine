@@ -1,8 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { getSeedResult } from "@/lib/collatz/examples";
+import { computeCollatz } from "@/lib/collatz/engine";
+import { getTopLongestTrajectories } from "@/lib/collatz/store";
 import { formatBigInt, formatSteps } from "@/lib/collatz/format";
+import type { CollatzResult } from "@/lib/collatz/types";
 
 const viewModes = ["Trajectory", "Tree View", "Sequence", "Odd-Only (3n+1)"];
 
@@ -18,12 +21,15 @@ const SVG_HEIGHT = 200;
 const Y_BOTTOM = 185;
 const Y_RANGE = 160;
 
+// Stable fallback — computed once at module load, never re-computed
+const FALLBACK: CollatzResult = getSeedResult(27);
+
 function sequenceToPoints(sequence: bigint[], peakValue: bigint): string {
   const n = sequence.length;
-  const logPeak = Math.log10(Number(peakValue));
+  const logPeak = Math.max(Math.log10(Number(peakValue)), 1);
   return sequence
     .map((val, step) => {
-      const x = (step / (n - 1)) * SVG_WIDTH;
+      const x = (step / Math.max(n - 1, 1)) * SVG_WIDTH;
       const logVal = val <= 1n ? 0 : Math.log10(Number(val));
       const y = Y_BOTTOM - (logVal / logPeak) * Y_RANGE;
       return `${x.toFixed(1)},${y.toFixed(1)}`;
@@ -33,26 +39,50 @@ function sequenceToPoints(sequence: bigint[], peakValue: bigint): string {
 
 function valueToY(val: number, logPeak: number): number {
   if (val <= 1) return Y_BOTTOM;
-  return Y_BOTTOM - (Math.log10(val) / logPeak) * Y_RANGE;
+  const lp = Math.max(logPeak, 1);
+  return Y_BOTTOM - (Math.log10(val) / lp) * Y_RANGE;
 }
 
-// Pre-compute from engine (runs once at module load)
-const demo = getSeedResult(27);
-const POINTS = sequenceToPoints(demo.full_sequence, demo.peak_value);
-const PEAK_STEP = demo.full_sequence.findIndex((v) => v === demo.peak_value);
-const PEAK_X = ((PEAK_STEP / (demo.full_sequence.length - 1)) * SVG_WIDTH).toFixed(1);
-const LOG_PEAK = Math.log10(Number(demo.peak_value));
-const GRID_LINES = [10, 100, 1000].map((v) => ({
-  v,
-  y: valueToY(v, LOG_PEAK).toFixed(1),
-  label: v >= 1000 ? `${v / 1000}K` : String(v),
-}));
-
 export function TrajectoryVisualizer() {
+  const [result, setResult] = useState<CollatzResult>(FALLBACK);
+  const [isLive, setIsLive] = useState(false);
   const [activeView, setActiveView] = useState("Trajectory");
 
-  const startX = "0";
-  const startY = valueToY(Number(demo.start_number), LOG_PEAK).toFixed(1);
+  useEffect(() => {
+    let isMounted = true;
+    async function load() {
+      const rows = await getTopLongestTrajectories(1);
+      if (!isMounted || !rows || rows.length === 0) return;
+      const computed = computeCollatz(rows[0].n);
+      if (isMounted && computed.reached_one && computed.full_sequence.length > 1) {
+        setResult(computed);
+        setIsLive(true);
+      }
+    }
+    load();
+    return () => { isMounted = false; };
+  }, []);
+
+  // Compute SVG values from current result
+  const points = useMemo(
+    () => sequenceToPoints(result.full_sequence, result.peak_value),
+    [result],
+  );
+
+  const peakStep = result.full_sequence.findIndex((v) => v === result.peak_value);
+  const peakX = (
+    (Math.max(peakStep, 0) / Math.max(result.full_sequence.length - 1, 1)) *
+    SVG_WIDTH
+  ).toFixed(1);
+  const logPeak = Math.max(Math.log10(Number(result.peak_value)), 1);
+  const gridLines = [10, 100, 1000].map((v) => ({
+    v,
+    y: valueToY(v, logPeak).toFixed(1),
+    label: v >= 1000 ? `${v / 1000}K` : String(v),
+  }));
+  const startY = valueToY(Number(result.start_number), logPeak).toFixed(1);
+  const nLabel = Number(result.start_number);
+  const badge = isLive ? `Live catalog — n=${nLabel.toLocaleString("en-US")}` : "Worked example — n=27";
 
   return (
     <section id="visualizer" className="scroll-mt-20 px-4 py-10 sm:py-14">
@@ -63,8 +93,8 @@ export function TrajectoryVisualizer() {
             <div>
               <p className="section-heading">Collatz Trajectory Visualizer</p>
               <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                n={formatSteps(Number(demo.start_number))} · {formatSteps(demo.steps_to_1)} steps ·
-                peak {formatBigInt(demo.peak_value)} · log scale — computed by the Collatz engine
+                n={formatSteps(nLabel)} · {formatSteps(result.steps_to_1)} steps ·
+                peak {formatBigInt(result.peak_value)} · log scale — computed by the Collatz engine
               </p>
             </div>
 
@@ -103,10 +133,10 @@ export function TrajectoryVisualizer() {
               width="100%"
               height="auto"
               className="block"
-              aria-label={`Collatz trajectory for n=${Number(demo.start_number)}, log scale, ${demo.steps_to_1} steps`}
+              aria-label={`Collatz trajectory for n=${nLabel}, log scale, ${result.steps_to_1} steps`}
             >
               {/* Grid lines */}
-              {GRID_LINES.map(({ y, v }) => (
+              {gridLines.map(({ y, v }) => (
                 <line
                   key={v}
                   x1="0" y1={y} x2={SVG_WIDTH} y2={y}
@@ -115,7 +145,7 @@ export function TrajectoryVisualizer() {
               ))}
 
               {/* Y-axis labels */}
-              {GRID_LINES.map(({ y, label }) => (
+              {gridLines.map(({ y, label }) => (
                 <text
                   key={label}
                   x="4"
@@ -128,16 +158,27 @@ export function TrajectoryVisualizer() {
                 </text>
               ))}
 
+              {/* Y-axis title */}
+              <text
+                x="4"
+                y="12"
+                fontSize="7"
+                fill="currentColor"
+                opacity="0.25"
+              >
+                Value (log)
+              </text>
+
               {/* Area fill */}
               <polyline
-                points={`0,${Y_BOTTOM} ${POINTS} ${SVG_WIDTH},${Y_BOTTOM}`}
+                points={`0,${Y_BOTTOM} ${points} ${SVG_WIDTH},${Y_BOTTOM}`}
                 fill="url(#trailFill)"
                 stroke="none"
               />
 
               {/* Main trajectory line */}
               <polyline
-                points={POINTS}
+                points={points}
                 fill="none"
                 stroke="url(#trailLine)"
                 strokeWidth="1.8"
@@ -146,36 +187,38 @@ export function TrajectoryVisualizer() {
               />
 
               {/* Peak marker */}
-              <circle cx={PEAK_X} cy={Y_BOTTOM - Y_RANGE} r="4" fill="#facc15" stroke="#ffffff" strokeWidth="1.5" opacity="0.9" />
+              <circle cx={peakX} cy={Y_BOTTOM - Y_RANGE} r="4" fill="#facc15" stroke="#ffffff" strokeWidth="1.5" opacity="0.9" />
               <line
-                x1={PEAK_X} y1={Y_BOTTOM - Y_RANGE + 5} x2={PEAK_X} y2={Y_BOTTOM}
+                x1={peakX} y1={Y_BOTTOM - Y_RANGE + 5} x2={peakX} y2={Y_BOTTOM}
                 stroke="#facc15" strokeOpacity="0.15" strokeWidth="1" strokeDasharray="3 3"
               />
 
               {/* Peak label */}
-              <rect x={Number(PEAK_X) + 6} y={Y_BOTTOM - Y_RANGE - 3} width="62" height="14" rx="3" fill="#facc15" fillOpacity="0.15" />
-              <text x={Number(PEAK_X) + 9} y={Y_BOTTOM - Y_RANGE + 7} fontSize="8.5" fill="#ca8a04" fontWeight="600">
-                Peak: {formatBigInt(demo.peak_value)}
+              <rect x={Number(peakX) + 6} y={Y_BOTTOM - Y_RANGE - 3} width="62" height="14" rx="3" fill="#facc15" fillOpacity="0.15" />
+              <text x={Number(peakX) + 9} y={Y_BOTTOM - Y_RANGE + 7} fontSize="8.5" fill="#ca8a04" fontWeight="600">
+                Peak: {formatBigInt(result.peak_value)}
               </text>
 
               {/* Start marker */}
-              <circle cx={startX} cy={startY} r="3" fill="#14b8a6" stroke="#ffffff" strokeWidth="1.5" opacity="0.9" />
+              <circle cx="0" cy={startY} r="3" fill="#14b8a6" stroke="#ffffff" strokeWidth="1.5" opacity="0.9" />
               <text x="4" y={String(Number(startY) - 4)} fontSize="8" fill="#14b8a6" fontWeight="600">
-                n={Number(demo.start_number)}
+                n={nLabel}
               </text>
 
               {/* End marker */}
               <circle cx={SVG_WIDTH} cy={Y_BOTTOM} r="3" fill="#22c55e" stroke="#ffffff" strokeWidth="1.5" opacity="0.9" />
 
               {/* X-axis step labels */}
-              {[0, 20, 40, 60, 80, 100, demo.steps_to_1].map((s) => {
-                const x = ((s / demo.steps_to_1) * SVG_WIDTH).toFixed(0);
-                return (
-                  <text key={s} x={x} y={SVG_HEIGHT - 2} fontSize="8" fill="currentColor" opacity="0.3">
-                    {s}
-                  </text>
-                );
-              })}
+              {[0, 20, 40, 60, 80, 100, result.steps_to_1]
+                .filter((s, i, arr) => s <= result.steps_to_1 && arr.indexOf(s) === i)
+                .map((s) => {
+                  const x = ((s / result.steps_to_1) * SVG_WIDTH).toFixed(0);
+                  return (
+                    <text key={s} x={x} y={SVG_HEIGHT - 2} fontSize="8" fill="currentColor" opacity="0.3">
+                      {s}
+                    </text>
+                  );
+                })}
 
               {/* X-axis label */}
               <text x={SVG_WIDTH / 2} y={SVG_HEIGHT - 2} fontSize="8" fill="currentColor" opacity="0.25" textAnchor="middle">
@@ -196,19 +239,19 @@ export function TrajectoryVisualizer() {
               </defs>
             </svg>
 
-            {/* Demo overlay badge */}
+            {/* Badge */}
             <div className="absolute right-3 top-2">
               <span className="rounded-full bg-teal-500/15 px-2.5 py-1 text-[10px] font-semibold text-teal-600 dark:text-teal-400">
-                Engine — n=27
+                {badge}
               </span>
             </div>
           </div>
 
-          {/* Demo notice */}
+          {/* Footer */}
           <p className="mt-3 text-center text-[11px] text-slate-400 dark:text-slate-500">
-            Demo visualization. Trajectory computed by the Collatz engine from real data (n=27,{" "}
-            {demo.steps_to_1} steps, peak {formatBigInt(demo.peak_value)}). Real autonomous
-            cataloging begins in Phase 4.
+            {isLive
+              ? `Computed from live catalog — n=${nLabel.toLocaleString("en-US")}, ${result.steps_to_1} steps, peak ${formatBigInt(result.peak_value)}.`
+              : `Worked example — n=27, ${FALLBACK.steps_to_1} steps, peak ${formatBigInt(FALLBACK.peak_value)}. Updates automatically as the catalog grows.`}
           </p>
 
           {/* Options row */}
@@ -224,9 +267,6 @@ export function TrajectoryVisualizer() {
                 <span className="text-xs text-slate-500 dark:text-slate-400">{opt}</span>
               </label>
             ))}
-            <span className="text-[10px] text-slate-400 dark:text-slate-500 sm:ml-auto">
-              Interactive controls arrive in Phase 4
-            </span>
           </div>
         </div>
       </div>

@@ -136,3 +136,61 @@ export async function insertBatchResults(
     throw error;
   }
 }
+
+// ─── Live dashboard read helpers ────────────────────────────────────────────
+
+/**
+ * Top N rows by trajectory length (longest paths first).
+ * Uses the steps column index for fast ordered scans.
+ */
+export async function getTopLongestTrajectories(
+  limit = 10,
+): Promise<CollatzResultRow[]> {
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from("collatz_results")
+    .select("n, steps, peak, reached_one")
+    .order("steps", { ascending: false })
+    .limit(limit);
+  if (error) {
+    console.error("[Collatz Engine] getTopLongestTrajectories failed", error);
+    return [];
+  }
+  return (data ?? []) as CollatzResultRow[];
+}
+
+/**
+ * Top N rows by peak value (highest peaks first).
+ * Uses the peak column index for fast ordered scans.
+ */
+export async function getTopHighestPeaks(limit = 10): Promise<CollatzResultRow[]> {
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from("collatz_results")
+    .select("n, steps, peak, reached_one")
+    .order("peak", { ascending: false })
+    .limit(limit);
+  if (error) {
+    console.error("[Collatz Engine] getTopHighestPeaks failed", error);
+    return [];
+  }
+  return (data ?? []) as CollatzResultRow[];
+}
+
+/**
+ * A representative sample of results ordered by n ascending.
+ * Used for heatmap / pattern views. Limit to avoid large payloads.
+ */
+export async function getSampleResults(limit = 500): Promise<CollatzResultRow[]> {
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from("collatz_results")
+    .select("n, steps, peak, reached_one")
+    .order("n", { ascending: true })
+    .limit(limit);
+  if (error) {
+    console.error("[Collatz Engine] getSampleResults failed", error);
+    return [];
+  }
+  return (data ?? []) as CollatzResultRow[];
+}

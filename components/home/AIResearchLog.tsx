@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { getEngineState } from "@/lib/collatz/store";
+import type { EngineState } from "@/lib/collatz/store";
 
 const logTabs = [
   "Latest Note",
@@ -11,29 +13,83 @@ const logTabs = [
   "Weekly Digest",
 ];
 
-const placeholderNotes = [
-  {
-    tag: "System",
-    statusBadge: "Private Draft",
-    statusBadgeColor: "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400",
-    reviewBadge: "Needs Admin Review",
-    time: "Phase 4 — No data yet",
-    title: "Awaiting first computation batch",
-    body: "AI-assisted observations will be drafted once the computation engine begins processing trajectories. Drafts are private and require admin approval before appearing here.",
-  },
-  {
-    tag: "Pattern Report",
-    statusBadge: "Private Draft",
-    statusBadgeColor: "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400",
-    reviewBadge: "Needs Admin Review",
-    time: "Pending",
-    title: "No patterns detected yet",
-    body: "Statistical pattern analysis requires sufficient trajectory data to be meaningful. Analysis begins automatically when batch processing starts and produces approved output.",
-  },
-];
+function fmt(n: number) {
+  return n.toLocaleString("en-US");
+}
+
+interface Note {
+  tag: string;
+  statusBadge: string;
+  statusBadgeColor: string;
+  reviewBadge: string;
+  time: string;
+  title: string;
+  body: string;
+}
+
+function buildNotes(state: EngineState | null): Note[] {
+  if (!state || state.total_numbers_checked === 0) {
+    return [
+      {
+        tag: "System",
+        statusBadge: "Private Draft",
+        statusBadgeColor: "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400",
+        reviewBadge: "Needs Admin Review",
+        time: "Awaiting first computation batch",
+        title: "Engine online — no trajectories cataloged yet",
+        body: "AI-assisted observations will be drafted once the computation engine begins processing trajectories. Drafts are private and require admin approval before appearing here.",
+      },
+      {
+        tag: "Pattern Report",
+        statusBadge: "Private Draft",
+        statusBadgeColor: "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400",
+        reviewBadge: "Needs Admin Review",
+        time: "Pending sufficient data",
+        title: "No patterns detected yet",
+        body: "Statistical pattern analysis requires sufficient trajectory data to be meaningful. Analysis begins automatically when batch processing produces enough approved output.",
+      },
+    ];
+  }
+
+  const notes: Note[] = [
+    {
+      tag: "System",
+      statusBadge: "Private Draft",
+      statusBadgeColor: "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400",
+      reviewBadge: "Needs Admin Review",
+      time: `${fmt(state.total_numbers_checked)} numbers checked`,
+      title: `Catalog operational — ${fmt(state.total_numbers_checked)} trajectories verified`,
+      body: `The Collatz engine has processed ${fmt(state.total_numbers_checked)} starting numbers (up to n = ${fmt(state.last_checked_number)}). Longest trajectory: ${fmt(state.longest_steps)} steps. Highest peak: ${fmt(state.highest_peak)}. All verified trajectories reach 1. AI-drafted observations remain private until admin-approved.`,
+    },
+    {
+      tag: "Pattern Report",
+      statusBadge: "Private Draft",
+      statusBadgeColor: "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400",
+      reviewBadge: "Needs Admin Review",
+      time: `Range 1 – ${fmt(state.last_checked_number)}`,
+      title: "Pattern analysis queued — awaiting admin approval",
+      body: `Statistical analysis of ${fmt(state.total_numbers_checked)} cataloged trajectories is queued. Observations are generated as private drafts and require explicit admin approval before public release. This log makes no claims about the conjecture.`,
+    },
+  ];
+
+  return notes;
+}
 
 export function AIResearchLog() {
   const [activeTab, setActiveTab] = useState("Latest Note");
+  const [engineState, setEngineState] = useState<EngineState | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function load() {
+      const state = await getEngineState();
+      if (isMounted) setEngineState(state);
+    }
+    load();
+    return () => { isMounted = false; };
+  }, []);
+
+  const notes = buildNotes(engineState);
 
   return (
     <section id="research" className="scroll-mt-20 px-4 pb-10 sm:pb-14">
@@ -55,7 +111,7 @@ export function AIResearchLog() {
             </div>
           </div>
 
-          {/* Credibility / human-review notice — more prominent */}
+          {/* Credibility / human-review notice */}
           <div className="mb-4 flex items-start gap-3 rounded-xl border border-blue-500/30 bg-blue-500/8 px-4 py-3.5 dark:border-blue-400/30 dark:bg-blue-400/8">
             <span className="mt-0.5 shrink-0 text-base text-blue-500 dark:text-blue-400">ℹ</span>
             <div>
@@ -75,7 +131,7 @@ export function AIResearchLog() {
             </div>
           </div>
 
-          {/* Tabs — horizontally scrollable on mobile */}
+          {/* Tabs */}
           <div className="-mx-5 mb-5 flex gap-1.5 overflow-x-auto px-5 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:pb-0">
             {logTabs.map((tab) => (
               <button
@@ -94,7 +150,7 @@ export function AIResearchLog() {
 
           {/* Notes */}
           <div className="space-y-3">
-            {placeholderNotes.map((note) => (
+            {notes.map((note) => (
               <div
                 key={note.title}
                 className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 dark:border-slate-800 dark:bg-slate-800/30"
@@ -103,9 +159,7 @@ export function AIResearchLog() {
                   <span className="rounded-full bg-teal-500/10 px-2.5 py-1 text-[10px] font-semibold text-teal-600 dark:text-teal-400">
                     {note.tag}
                   </span>
-                  <span
-                    className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${note.statusBadgeColor}`}
-                  >
+                  <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${note.statusBadgeColor}`}>
                     {note.statusBadge}
                   </span>
                   <span className="rounded-full bg-orange-500/10 px-2.5 py-1 text-[10px] font-semibold text-orange-700 dark:text-orange-400">
@@ -132,7 +186,7 @@ export function AIResearchLog() {
               <div className="h-1.5 w-0 rounded-full bg-teal-500 transition-all duration-500" />
             </div>
             <span className="shrink-0 text-[11px] text-slate-400 dark:text-slate-500">
-              Pending
+              Awaiting approved notes
             </span>
           </div>
         </div>

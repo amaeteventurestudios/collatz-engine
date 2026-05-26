@@ -1,73 +1,143 @@
-import { getDemoBatch, DEMO_BATCH_START, DEMO_BATCH_END } from "@/lib/collatz/demo-batch";
-import { formatBigInt, formatRatio, formatDensity, formatSteps } from "@/lib/collatz/format";
+"use client";
 
-// Pre-computed batch records for the demo range
-const demo = getDemoBatch();
+import { useEffect, useState } from "react";
+import {
+  getEngineState,
+  getTopLongestTrajectories,
+  getTopHighestPeaks,
+} from "@/lib/collatz/store";
+import type { EngineState, CollatzResultRow } from "@/lib/collatz/store";
 
-const records = [
-  {
-    icon: "⏱",
-    label: "Longest Path",
-    value: `${formatSteps(demo.max_steps)} steps`,
-    sub: `n = ${demo.max_steps_number.toLocaleString("en-US")} · Demo batch`,
-    color: "text-orange-500 dark:text-orange-400",
-    ring: "ring-orange-500/20 dark:ring-orange-400/20",
-    bg: "bg-orange-500/5 dark:bg-orange-500/5",
-  },
-  {
-    icon: "▲",
-    label: "Highest Peak",
-    value: formatBigInt(BigInt(demo.max_peak)),
-    sub: `n = ${demo.max_peak_number.toLocaleString("en-US")} · Demo batch`,
-    color: "text-blue-500 dark:text-blue-400",
-    ring: "ring-blue-500/20 dark:ring-blue-400/20",
-    bg: "bg-blue-500/5 dark:bg-blue-500/5",
-  },
-  {
-    icon: "↗",
-    label: "Highest Peak Ratio",
-    value: `×${formatRatio(demo.max_peak_ratio, 0)}`,
-    sub: `n = ${demo.max_peak_ratio_number.toLocaleString("en-US")} · peak ÷ n`,
-    color: "text-green-500 dark:text-green-400",
-    ring: "ring-green-500/20 dark:ring-green-400/20",
-    bg: "bg-green-500/5 dark:bg-green-500/5",
-  },
-  {
-    icon: "↘",
-    label: "Longest First Descent",
-    value:
-      demo.longest_first_descent_delay !== null
-        ? `${formatSteps(demo.longest_first_descent_delay)} steps`
-        : "—",
-    sub:
-      demo.longest_first_descent_number !== null
-        ? `n = ${demo.longest_first_descent_number.toLocaleString("en-US")} · Demo batch`
-        : "No data yet",
-    color: "text-yellow-500 dark:text-yellow-400",
-    ring: "ring-yellow-500/20 dark:ring-yellow-400/20",
-    bg: "bg-yellow-500/5 dark:bg-yellow-500/5",
-  },
-  {
-    icon: "≡",
-    label: "Highest Odd-Step Density",
-    value: formatDensity(demo.highest_odd_step_density),
-    sub: `n = ${demo.highest_odd_density_number.toLocaleString("en-US")} · odd steps ÷ total`,
-    color: "text-violet-500 dark:text-violet-400",
-    ring: "ring-violet-500/20 dark:ring-violet-400/20",
-    bg: "bg-violet-500/5 dark:bg-violet-500/5",
-  },
-  {
-    icon: "★",
-    label: "Records in This Dataset",
-    value: "Phase 5/6",
-    sub: "Autonomous cataloging pending",
-    color: "text-teal-500 dark:text-teal-400",
-    ring: "ring-teal-500/20 dark:ring-teal-400/20",
-    bg: "bg-teal-500/5 dark:bg-teal-500/5",
-  },
-];
+function fmt(n: number | null | undefined) {
+  return Number(n ?? 0).toLocaleString("en-US");
+}
+
+interface RecordCard {
+  icon: string;
+  label: string;
+  value: string;
+  sub: string;
+  color: string;
+  ring: string;
+  bg: string;
+}
+
+function buildRecords(
+  engineState: EngineState | null,
+  topTrajectory: CollatzResultRow | null,
+  topPeaks: CollatzResultRow[],
+): RecordCard[] {
+  // Compute best ratio from the top peaks sample
+  let bestRatio = { ratio: 0, n: 0 };
+  for (const row of topPeaks) {
+    const ratio = row.n > 0 ? row.peak / row.n : 0;
+    if (ratio > bestRatio.ratio) bestRatio = { ratio, n: row.n };
+  }
+
+  return [
+    {
+      icon: "⏱",
+      label: "Longest Path",
+      value: topTrajectory ? `${fmt(topTrajectory.steps)} steps` : "—",
+      sub: topTrajectory
+        ? `n = ${fmt(topTrajectory.n)}`
+        : "Awaiting dataset growth",
+      color: "text-orange-500 dark:text-orange-400",
+      ring: "ring-orange-500/20 dark:ring-orange-400/20",
+      bg: "bg-orange-500/5 dark:bg-orange-500/5",
+    },
+    {
+      icon: "▲",
+      label: "Highest Peak",
+      value: topPeaks[0] ? fmt(topPeaks[0].peak) : "—",
+      sub: topPeaks[0]
+        ? `n = ${fmt(topPeaks[0].n)}`
+        : "Awaiting dataset growth",
+      color: "text-blue-500 dark:text-blue-400",
+      ring: "ring-blue-500/20 dark:ring-blue-400/20",
+      bg: "bg-blue-500/5 dark:bg-blue-500/5",
+    },
+    {
+      icon: "↗",
+      label: "Highest Peak Ratio",
+      value: bestRatio.n > 0 ? `×${bestRatio.ratio.toFixed(0)}` : "—",
+      sub: bestRatio.n > 0
+        ? `n = ${fmt(bestRatio.n)} · peak ÷ n`
+        : "Awaiting dataset growth",
+      color: "text-green-500 dark:text-green-400",
+      ring: "ring-green-500/20 dark:ring-green-400/20",
+      bg: "bg-green-500/5 dark:bg-green-500/5",
+    },
+    {
+      icon: "≡",
+      label: "Numbers Cataloged",
+      value: engineState ? fmt(engineState.total_numbers_checked) : "—",
+      sub: engineState
+        ? `up to n = ${fmt(engineState.last_checked_number)}`
+        : "Engine state unavailable",
+      color: "text-teal-500 dark:text-teal-400",
+      ring: "ring-teal-500/20 dark:ring-teal-400/20",
+      bg: "bg-teal-500/5 dark:bg-teal-500/5",
+    },
+    {
+      icon: "→",
+      label: "Highest n Checked",
+      value: engineState ? fmt(engineState.last_checked_number) : "—",
+      sub: engineState
+        ? `Engine: ${engineState.current_status}`
+        : "Engine state unavailable",
+      color: "text-violet-500 dark:text-violet-400",
+      ring: "ring-violet-500/20 dark:ring-violet-400/20",
+      bg: "bg-violet-500/5 dark:bg-violet-500/5",
+    },
+    {
+      icon: "★",
+      label: "Catalog Status",
+      value: engineState ? engineState.current_status.toUpperCase() : "—",
+      sub: engineState?.started_at
+        ? `Running since ${new Date(engineState.started_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`
+        : "Not yet started",
+      color:
+        engineState?.current_status === "running"
+          ? "text-green-500 dark:text-green-400"
+          : "text-slate-500 dark:text-slate-400",
+      ring:
+        engineState?.current_status === "running"
+          ? "ring-green-500/20 dark:ring-green-400/20"
+          : "ring-slate-200/60 dark:ring-slate-700/40",
+      bg:
+        engineState?.current_status === "running"
+          ? "bg-green-500/5 dark:bg-green-500/5"
+          : "bg-slate-50 dark:bg-slate-800/40",
+    },
+  ];
+}
 
 export function RecordsPreview() {
+  const [engineState, setEngineState] = useState<EngineState | null>(null);
+  const [topTrajectory, setTopTrajectory] = useState<CollatzResultRow | null>(null);
+  const [topPeaks, setTopPeaks] = useState<CollatzResultRow[]>([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function load() {
+      const [state, trajectories, peaks] = await Promise.all([
+        getEngineState(),
+        getTopLongestTrajectories(1),
+        getTopHighestPeaks(20),
+      ]);
+      if (!isMounted) return;
+      setEngineState(state);
+      setTopTrajectory(trajectories[0] ?? null);
+      setTopPeaks(peaks);
+    }
+    load();
+    return () => { isMounted = false; };
+  }, []);
+
+  const records = buildRecords(engineState, topTrajectory, topPeaks);
+  const totalChecked = engineState?.total_numbers_checked ?? 0;
+
   return (
     <section id="records" className="scroll-mt-20 px-4 pb-10 sm:pb-14">
       <div className="mx-auto max-w-7xl">
@@ -77,9 +147,9 @@ export function RecordsPreview() {
             Key Records
           </h2>
           <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
-            Demo records from local seed batch (
-            {DEMO_BATCH_START.toLocaleString("en-US")}–{DEMO_BATCH_END.toLocaleString("en-US")}) ·
-            Computed by the batch runner · No live dataset yet
+            {totalChecked > 0
+              ? `Live records from ${fmt(totalChecked)} cataloged trajectories · Computed by the Collatz engine`
+              : "Awaiting dataset growth · Records update automatically as the engine catalogs numbers"}
           </p>
         </div>
 
@@ -104,9 +174,9 @@ export function RecordsPreview() {
         </div>
 
         <p className="mt-4 text-center text-[11px] text-slate-400 dark:text-slate-500">
-          Demo records from local batch ({DEMO_BATCH_START.toLocaleString("en-US")}–
-          {DEMO_BATCH_END.toLocaleString("en-US")}). These are not global records. Live dataset
-          records begin when autonomous cataloging starts in Phase 5/6.
+          {totalChecked > 0
+            ? `Live catalog records · ${fmt(totalChecked)} numbers verified · All trajectories confirmed to reach 1`
+            : "Records will appear here as the engine catalogs trajectories. All verified numbers reach 1."}
         </p>
       </div>
     </section>

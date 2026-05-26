@@ -1,46 +1,60 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
 import { getSeedResult } from "@/lib/collatz/examples";
+import { computeCollatz } from "@/lib/collatz/engine";
+import { getTopLongestTrajectories } from "@/lib/collatz/store";
 import { formatBigInt, formatDensity } from "@/lib/collatz/format";
+import type { CollatzResult } from "@/lib/collatz/types";
 
-const DEMO_N = 27;
 const ROWS_TO_SHOW = 10;
 
-// Pre-compute from engine (runs once at module load)
-const demo = getSeedResult(DEMO_N);
-
-// Build the row display data from the computed sequence
-const demoRows = demo.full_sequence
-  .slice(0, ROWS_TO_SHOW)
-  .map((val, i) => {
-    if (i === demo.full_sequence.length - 1) return null; // skip if last
-    const nextVal = demo.full_sequence[i + 1];
-    if (!nextVal) return null;
-    const isOdd = val % 2n !== 0n;
-    return {
-      step: String(i + 1).padStart(3, "0"),
-      value: formatBigInt(val),
-      rawValue: val,
-      type: isOdd ? "Odd" : "Even",
-      op: isOdd ? "3n + 1" : "n / 2",
-      result: formatBigInt(nextVal),
-    };
-  })
-  .filter(Boolean) as {
-    step: string;
-    value: string;
-    rawValue: bigint;
-    type: string;
-    op: string;
-    result: string;
-  }[];
-
-// Current rule: the last row shown (step 10 → applying rule to value at index 9)
-const currentRuleRow = demoRows[demoRows.length - 1];
+// Stable fallback — computed once at module load
+const FALLBACK: CollatzResult = getSeedResult(27);
 
 export function SequenceTrace() {
-  const currentValue = demo.full_sequence[ROWS_TO_SHOW - 1];
+  const [result, setResult] = useState<CollatzResult>(FALLBACK);
+  const [isLive, setIsLive] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function load() {
+      const rows = await getTopLongestTrajectories(1);
+      if (!isMounted || !rows || rows.length === 0) return;
+      const computed = computeCollatz(rows[0].n);
+      if (isMounted && computed.reached_one && computed.full_sequence.length > 1) {
+        setResult(computed);
+        setIsLive(true);
+      }
+    }
+    load();
+    return () => { isMounted = false; };
+  }, []);
+
+  const tableRows = useMemo(() => {
+    return result.full_sequence
+      .slice(0, ROWS_TO_SHOW)
+      .map((val, i) => {
+        if (i === result.full_sequence.length - 1) return null;
+        const nextVal = result.full_sequence[i + 1];
+        if (!nextVal) return null;
+        const isOdd = val % 2n !== 0n;
+        return {
+          step: String(i + 1).padStart(3, "0"),
+          value: formatBigInt(val),
+          type: isOdd ? "Odd" : "Even",
+          op: isOdd ? "3n + 1" : "n / 2",
+          next: formatBigInt(nextVal),
+        };
+      })
+      .filter(Boolean) as { step: string; value: string; type: string; op: string; next: string }[];
+  }, [result]);
+
+  const currentRuleRow = tableRows[tableRows.length - 1];
+  const currentValue = result.full_sequence[ROWS_TO_SHOW - 1];
   const isCurrentOdd = currentValue !== undefined && currentValue % 2n !== 0n;
+  const n = Number(result.start_number);
+  const badgeLabel = isLive ? `Live — n=${n.toLocaleString("en-US")}` : "Example — n=27";
 
   return (
     <section className="px-4 pb-10 sm:pb-14">
@@ -51,17 +65,17 @@ export function SequenceTrace() {
             <p className="section-heading">Sequence Trace</p>
             <span className="inline-flex items-center gap-1.5 rounded-full bg-teal-500/10 px-2.5 py-1 text-[10px] font-semibold text-teal-600 dark:text-teal-400">
               <span className="h-1.5 w-1.5 rounded-full bg-teal-500" />
-              Computed · n={DEMO_N}
+              Computed · {badgeLabel}
             </span>
           </div>
 
           {/* Stats row */}
           <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
             {[
-              { label: "Start Number", value: String(DEMO_N) },
-              { label: "Steps to 1", value: String(demo.steps_to_1) },
-              { label: "Peak Value", value: formatBigInt(demo.peak_value) },
-              { label: "Odd Step Density", value: formatDensity(demo.odd_step_density) },
+              { label: "Start Number", value: n.toLocaleString("en-US") },
+              { label: "Steps to 1", value: String(result.steps_to_1) },
+              { label: "Peak Value", value: formatBigInt(result.peak_value) },
+              { label: "Odd Step Density", value: formatDensity(result.odd_step_density) },
             ].map((s) => (
               <div
                 key={s.label}
@@ -93,8 +107,8 @@ export function SequenceTrace() {
                 </span>
                 <span className="font-mono text-base font-bold text-teal-600 dark:text-teal-400">
                   {isCurrentOdd
-                    ? `3 × ${currentRuleRow.value} + 1 = ${currentRuleRow.result}`
-                    : `${currentRuleRow.value} ÷ 2 = ${currentRuleRow.result}`}
+                    ? `3 × ${currentRuleRow.value} + 1 = ${currentRuleRow.next}`
+                    : `${currentRuleRow.value} ÷ 2 = ${currentRuleRow.next}`}
                 </span>
                 <span
                   className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
@@ -127,7 +141,7 @@ export function SequenceTrace() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                    {demoRows.map((row) => (
+                    {tableRows.map((row) => (
                       <tr
                         key={row.step}
                         className="transition-colors hover:bg-slate-50/70 dark:hover:bg-slate-800/40"
@@ -158,7 +172,7 @@ export function SequenceTrace() {
                           {row.op}
                         </td>
                         <td className="px-4 py-3 font-mono font-bold text-teal-600 dark:text-teal-400">
-                          {row.result}
+                          {row.next}
                         </td>
                       </tr>
                     ))}
@@ -169,8 +183,9 @@ export function SequenceTrace() {
           </div>
 
           <p className="mt-4 text-center text-[11px] text-slate-400 dark:text-slate-500">
-            Showing first {demoRows.length} of {demo.steps_to_1} steps for n={DEMO_N}. Sequence
-            computed by the Collatz engine. Autonomous live computation begins in Phase 4.
+            {isLive
+              ? `Showing first ${tableRows.length} of ${result.steps_to_1} steps for n=${n.toLocaleString("en-US")} — the current longest cataloged trajectory.`
+              : `Showing first ${tableRows.length} of ${result.steps_to_1} steps for n=${n}. Updates to the longest trajectory as the catalog grows.`}
           </p>
         </div>
       </div>
