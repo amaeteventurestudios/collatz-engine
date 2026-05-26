@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 const sidebarLinks = [
   { href: "/admin", label: "Dashboard", icon: "⊞" },
   { href: "/admin", label: "Engine Controls", icon: "⚙" },
-  { href: "/admin", label: "AI Notes Review", icon: "✦" },
+  { href: "/admin", label: "Observations for Review", icon: "✦" },
   { href: "/admin", label: "Records Manager", icon: "▲" },
   { href: "/admin", label: "Near-Escape Manager", icon: "⚑" },
   { href: "/admin", label: "Submission Inbox", icon: "✉" },

@@ -18,6 +18,25 @@ Despite decades of effort and billions of numbers tested by computers, this conj
 
 ---
 
+## Phase 2B Status — Complete
+
+Phase 2B completes the dashboard sections so the public homepage matches the approved mockup concept with all placeholder content in place before the engine connects in Phase 3.
+
+**What changed in Phase 2B:**
+- **Status Strip:** All `"—"` stats replaced with polished placeholder states ("Demo Mode", "Awaiting Engine", "Phase 2 Shell", "Not Yet Connected"). Dedicated LIVE status header row with "Demo Mode — Engine connects in Phase 3" badge.
+- **Trajectory Visualizer:** Full SVG rewrite with actual pre-computed log-scale trajectory for n=27 (111 steps, peak 9,232 at step 77). Gradient line (teal→violet→green), area fill, peak marker, start/end markers, grid lines at log₁₀ levels. "Demo — n=27" overlay badge.
+- **Records Preview:** All record values updated to "No records yet" / "Awaiting Engine Data". Record labels corrected. Subtle per-card color tints added.
+- **AI Research Log:** "Hypotheses" tab renamed to "Observations for Review". Enhanced credibility notice with "Human review required" heading. First placeholder note tag updated to "System".
+- **Pattern Views:** Visual CSS heatmap grid added — 8×20 2D array of intensity values mapped to Tailwind color classes (sky→teal→green→yellow→orange→red) with variable opacity. Y-axis "High/Low" labels, X-axis label, color legend strip.
+- **DiscoveryFeed** (new): Discovery feed with 5 placeholder events covering Phase 2 initialization, engine connection pending, AI workflow status, and empty records/observations states.
+- **NearEscapeCandidates** (new): Table with 4 columns (Number, Peak Ratio, First Descent Delay, Status) and polished empty state. Definition callout explaining what near-escape means without proof claims.
+- **DataMethodology** (new): 4-card grid explaining what the engine catalogs, what data is stored, how AI observations work, and why no proof claim is made.
+- **PriorWork** (new): Scope clarification notice, 4 focus-area cards, and a prior/related projects reference table citing Oliveira e Silva, BOINC, OEIS A006577, and the Lagarias bibliography.
+- **page.tsx:** New 14-section order: Hero → Status → Visualizer → SequenceTrace → Records → AILog → PatternViews → NearEscape → DiscoveryFeed → About → DataMethodology → PriorWork → Contribute → Footer.
+- **Admin layout + page:** "AI Notes Review" renamed to "Observations for Review" in sidebar, mobile nav, and admin dashboard card.
+
+---
+
 ## Phase 2 Status — Complete
 
 Phase 2 polishes the mobile-first design system so every page looks excellent on mobile, tablet, desktop, and ultrawide screens.

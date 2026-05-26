@@ -11,9 +11,9 @@ const cards = [
   },
   {
     icon: "✦",
-    title: "AI Notes Review",
+    title: "Observations for Review",
     description:
-      "Review and approve AI-generated observations before they appear on the public Research Log. Human review required.",
+      "Review and approve AI-generated observations before they appear on the public Research Log. Human review required before any public release.",
     badge: "0 pending",
     badgeColor: "blue" as const,
   },

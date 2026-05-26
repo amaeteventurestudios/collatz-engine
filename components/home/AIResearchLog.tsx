@@ -7,22 +7,22 @@ const logTabs = [
   "Batch Analysis",
   "Pattern Report",
   "Deep Report",
-  "Hypotheses",
+  "Observations for Review",
   "Weekly Digest",
 ];
 
 const placeholderNotes = [
   {
-    tag: "Batch Analysis",
-    time: "Pending",
-    title: "Awaiting first batch",
-    body: "AI-assisted observations will appear here once the computation engine begins processing trajectories. Notes are generated after each batch completes and are reviewed by a human before publishing.",
+    tag: "System",
+    time: "Phase 2 Shell",
+    title: "Awaiting first computation batch",
+    body: "AI-assisted observations will be drafted once the computation engine begins processing trajectories. Drafts are private and require admin review before appearing here.",
   },
   {
     tag: "Pattern Report",
     time: "Pending",
     title: "No patterns detected yet",
-    body: "Statistical pattern analysis will begin when sufficient trajectory data is available. All AI notes require human review before appearing on this page.",
+    body: "Statistical pattern analysis requires sufficient trajectory data to be meaningful. Analysis begins automatically when batch processing starts in Phase 3.",
   },
 ];
 
@@ -44,13 +44,18 @@ export function AIResearchLog() {
             </button>
           </div>
 
-          {/* Human review notice */}
-          <div className="mb-4 flex items-start gap-2.5 rounded-lg border border-blue-500/20 bg-blue-500/5 px-3.5 py-2.5 dark:border-blue-400/20 dark:bg-blue-400/5">
-            <span className="mt-0.5 shrink-0 text-xs text-blue-500 dark:text-blue-400">ℹ</span>
-            <p className="text-xs leading-relaxed text-blue-700 dark:text-blue-300">
-              All AI-generated notes are reviewed by a human before appearing here. This log does
-              not make claims about the conjecture.
-            </p>
+          {/* Credibility / human-review notice */}
+          <div className="mb-4 flex items-start gap-2.5 rounded-xl border border-blue-500/20 bg-blue-500/5 px-3.5 py-3 dark:border-blue-400/20 dark:bg-blue-400/5">
+            <span className="mt-0.5 shrink-0 text-sm text-blue-500 dark:text-blue-400">ℹ</span>
+            <div>
+              <p className="text-xs font-semibold text-blue-700 dark:text-blue-300">
+                Human review required
+              </p>
+              <p className="mt-0.5 text-xs leading-relaxed text-blue-600/80 dark:text-blue-300/70">
+                AI observations are generated as private drafts and require admin approval before
+                public release. This log does not make claims about the conjecture.
+              </p>
+            </div>
           </div>
 
           {/* Tabs — horizontally scrollable on mobile */}
@@ -81,9 +86,7 @@ export function AIResearchLog() {
                   <span className="rounded-full bg-teal-500/10 px-2.5 py-1 text-[10px] font-semibold text-teal-600 dark:text-teal-400">
                     {note.tag}
                   </span>
-                  <span className="text-[10px] text-slate-400 dark:text-slate-500">
-                    {note.time}
-                  </span>
+                  <span className="text-[10px] text-slate-400 dark:text-slate-500">{note.time}</span>
                 </div>
                 <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">
                   {note.title}
