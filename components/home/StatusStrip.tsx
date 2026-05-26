@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { LocalTimeCard } from "@/components/home/TimeStatusCards";
-import { RunBatchControl } from "@/components/home/RunBatchControl";
 
 interface EngineState {
   id: string;
@@ -111,7 +110,8 @@ export function StatusStrip() {
     };
   }, []);
 
-  // Listen for the custom event dispatched by RunBatchControl after a successful run
+  // Listen for the custom event (dispatched by admin tools after a successful batch run)
+  // so the public dashboard refreshes immediately without waiting for the 5 s poll.
   useEffect(() => {
     function handleStateUpdated() {
       reloadRef.current?.();
@@ -188,12 +188,9 @@ export function StatusStrip() {
           </span>
         </div>
 
-        <div className="flex items-center gap-2.5">
-          <span className="rounded-full bg-teal-500/10 px-2.5 py-1 text-[10px] font-semibold text-teal-600 dark:text-teal-400">
-            Persistent Engine State
-          </span>
-          <RunBatchControl />
-        </div>
+        <span className="rounded-full bg-teal-500/10 px-2.5 py-1 text-[10px] font-semibold text-teal-600 dark:text-teal-400">
+          Persistent Engine State
+        </span>
       </div>
 
       {/* Stats grid */}
