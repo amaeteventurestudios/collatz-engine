@@ -1,26 +1,80 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/* Use .dark class strategy with next-themes */
+@variant dark (&:where(.dark, .dark *));
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --accent: #14b8a6;
+    --accent-blue: #3b82f6;
+    --live: #22c55e;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-white text-slate-900 antialiased;
+  }
+
+  .dark body {
+    @apply bg-slate-950 text-slate-100;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer components {
+  .engine-card {
+    @apply rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900;
+  }
+
+  .engine-card-sm {
+    @apply rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900;
+  }
+
+  .live-dot {
+    @apply inline-block h-2 w-2 rounded-full bg-green-400;
+    animation: pulse-dot 1.8s ease-in-out infinite;
+  }
+
+  .stat-value {
+    @apply text-2xl font-bold tabular-nums tracking-tight text-slate-900 dark:text-slate-50;
+  }
+
+  .stat-label {
+    @apply text-[10px] font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400;
+  }
+
+  .section-heading {
+    @apply text-xs font-semibold uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400;
+  }
+
+  .placeholder-panel {
+    @apply flex min-h-[200px] items-center justify-center rounded-lg border border-dashed border-slate-300 bg-slate-50 dark:border-slate-700 dark:bg-slate-900/50;
+  }
+}
+
+@layer utilities {
+  .gradient-title {
+    background: linear-gradient(135deg, #e2e8f0 0%, #94a3b8 50%, #14b8a6 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .dark .gradient-title {
+    background: linear-gradient(135deg, #f1f5f9 0%, #94a3b8 50%, #14b8a6 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .glow-teal {
+    text-shadow: 0 0 24px rgba(20, 184, 166, 0.4);
+  }
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.85); }
 }
