@@ -37,7 +37,13 @@ type BatchOutcome =
   | { ok: false; error: string; status: 400 }
   | {
       ok: true;
-      result: { batchStart: number; batchEnd: number; numbersProcessed: number };
+      result: {
+        batchStart: number;
+        batchEnd: number;
+        numbersProcessed: number;
+        durationMs: number;
+        numbersPerSecond: number;
+      };
     };
 
 async function executeBatch(batchSize: number): Promise<BatchOutcome> {
@@ -75,6 +81,8 @@ export async function GET(request: NextRequest) {
       batchStart: outcome.result.batchStart,
       batchEnd: outcome.result.batchEnd,
       numbersProcessed: outcome.result.numbersProcessed,
+      durationMs: outcome.result.durationMs,
+      numbersPerSecond: outcome.result.numbersPerSecond,
     });
   } catch (err) {
     console.error("[Collatz API] GET run-batch failed:", err);
@@ -128,6 +136,8 @@ export async function POST(request: NextRequest) {
       batchStart: outcome.result.batchStart,
       batchEnd: outcome.result.batchEnd,
       numbersProcessed: outcome.result.numbersProcessed,
+      durationMs: outcome.result.durationMs,
+      numbersPerSecond: outcome.result.numbersPerSecond,
     });
   } catch (err) {
     console.error("[Collatz API] POST run-batch failed:", err);

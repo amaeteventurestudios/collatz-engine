@@ -3,17 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { LocalTimeCard } from "@/components/home/TimeStatusCards";
-
-interface EngineState {
-  id: string;
-  started_at: string | null;
-  last_checked_number: number;
-  total_numbers_checked: number;
-  highest_peak: number;
-  longest_steps: number;
-  current_status: string;
-  updated_at: string;
-}
+import type { EngineState } from "@/lib/collatz/store";
 
 function formatNumber(value: number | null | undefined) {
   return Number(value ?? 0).toLocaleString("en-US");
@@ -135,11 +125,19 @@ export function StatusStrip() {
         ? "text-amber-600 dark:text-amber-400"
         : "text-slate-500 dark:text-slate-400";
 
+  const throughput = state?.numbers_per_second
+    ? Number(state.numbers_per_second)
+    : 0;
+
+  const lastRunSub = state?.last_run_at
+    ? `Last run: ${new Date(state.last_run_at).toLocaleTimeString()}`
+    : "Awaiting next run";
+
   const stats = [
     {
       label: "Engine Status",
       value: status.toUpperCase(),
-      sub: loadError ?? "Persistent Supabase state",
+      sub: loadError ?? (state?.last_error ? `⚠ ${state.last_error.slice(0, 36)}` : "Supabase persistence active"),
       valueClass: statusValueClass,
     },
     {
@@ -157,7 +155,7 @@ export function StatusStrip() {
     {
       label: "Numbers Checked",
       value: formatNumber(state?.total_numbers_checked),
-      sub: `Last checked: ${formatNumber(state?.last_checked_number)}`,
+      sub: `Highest: ${formatNumber(state?.last_checked_number)}`,
       valueClass: "text-slate-900 dark:text-slate-100",
     },
     {
@@ -171,6 +169,14 @@ export function StatusStrip() {
       value: `${formatNumber(state?.longest_steps)} steps`,
       sub: "Current record trajectory length",
       valueClass: "text-slate-900 dark:text-slate-100",
+    },
+    {
+      label: "Throughput",
+      value: throughput > 0 ? `${throughput.toFixed(1)}/sec` : "—",
+      sub: lastRunSub,
+      valueClass: throughput > 0
+        ? "text-teal-600 dark:text-teal-400"
+        : "text-slate-500 dark:text-slate-400",
     },
   ];
 
@@ -195,7 +201,7 @@ export function StatusStrip() {
 
       {/* Stats grid */}
       <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6">
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-7">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
           {stats.map((stat) => (
             <StatusCard key={stat.label} {...stat} />
           ))}

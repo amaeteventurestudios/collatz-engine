@@ -37,7 +37,7 @@ function buildNotes(state: EngineState | null): Note[] {
         reviewBadge: "Needs Admin Review",
         time: "Awaiting first computation batch",
         title: "Engine online — no trajectories cataloged yet",
-        body: "AI-assisted observations will be drafted once the computation engine begins processing trajectories. Drafts are private and require admin approval before appearing here.",
+        body: "AI-assisted observations will be drafted once the computation engine begins processing trajectories. Drafts are private and require admin approval before appearing here. AI observations require review before publication.",
       },
       {
         tag: "Pattern Report",
@@ -46,10 +46,18 @@ function buildNotes(state: EngineState | null): Note[] {
         reviewBadge: "Needs Admin Review",
         time: "Pending sufficient data",
         title: "No patterns detected yet",
-        body: "Statistical pattern analysis requires sufficient trajectory data to be meaningful. Analysis begins automatically when batch processing produces enough approved output.",
+        body: "Statistical pattern analysis requires sufficient trajectory data to be meaningful. Analysis begins automatically when batch processing produces enough output. AI observations require review before publication.",
       },
     ];
   }
+
+  const throughput = state.numbers_per_second && Number(state.numbers_per_second) > 0
+    ? ` Current throughput: ${Number(state.numbers_per_second).toFixed(1)} numbers/sec.`
+    : "";
+
+  const lastRun = state.last_run_at
+    ? ` Last batch completed: ${new Date(state.last_run_at).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}.`
+    : "";
 
   const notes: Note[] = [
     {
@@ -59,7 +67,7 @@ function buildNotes(state: EngineState | null): Note[] {
       reviewBadge: "Needs Admin Review",
       time: `${fmt(state.total_numbers_checked)} numbers checked`,
       title: `Catalog operational — ${fmt(state.total_numbers_checked)} trajectories verified`,
-      body: `The Collatz engine has processed ${fmt(state.total_numbers_checked)} starting numbers (up to n = ${fmt(state.last_checked_number)}). Longest trajectory: ${fmt(state.longest_steps)} steps. Highest peak: ${fmt(state.highest_peak)}. All verified trajectories reach 1. AI-drafted observations remain private until admin-approved.`,
+      body: `The Collatz engine has processed ${fmt(state.total_numbers_checked)} starting numbers (up to n = ${fmt(state.last_checked_number)}). Longest trajectory: ${fmt(state.longest_steps)} steps. Highest peak: ${fmt(state.highest_peak)}.${throughput}${lastRun} All verified trajectories reach 1. AI observations require review before publication.`,
     },
     {
       tag: "Pattern Report",
@@ -68,7 +76,7 @@ function buildNotes(state: EngineState | null): Note[] {
       reviewBadge: "Needs Admin Review",
       time: `Range 1 – ${fmt(state.last_checked_number)}`,
       title: "Pattern analysis queued — awaiting admin approval",
-      body: `Statistical analysis of ${fmt(state.total_numbers_checked)} cataloged trajectories is queued. Observations are generated as private drafts and require explicit admin approval before public release. This log makes no claims about the conjecture.`,
+      body: `Statistical analysis of ${fmt(state.total_numbers_checked)} cataloged trajectories is queued.${throughput} Observations are generated as private drafts and require explicit admin approval before public release. This log makes no claims about the Collatz conjecture. AI observations require review before publication.`,
     },
   ];
 

@@ -2,6 +2,7 @@ import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { HeroSection } from "@/components/home/HeroSection";
 import { StatusStrip } from "@/components/home/StatusStrip";
+import { OperationalHealthCard } from "@/components/home/OperationalHealthCard";
 import { TrajectoryVisualizer } from "@/components/home/TrajectoryVisualizer";
 import { SequenceTrace } from "@/components/home/SequenceTrace";
 import { RecordsPreview } from "@/components/home/RecordsPreview";
@@ -22,6 +23,7 @@ export default function HomePage() {
       <main className="flex-1">
         <HeroSection />
         <StatusStrip />
+        <OperationalHealthCard />
         <TrajectoryVisualizer />
         <SequenceTrace />
         <RecordsPreview />

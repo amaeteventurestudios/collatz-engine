@@ -9,6 +9,26 @@ export interface EngineState {
   longest_steps: number;
   current_status: string;
   updated_at: string;
+  // Phase 6 — throughput tracking (added by supabase/phase-6-activity-logs.sql)
+  last_batch_size?: number;
+  last_batch_duration_ms?: number;
+  numbers_per_second?: number;
+  last_run_at?: string | null;
+  worker_heartbeat_at?: string | null;
+  last_error?: string | null;
+}
+
+export interface ActivityLogRow {
+  id?: string;
+  event_type: string;
+  message: string;
+  batch_start?: number | null;
+  batch_end?: number | null;
+  numbers_processed?: number | null;
+  duration_ms?: number | null;
+  numbers_per_second?: number | null;
+  metadata?: Record<string, unknown>;
+  created_at?: string;
 }
 
 export interface CollatzResultRow {
@@ -193,4 +213,64 @@ export async function getSampleResults(limit = 500): Promise<CollatzResultRow[]>
     return [];
   }
   return (data ?? []) as CollatzResultRow[];
+}
+
+// ─── Activity logs ────────────────────────────────────────────────────────────
+
+/**
+ * Insert one activity log entry.
+ * Throws on Supabase error so callers can catch and continue.
+ * Returns silently when Supabase is not configured.
+ */
+export async function insertActivityLog(
+  input: Omit<ActivityLogRow, "id" | "created_at">,
+): Promise<void> {
+  if (!supabase) return;
+  const { error } = await supabase.from("collatz_activity_logs").insert({
+    event_type: input.event_type,
+    message: input.message,
+    batch_start: input.batch_start ?? null,
+    batch_end: input.batch_end ?? null,
+    numbers_processed: input.numbers_processed ?? null,
+    duration_ms: input.duration_ms ?? null,
+    numbers_per_second: input.numbers_per_second ?? null,
+    metadata: input.metadata ?? {},
+  });
+  if (error) {
+    console.error("[Collatz Engine] Failed to insert activity log", error);
+    throw error;
+  }
+}
+
+/**
+ * Fetch the most recent activity log entries, newest first.
+ */
+export async function getRecentActivityLogs(limit = 20): Promise<ActivityLogRow[]> {
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from("collatz_activity_logs")
+    .select(
+      "id, event_type, message, batch_start, batch_end, numbers_processed, duration_ms, numbers_per_second, metadata, created_at",
+    )
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) {
+    console.error("[Collatz Engine] getRecentActivityLogs failed", error);
+    return [];
+  }
+  return (data ?? []) as ActivityLogRow[];
+}
+
+/**
+ * Convenience wrapper to update throughput-tracking columns on engine state.
+ */
+export async function updateThroughputState(updates: {
+  last_batch_size?: number;
+  last_batch_duration_ms?: number;
+  numbers_per_second?: number;
+  last_run_at?: string | null;
+  worker_heartbeat_at?: string | null;
+  last_error?: string | null;
+}): Promise<void> {
+  return updateEngineState(updates);
 }
