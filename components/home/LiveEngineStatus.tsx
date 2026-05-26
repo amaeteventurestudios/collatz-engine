@@ -192,8 +192,8 @@ function NoDataState({ error }: { error: string | null }) {
           )}
           {!error && (
             <p className="max-w-md text-xs leading-relaxed text-slate-600">
-              The engine state row has not been initialised. Run the Collatz
-              worker once to create the initial state.
+              The live catalog has not reported an initial state yet. Once the
+              engine records its first verified batch, this panel will update.
             </p>
           )}
         </div>

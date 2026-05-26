@@ -111,9 +111,8 @@ export function OperationalHealthCard() {
         </div>
 
         <p className="mt-3 text-[10px] text-slate-400 dark:text-slate-500">
-          Operational health · Source:{" "}
-          <code className="font-mono">collatz_engine_state</code> ·{" "}
-          {hasData ? "Phase 6 throughput active" : "Run supabase/phase-6-activity-logs.sql to enable throughput tracking"}
+          Operational health ·{" "}
+          {hasData ? "Throughput tracking active" : "Awaiting throughput tracking data"}
         </p>
       </div>
     </section>

@@ -202,7 +202,7 @@ export function StatusStrip() {
         </div>
 
         <span className="rounded-full bg-teal-500/10 px-2.5 py-1 text-[10px] font-semibold text-teal-600 dark:text-teal-400">
-          Persistent Engine State
+          Verified Catalog State
         </span>
       </div>
 

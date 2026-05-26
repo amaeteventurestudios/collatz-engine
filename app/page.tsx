@@ -5,6 +5,8 @@ import { StatusStrip } from "@/components/home/StatusStrip";
 import { LiveEngineStatus } from "@/components/home/LiveEngineStatus";
 import { TrajectorySection } from "@/components/home/TrajectorySection";
 import { RecordsPreview } from "@/components/home/RecordsPreview";
+import { VerificationPanel } from "@/components/home/VerificationPanel";
+import { HowItWorks } from "@/components/home/HowItWorks";
 import { AIResearchLog } from "@/components/home/AIResearchLog";
 import { PatternViews } from "@/components/home/PatternViews";
 import { NearEscapeCandidates } from "@/components/home/NearEscapeCandidates";
@@ -25,6 +27,8 @@ export default function HomePage() {
         <LiveEngineStatus />
         <TrajectorySection />
         <RecordsPreview />
+        <VerificationPanel />
+        <HowItWorks />
         <AIResearchLog />
         <PatternViews />
         <NearEscapeCandidates />

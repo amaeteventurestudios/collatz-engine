@@ -244,8 +244,7 @@ export function DiscoveryFeed() {
 
           <p className="mt-4 text-center text-[11px] text-slate-400 dark:text-slate-500">
             Showing the {logs.length > 0 ? `${logs.length} most recent` : "latest"} operational
-            events · Refreshes every 30 seconds · Source:{" "}
-            <code className="font-mono">collatz_activity_logs</code>
+            events · Refreshes every 30 seconds · Live catalog activity
           </p>
         </div>
       </div>

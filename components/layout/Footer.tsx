@@ -73,9 +73,14 @@ export function Footer() {
 
         {/* Bottom bar */}
         <div className="mt-8 flex flex-col items-center gap-2 border-t border-slate-200 pt-6 dark:border-slate-800 sm:flex-row sm:justify-between">
-          <p className="text-xs text-slate-400 dark:text-slate-500">
-            &copy; {new Date().getFullYear()} The Collatz Engine. All computations verified.
-          </p>
+          <div className="text-center sm:text-left">
+            <p className="text-xs text-slate-400 dark:text-slate-500">
+              &copy; {new Date().getFullYear()} The Collatz Engine. Computational results from the running engine.
+            </p>
+            <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-600">
+              This dashboard does not claim to prove the Collatz Conjecture.
+            </p>
+          </div>
           <p className="text-xs text-slate-400 dark:text-slate-500">
             Created by{" "}
             <span className="font-medium text-teal-600 dark:text-teal-400">Amaete Umanah</span>

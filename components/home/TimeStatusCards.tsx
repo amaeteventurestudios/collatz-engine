@@ -2,15 +2,13 @@
 
 import { useState, useEffect } from "react";
 
-// TODO Phase 5: wire these props from Supabase to display live engine runtime
 export interface EngineRuntimeProps {
-  engine_started_at?: Date | null;
-  engine_status?: "running" | "paused" | "offline" | "pending";
-  engine_last_run_at?: Date | null;
-  engine_paused_at?: Date | null;
+  engineStartedAt?: Date | null;
+  engineStatus?: "running" | "paused" | "offline" | "pending";
+  engineLastRunAt?: Date | null;
+  enginePausedAt?: Date | null;
 }
 
-// TODO Phase 5: add props: EngineRuntimeProps and compute elapsed time from engine_started_at
 export function EngineRuntimeCard() {
   return (
     <div className="flex flex-col items-center justify-center rounded-xl bg-slate-100/60 px-3 py-3 text-center ring-1 ring-slate-200/80 dark:bg-slate-800/40 dark:ring-slate-700/60">
