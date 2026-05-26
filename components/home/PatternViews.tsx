@@ -69,6 +69,12 @@ export function PatternViews() {
 
           {/* Static heatmap grid */}
           <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800">
+            {/* Y-axis label */}
+            <div className="border-b border-slate-200 bg-slate-50/60 px-3 py-1.5 dark:border-slate-800 dark:bg-slate-800/30">
+              <p className="text-[9px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                ↕ Rows = bucketed trajectory groups (by step count)
+              </p>
+            </div>
             {/* Y-axis labels + grid */}
             <div className="flex">
               <div className="flex w-10 flex-col items-end justify-around py-2 pr-2 text-[9px] text-slate-400 dark:text-slate-600">
@@ -99,8 +105,8 @@ export function PatternViews() {
             {/* X-axis + legend strip */}
             <div className="border-t border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-800 dark:bg-slate-800/40">
               <div className="flex items-center justify-between">
-                <span className="text-[9px] text-slate-400 dark:text-slate-500">
-                  Starting number →
+                <span className="text-[9px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                  → Columns = cataloged number ranges
                 </span>
                 <div className="flex items-center gap-2">
                   {[
@@ -118,8 +124,9 @@ export function PatternViews() {
           </div>
 
           <p className="mt-3 text-center text-[11px] text-slate-400 dark:text-slate-500">
-            Demo heatmap. Pattern views activate with real batch data in Phase 3. Colors represent
-            relative step-count intensity — not verified computation.
+            Placeholder demo. Rows = bucketed trajectory groups · Columns = cataloged number ranges ·
+            Color = relative activity intensity. Live views activate when autonomous cataloging begins
+            in Phase 5/6.
           </p>
         </div>
       </div>

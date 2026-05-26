@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 
 export function HeroSection() {
   return (
-    <section className="relative overflow-hidden bg-white px-4 pb-16 pt-16 text-center dark:bg-slate-950 sm:pb-20 sm:pt-28">
+    <section className="relative overflow-hidden bg-white px-4 pb-10 pt-10 text-center dark:bg-slate-950 sm:pb-14 sm:pt-20">
       {/* Ambient background glow */}
       <div
         aria-hidden
@@ -89,7 +89,7 @@ export function HeroSection() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.6, delay: 0.8 }}
-          className="mt-12 flex flex-col items-center gap-1"
+          className="mt-8 flex flex-col items-center gap-1"
         >
           <span className="text-[10px] uppercase tracking-widest text-slate-400 dark:text-slate-600">
             Scroll to explore

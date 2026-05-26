@@ -18,6 +18,55 @@ Despite decades of effort and billions of numbers tested by computers, this conj
 
 ---
 
+## Phase 4B Status — Complete
+
+Phase 4B adds the public dashboard time system and applies visual polish across the dashboard.
+
+**New component — `components/home/TimeStatusCards.tsx`:**
+- `EngineRuntimeCard` — shows "Pending Start" with helper text "Starts when persistent cataloging is enabled." Ready to receive `engine_started_at`, `engine_status`, `engine_last_run_at`, `engine_paused_at` props in Phase 5.
+- `LocalTimeCard` — live visitor clock updating every second. Detects timezone via `Intl.DateTimeFormat().resolvedOptions().timeZone` on mount. Renders `"—"` on server to prevent hydration mismatch. No geolocation permission. No timezone storage.
+
+**Updated `StatusStrip`:**
+- 6-stat layout: Engine Status · Trajectories Catalogued · Current Catalog Range · Latest Batch Completed · Engine Runtime · Your Local Time
+- Static stats rendered server-side; time cards are client components dropped directly into the grid
+
+**Visitor local time behavior:**
+- Every visitor sees their own browser-local time, not a hardcoded timezone
+- Timezone detected from the browser using `Intl.DateTimeFormat().resolvedOptions().timeZone`
+- Clock renders `"—"` until after mount to prevent hydration mismatch
+- No geolocation API called. No timezone data stored.
+
+**Engine runtime placeholder behavior:**
+- Shows "Pending Start" until persistence is connected in Phase 5
+- `EngineRuntimeProps` interface exported for Phase 5 wiring: `engine_started_at`, `engine_status`, `engine_last_run_at`, `engine_paused_at`
+- No fake engine start time. No hardcoded timestamp.
+
+**Visual polish changes:**
+- **Hero:** Tightened vertical spacing (`pt-10 sm:pt-20`, `pb-10 sm:pb-14`) so the dashboard feels alive sooner
+- **Records Preview:** Trophy card polish — larger icons (`text-3xl`), larger values (`text-sm font-bold`), colored icons matching card accent
+- **AI Research Log:** Stronger review-state design — "Private Draft" + "Needs Admin Review" badges on all placeholder notes; "Guardrail Active" badge in review notice; "0 approved notes" count visible in header
+- **Pattern Views:** Clearer axis labels — rows labeled as "bucketed trajectory groups," columns as "cataloged number ranges"
+- **Near-Escape Candidates:** More prominent definition callout with "Visualization label only" badge; descriptive copy: "trajectories that climb unusually high, delay descent, or show unusually high odd-step density before collapsing back to 1"
+
+**Admin shell update — `app/admin/page.tsx`:**
+- New Engine Controls panel with timing stats: Engine Status · Started At · Runtime · Last Batch · Next Batch Start
+- Disabled placeholder buttons: Start Engine · Pause Engine · Resume Engine
+- Labeled "Controls available in Phase 5/6/10"
+- Engine Controls card removed from 6-card grid (now a full panel)
+
+**Phase 5 readiness:**
+- `EngineRuntimeCard` accepts `EngineRuntimeProps` — ready for Supabase `engine_started_at` wiring
+- Admin Engine Controls panel layout matches the fields Phase 5 will populate
+- Persisted engine start time and start/pause/resume controls come in Phase 5/6/10
+
+**No changes to:**
+- Engine or batch runner logic
+- Test suite (all 136 tests still pass)
+- Supabase integration (not connected)
+- GitHub Actions (not configured)
+
+---
+
 ## Phase 4 Status — Complete
 
 Phase 4 builds the autonomous batch runner foundation. The engine can now process ranges of numbers locally, summarize batches, detect records, detect near-escape candidates, and generate compact batch data.

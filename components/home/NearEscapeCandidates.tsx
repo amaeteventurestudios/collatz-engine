@@ -54,18 +54,26 @@ export function NearEscapeCandidates() {
             </button>
           </div>
 
-          {/* Definition callout */}
-          <div className="mb-5 mt-4 flex items-start gap-2.5 rounded-xl border border-orange-500/20 bg-orange-500/5 px-3.5 py-3 dark:border-orange-400/20 dark:bg-orange-400/5">
-            <span className="mt-0.5 shrink-0 text-sm text-orange-500 dark:text-orange-400">△</span>
+          {/* Definition callout — prominent */}
+          <div className="mb-5 mt-4 flex items-start gap-3 rounded-xl border border-orange-500/30 bg-orange-500/8 px-4 py-4 dark:border-orange-400/30 dark:bg-orange-400/8">
+            <span className="mt-0.5 shrink-0 text-base text-orange-500 dark:text-orange-400">△</span>
             <div>
-              <p className="text-xs font-semibold text-orange-700 dark:text-orange-300">
-                What is a near-escape candidate?
-              </p>
-              <p className="mt-0.5 text-xs leading-relaxed text-orange-600/80 dark:text-orange-300/70">
-                A number whose trajectory reaches an exceptionally high peak relative to its
-                starting value, takes many steps to descend back below n, or has unusually high
-                odd-step density. These are flagged for analytical interest — all verified numbers
-                reach 1. Near-escape is a visualization label, not a mathematical claim.
+              <div className="mb-1.5 flex flex-wrap items-center gap-2">
+                <p className="text-xs font-bold text-orange-700 dark:text-orange-300">
+                  What is a near-escape candidate?
+                </p>
+                <span className="rounded-full bg-orange-500/15 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-orange-600 dark:text-orange-400">
+                  Visualization label only
+                </span>
+              </div>
+              <p className="text-xs leading-relaxed text-orange-600/80 dark:text-orange-300/70">
+                Near-escape candidates are trajectories that climb unusually high, delay descent,
+                or show unusually high odd-step density before collapsing back to 1. These numbers
+                are flagged for analytical interest based on configurable thresholds.{" "}
+                <span className="font-semibold">
+                  All verified numbers reach 1.
+                </span>{" "}
+                Near-escape is a visualization label, not a mathematical claim.
               </p>
             </div>
           </div>

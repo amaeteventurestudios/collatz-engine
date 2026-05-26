@@ -89,11 +89,13 @@ export function RecordsPreview() {
               key={rec.label}
               className={`engine-card-sm flex flex-col items-center text-center ring-1 ${rec.ring} ${rec.bg}`}
             >
-              <span className="text-2xl">{rec.icon}</span>
-              <p className="mt-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              <span className={`text-3xl leading-none ${rec.color}`}>{rec.icon}</span>
+              <p className="mt-2.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                 {rec.label}
               </p>
-              <p className={`mt-2 text-xs font-bold leading-tight ${rec.color}`}>{rec.value}</p>
+              <p className={`mt-2 text-sm font-bold leading-tight tabular-nums ${rec.color}`}>
+                {rec.value}
+              </p>
               <p className="mt-1 text-[9px] leading-snug text-slate-400 dark:text-slate-500">
                 {rec.sub}
               </p>

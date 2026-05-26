@@ -14,15 +14,21 @@ const logTabs = [
 const placeholderNotes = [
   {
     tag: "System",
-    time: "Phase 2 Shell",
+    statusBadge: "Private Draft",
+    statusBadgeColor: "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400",
+    reviewBadge: "Needs Admin Review",
+    time: "Phase 4 — No data yet",
     title: "Awaiting first computation batch",
-    body: "AI-assisted observations will be drafted once the computation engine begins processing trajectories. Drafts are private and require admin review before appearing here.",
+    body: "AI-assisted observations will be drafted once the computation engine begins processing trajectories. Drafts are private and require admin approval before appearing here.",
   },
   {
     tag: "Pattern Report",
+    statusBadge: "Private Draft",
+    statusBadgeColor: "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400",
+    reviewBadge: "Needs Admin Review",
     time: "Pending",
     title: "No patterns detected yet",
-    body: "Statistical pattern analysis requires sufficient trajectory data to be meaningful. Analysis begins automatically when batch processing starts in Phase 3.",
+    body: "Statistical pattern analysis requires sufficient trajectory data to be meaningful. Analysis begins automatically when batch processing starts and produces approved output.",
   },
 ];
 
@@ -39,21 +45,32 @@ export function AIResearchLog() {
               <span className="text-sm text-teal-500">✦</span>
               <p className="section-heading">AI Research Log</p>
             </div>
-            <button className="shrink-0 text-[11px] font-medium text-teal-600 hover:underline dark:text-teal-400">
-              View all
-            </button>
+            <div className="flex items-center gap-2">
+              <span className="rounded-full bg-slate-200/80 px-2.5 py-1 text-[10px] font-semibold text-slate-500 dark:bg-slate-700/80 dark:text-slate-400">
+                0 approved notes
+              </span>
+              <button className="shrink-0 text-[11px] font-medium text-teal-600 hover:underline dark:text-teal-400">
+                View all
+              </button>
+            </div>
           </div>
 
-          {/* Credibility / human-review notice */}
-          <div className="mb-4 flex items-start gap-2.5 rounded-xl border border-blue-500/20 bg-blue-500/5 px-3.5 py-3 dark:border-blue-400/20 dark:bg-blue-400/5">
-            <span className="mt-0.5 shrink-0 text-sm text-blue-500 dark:text-blue-400">ℹ</span>
+          {/* Credibility / human-review notice — more prominent */}
+          <div className="mb-4 flex items-start gap-3 rounded-xl border border-blue-500/30 bg-blue-500/8 px-4 py-3.5 dark:border-blue-400/30 dark:bg-blue-400/8">
+            <span className="mt-0.5 shrink-0 text-base text-blue-500 dark:text-blue-400">ℹ</span>
             <div>
-              <p className="text-xs font-semibold text-blue-700 dark:text-blue-300">
-                Human review required
-              </p>
-              <p className="mt-0.5 text-xs leading-relaxed text-blue-600/80 dark:text-blue-300/70">
-                AI observations are generated as private drafts and require admin approval before
-                public release. This log does not make claims about the conjecture.
+              <div className="mb-1.5 flex flex-wrap items-center gap-2">
+                <p className="text-xs font-bold text-blue-700 dark:text-blue-300">
+                  Human review required — approved notes only
+                </p>
+                <span className="rounded-full bg-blue-500/15 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-blue-600 dark:text-blue-400">
+                  Guardrail Active
+                </span>
+              </div>
+              <p className="text-xs leading-relaxed text-blue-600/80 dark:text-blue-300/70">
+                All AI observations are generated as private drafts and require explicit admin
+                approval before public release. No note appears here until reviewed. This log makes
+                no claims about the conjecture.
               </p>
             </div>
           </div>
@@ -85,6 +102,14 @@ export function AIResearchLog() {
                 <div className="mb-2.5 flex flex-wrap items-center gap-2">
                   <span className="rounded-full bg-teal-500/10 px-2.5 py-1 text-[10px] font-semibold text-teal-600 dark:text-teal-400">
                     {note.tag}
+                  </span>
+                  <span
+                    className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${note.statusBadgeColor}`}
+                  >
+                    {note.statusBadge}
+                  </span>
+                  <span className="rounded-full bg-orange-500/10 px-2.5 py-1 text-[10px] font-semibold text-orange-700 dark:text-orange-400">
+                    {note.reviewBadge}
                   </span>
                   <span className="text-[10px] text-slate-400 dark:text-slate-500">{note.time}</span>
                 </div>
