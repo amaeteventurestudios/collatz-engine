@@ -2,7 +2,7 @@
   "crons": [
     {
       "path": "/api/collatz/run-batch",
-      "schedule": "* * * * *"
+      "schedule": "0 0 * * *"
     }
   ]
 }
