@@ -9,7 +9,7 @@ import { RecordsPreview } from "@/components/home/RecordsPreview";
 import { MilestoneFeed } from "@/components/home/MilestoneFeed";
 import { VerificationPanel } from "@/components/home/VerificationPanel";
 import { HowItWorks } from "@/components/home/HowItWorks";
-import { AIResearchLog } from "@/components/home/AIResearchLog";
+import { AIObservatorySection } from "@/components/ai/AIObservatorySection";
 import { PatternViews } from "@/components/home/PatternViews";
 import { NearEscapeCandidates } from "@/components/home/NearEscapeCandidates";
 import { DiscoveryFeed } from "@/components/home/DiscoveryFeed";
@@ -33,7 +33,7 @@ export default function HomePage() {
         <MilestoneFeed />
         <VerificationPanel />
         <HowItWorks />
-        <AIResearchLog />
+        <AIObservatorySection />
         <PatternViews />
         <NearEscapeCandidates />
         <DiscoveryFeed />
