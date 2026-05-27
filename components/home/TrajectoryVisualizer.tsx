@@ -6,6 +6,7 @@ import {
   formatLargeNumberTitle,
   formatSteps,
 } from "@/lib/collatz/format";
+import { PanelHelp } from "@/components/ui/PanelHelp";
 import type { CollatzResult } from "@/lib/collatz/types";
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -367,7 +368,14 @@ export function TrajectoryVisualizer({
           {/* ── Header ──────────────────────────────────────────────────────── */}
           <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <p className="section-heading">Collatz Trajectory Visualizer</p>
+              <div className="flex items-center gap-2">
+                <p className="section-heading">Collatz Trajectory Visualizer</p>
+                <PanelHelp
+                  title="Trajectory Visualizer"
+                  description="Shows how one selected starting number moves through the Collatz process until it reaches 1. Peaks show how high the sequence climbs before descending."
+                  align="left"
+                />
+              </div>
               <p
                 className="mt-1 text-xs text-slate-400 dark:text-slate-400"
                 title={`n=${startTitle} · peak ${peakTitle}`}

@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { formatDensity, formatLargeNumber, formatLargeNumberTitle } from "@/lib/collatz/format";
+import { PanelHelp } from "@/components/ui/PanelHelp";
 import type { CollatzResult } from "@/lib/collatz/types";
 
 const INITIAL_ROWS = 10;
@@ -60,7 +61,14 @@ export function SequenceTrace({ result, displayLabel }: SequenceTraceProps) {
         <div className="engine-card">
           {/* Header */}
           <div className="mb-5 flex flex-wrap items-center justify-between gap-2">
-            <p className="section-heading">Sequence Trace</p>
+            <div className="flex items-center gap-2">
+              <p className="section-heading">Sequence Trace</p>
+              <PanelHelp
+                title="Sequence Trace"
+                description="Lists the step-by-step path for the selected number. Each row shows whether the rule used was divide by 2 or multiply by 3 and add 1."
+                align="left"
+              />
+            </div>
             <span className="inline-flex items-center gap-1.5 rounded-full bg-teal-500/10 px-2.5 py-1 text-[10px] font-semibold text-teal-600 dark:text-teal-400">
               <span className="h-1.5 w-1.5 rounded-full bg-teal-500" />
               Computed · {displayLabel}

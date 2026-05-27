@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { PanelHelp } from "@/components/ui/PanelHelp";
 import { formatLargeNumber, formatLargeNumberTitle } from "@/lib/collatz/format";
 
 interface IntegritySummary {
@@ -141,9 +142,16 @@ export function VerificationPanel() {
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="max-w-3xl">
               <div className="mb-3 flex flex-wrap items-center gap-3">
-                <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-                  Catalog Verification
-                </p>
+                <div className="flex items-center gap-2">
+                  <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+                    Catalog Verification
+                  </p>
+                  <PanelHelp
+                    title="Catalog Verification"
+                    description="Shows checks that help confirm the catalog is consistent, including duplicate checks, missing range checks, and record consistency checks."
+                    align="left"
+                  />
+                </div>
                 <span className={`inline-flex items-center gap-2 rounded border px-2.5 py-1 ${cfg.bg} ${cfg.border}`}>
                   <span className={`h-1.5 w-1.5 rounded-full ${cfg.dot}`} />
                   <span className={`font-mono text-[10px] font-bold uppercase tracking-[0.18em] ${cfg.text}`}>
@@ -191,6 +199,13 @@ export function VerificationPanel() {
               <p className="basis-full text-right text-[11px] leading-relaxed text-slate-500 lg:text-left">
                 Limited export samples are capped for public access.
               </p>
+              <div className="basis-full lg:flex lg:justify-end">
+                <PanelHelp
+                  title="Export Samples"
+                  description="Lets visitors download limited JSON or CSV samples from the verified catalog for inspection or analysis."
+                  align="right"
+                />
+              </div>
             </div>
           </div>
 

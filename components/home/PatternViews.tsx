@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { getLatestResults } from "@/lib/collatz/store";
 import type { CollatzResultRow } from "@/lib/collatz/store";
 import { Modal } from "@/components/ui/Modal";
+import { PanelHelp } from "@/components/ui/PanelHelp";
 import { formatLargeNumber, formatLargeNumberTitle } from "@/lib/collatz/format";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -377,7 +378,14 @@ export function PatternViews() {
           {/* Header */}
           <div className="mb-4 flex items-center justify-between gap-2">
             <div>
-              <p className="section-heading">Heatmaps &amp; Pattern Views</p>
+              <div className="flex items-center gap-2">
+                <p className="section-heading">Heatmaps &amp; Pattern Views</p>
+                <PanelHelp
+                  title="Heatmaps & Pattern Views"
+                  description="Shows patterns across a recent sample of verified numbers. The colors help reveal where longer paths, larger peaks, or unusual ratios appear."
+                  align="left"
+                />
+              </div>
               <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                 Latest {Math.min(results.length || SAMPLE_SIZE, SAMPLE_SIZE).toLocaleString("en-US")} verified trajectories · {rangeLabel} · refreshed {refreshedLabel} · refresh cadence: 10 seconds
               </p>

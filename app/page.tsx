@@ -5,6 +5,7 @@ import { StatusStrip } from "@/components/home/StatusStrip";
 import { LiveEngineStatus } from "@/components/home/LiveEngineStatus";
 import { TrajectorySection } from "@/components/home/TrajectorySection";
 import { RecordsPreview } from "@/components/home/RecordsPreview";
+import { MilestoneFeed } from "@/components/home/MilestoneFeed";
 import { VerificationPanel } from "@/components/home/VerificationPanel";
 import { HowItWorks } from "@/components/home/HowItWorks";
 import { AIResearchLog } from "@/components/home/AIResearchLog";
@@ -27,6 +28,7 @@ export default function HomePage() {
         <LiveEngineStatus />
         <TrajectorySection />
         <RecordsPreview />
+        <MilestoneFeed />
         <VerificationPanel />
         <HowItWorks />
         <AIResearchLog />

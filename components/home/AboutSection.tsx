@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Modal } from "@/components/ui/Modal";
+import { PanelHelp } from "@/components/ui/PanelHelp";
 
 const sections = [
   {
@@ -129,9 +130,16 @@ export function AboutSection() {
       <div className="mx-auto max-w-7xl">
         {/* Section header */}
         <div className="mb-10 text-center">
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-50 sm:text-3xl">
-            The Collatz Conjecture
-          </h2>
+          <div className="flex items-center justify-center gap-2">
+            <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-50 sm:text-3xl">
+              The Collatz Conjecture
+            </h2>
+            <PanelHelp
+              title="The Collatz Conjecture"
+              description="Introduces the math problem behind the engine. The conjecture says every positive integer eventually reaches 1 under the Collatz rules, but it remains unproven."
+              align="center"
+            />
+          </div>
           <p className="mx-auto mt-2 max-w-lg text-sm leading-relaxed text-slate-500 dark:text-slate-400">
             A plain-language guide to one of mathematics&apos; most intriguing open problems
           </p>

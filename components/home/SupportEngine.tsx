@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import Script from "next/script";
 import { Heart } from "lucide-react";
+import { PanelHelp } from "@/components/ui/PanelHelp";
 
 const KOFI_ID = "W0C2209OAL";
 
@@ -40,6 +41,11 @@ export function SupportEngine() {
         <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
           Support the Engine
         </p>
+        <PanelHelp
+          title="Support the Engine"
+          description="Optional contributions help support compute, hosting, data exports, and continued development of the public engine."
+          align="left"
+        />
       </div>
       <p className="mb-5 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
         The Collatz Engine is a public autonomous mathematics exploration system. Contributions

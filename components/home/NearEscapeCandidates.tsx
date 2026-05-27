@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { getTopHighestPeaks } from "@/lib/collatz/store";
 import type { CollatzResultRow } from "@/lib/collatz/store";
 import { Modal } from "@/components/ui/Modal";
+import { PanelHelp } from "@/components/ui/PanelHelp";
 import { formatLargeNumber, formatLargeNumberTitle } from "@/lib/collatz/format";
 
 const TOP_N = 8;
@@ -267,7 +268,14 @@ export function NearEscapeCandidates() {
           {/* Header */}
           <div className="mb-1.5 flex items-start justify-between gap-2">
             <div>
-              <p className="section-heading">Near-Escape Candidates</p>
+              <div className="flex items-center gap-2">
+                <p className="section-heading">Near-Escape Candidates</p>
+                <PanelHelp
+                  title="Near-Escape Candidates"
+                  description="Highlights numbers that climb unusually high or take unusually long before reaching 1. This is only a visualization label, not a mathematical claim."
+                  align="left"
+                />
+              </div>
               <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                 {hasCandidates
                   ? "Numbers with unusually high peak ratios or long trajectories from the live catalog"

@@ -7,6 +7,7 @@ import {
   getTopHighestPeaks,
 } from "@/lib/collatz/store";
 import type { EngineState, CollatzResultRow } from "@/lib/collatz/store";
+import { PanelHelp } from "@/components/ui/PanelHelp";
 import { formatLargeNumber, formatLargeNumberTitle } from "@/lib/collatz/format";
 
 const POLL_MS = 5_000;
@@ -160,9 +161,16 @@ export function RecordsPreview() {
       <div className="mx-auto max-w-7xl">
         {/* Section heading */}
         <div className="mb-6 text-center">
-          <h2 className="text-xl font-bold text-slate-900 dark:text-slate-50 sm:text-2xl">
-            Key Records
-          </h2>
+          <div className="flex items-center justify-center gap-2">
+            <h2 className="text-xl font-bold text-slate-900 dark:text-slate-50 sm:text-2xl">
+              Key Records
+            </h2>
+            <PanelHelp
+              title="Key Records"
+              description="Shows the most extreme results found so far, such as the longest path to 1, the highest peak value, and the largest verified catalog number."
+              align="center"
+            />
+          </div>
           <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
             {totalChecked > 0
               ? `Live records from ${fmt(totalChecked)} cataloged trajectories · Computed by the Collatz engine`

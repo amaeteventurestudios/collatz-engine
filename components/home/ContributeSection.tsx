@@ -10,6 +10,7 @@ import {
   Telescope,
 } from "lucide-react";
 import { SupportEngine } from "@/components/home/SupportEngine";
+import { PanelHelp } from "@/components/ui/PanelHelp";
 
 const FORMSPREE_ENDPOINT = "https://formspree.io/f/xeelnkqj";
 
@@ -110,9 +111,16 @@ export function ContributeSection() {
     <section id="contribute" className="scroll-mt-20 px-4 py-12 sm:py-16">
       <div className="mx-auto max-w-7xl">
         <div className="mb-8 text-center">
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-50 sm:text-3xl">
-            Get Involved
-          </h2>
+          <div className="flex items-center justify-center gap-2">
+            <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-50 sm:text-3xl">
+              Get Involved
+            </h2>
+            <PanelHelp
+              title="Get Involved"
+              description="Use this section to submit observations, report issues, suggest improvements, or contact the project."
+              align="center"
+            />
+          </div>
           <p className="mx-auto mt-2 max-w-2xl text-sm leading-relaxed text-slate-500 dark:text-slate-400">
             Submit an observation, report an issue, share an idea, or contact the project directly.
           </p>

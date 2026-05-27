@@ -10,12 +10,7 @@ const DEFAULT_BATCH_SIZE = 100;
  * one of the following headers:
  *
  *   x-collatz-cron-secret: <secret>      – for POST from internal/admin callers
- *   authorization: Bearer <secret>       – Vercel Cron Authorization pattern
- *
- * NOTE: Vercel Cron does not support sending arbitrary custom headers.
- * To protect GET requests from Vercel Cron, set COLLATZ_CRON_SECRET in your
- * Vercel project settings to match Vercel's auto-generated CRON_SECRET. Vercel
- * will then send: Authorization: Bearer <CRON_SECRET> on every cron invocation.
+ *   authorization: Bearer <secret>       – for scheduled GET invocations
  *
  * If you need a query-param fallback instead, replace the authorization check
  * below with: request.nextUrl.searchParams.get("secret") === secret
@@ -61,7 +56,7 @@ async function executeBatch(batchSize: number): Promise<BatchOutcome> {
 /**
  * GET /api/collatz/run-batch
  *
- * Invoked by Vercel Cron (vercel.json schedule: "* * * * *").
+ * Invoked by a scheduled runner.
  * Processes the next DEFAULT_BATCH_SIZE numbers and advances engine state.
  *
  * Protected by COLLATZ_CRON_SECRET when set (see isAuthorized above).

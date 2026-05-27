@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { getRecentActivityLogs } from "@/lib/collatz/store";
+import { PanelHelp } from "@/components/ui/PanelHelp";
 import type { ActivityLogRow } from "@/lib/collatz/store";
 
 // ─── Event-type styles ────────────────────────────────────────────────────────
@@ -172,7 +173,14 @@ export function DiscoveryFeed() {
           {/* Header */}
           <div className="mb-5 flex items-center justify-between gap-2">
             <div>
-              <p className="section-heading">Discovery Feed</p>
+              <div className="flex items-center gap-2">
+                <p className="section-heading">Discovery Feed</p>
+                <PanelHelp
+                  title="Discovery Feed"
+                  description="Shows recent engine activity, such as new records, verified batches, or notable catalog events when they occur."
+                  align="left"
+                />
+              </div>
               <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
                 Live feed from verified engine activity
               </p>

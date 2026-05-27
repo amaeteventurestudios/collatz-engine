@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
+import { PanelHelp } from "@/components/ui/PanelHelp";
 
 export const metadata: Metadata = {
   title: "Public API | The Collatz Engine",
@@ -234,9 +235,16 @@ export default function ApiDocsPage() {
             <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.22em] text-teal-600 dark:text-teal-400">
               Documentation
             </p>
-            <h1 className="mt-3 text-3xl font-bold text-slate-900 dark:text-slate-50 sm:text-4xl">
-              Public API
-            </h1>
+            <div className="mt-3 flex items-center gap-2">
+              <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-50 sm:text-4xl">
+                Public API
+              </h1>
+              <PanelHelp
+                title="Public API"
+                description="Provides read-only access to selected live catalog data, records, verification summaries, and export samples."
+                align="left"
+              />
+            </div>
             <p className="mt-3 max-w-3xl text-sm leading-relaxed text-slate-600 dark:text-slate-400">
               Read-only access to live catalog state, records, near-escape candidates, integrity
               summaries, and exportable samples.
@@ -258,6 +266,19 @@ export default function ApiDocsPage() {
               >
                 Read methodology
               </Link>
+            </div>
+            <div className="mt-4 flex items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/50">
+              <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+                Export Samples
+              </p>
+              <PanelHelp
+                title="Export Samples"
+                description="Lets visitors download limited JSON or CSV samples from the verified catalog for inspection or analysis."
+                align="left"
+              />
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Limited JSON and CSV exports are capped for public access.
+              </p>
             </div>
           </div>
 

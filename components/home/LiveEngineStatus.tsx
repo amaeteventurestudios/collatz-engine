@@ -2,6 +2,7 @@
 
 import { useCollatzLiveState } from "@/hooks/useCollatzLiveState";
 import type { HealthStatus } from "@/hooks/useCollatzLiveState";
+import { PanelHelp } from "@/components/ui/PanelHelp";
 import { formatLargeNumber, formatLargeNumberTitle } from "@/lib/collatz/format";
 
 // ─── Format helpers ───────────────────────────────────────────────────────────
@@ -231,9 +232,21 @@ export function LiveEngineStatus() {
         {/* ── Header ─────────────────────────────────────────────────────── */}
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800/70 py-4">
           <div>
-            <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.25em] text-slate-500">
-              Autonomous Collatz Explorer
-            </p>
+            <div className="flex items-center gap-2">
+              <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.25em] text-slate-500">
+                Autonomous Collatz Explorer
+              </p>
+              <PanelHelp
+                title="Autonomous Collatz Explorer"
+                description="Shows the next number being analyzed and the size of the verified catalog. The engine advances sequentially from 1 upward."
+                align="left"
+              />
+              <PanelHelp
+                title="Live Engine Status"
+                description="Shows whether the autonomous engine is running, how many numbers have been cataloged, how fast it is processing, and whether the worker is still reporting fresh activity."
+                align="left"
+              />
+            </div>
             <p className="mt-0.5 font-mono text-[10px] text-slate-600">
               Sequentially cataloging Collatz trajectories from 1 upward
             </p>
@@ -272,6 +285,11 @@ export function LiveEngineStatus() {
             <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">
               Sequential Batch Processing
             </p>
+            <PanelHelp
+              title="Sequential Batch Processing"
+              description="The engine checks every integer in order, but saves completed results in batches for efficiency. This is why the dashboard updates in jumps instead of one number at a time."
+              align="left"
+            />
             <span className="font-mono text-[9px] text-slate-700">
               · integers processed in order from n=1 upward
             </span>
