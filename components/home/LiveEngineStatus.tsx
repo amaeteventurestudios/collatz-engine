@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCollatzLiveState } from "@/hooks/useCollatzLiveState";
 import type { HealthStatus } from "@/hooks/useCollatzLiveState";
 import { PanelHelp } from "@/components/ui/PanelHelp";
@@ -251,7 +252,15 @@ export function LiveEngineStatus() {
               Sequentially cataloging Collatz trajectories from 1 upward
             </p>
           </div>
-          <HealthBadge status={healthStatus} />
+          <div className="flex items-center gap-2">
+            <HealthBadge status={healthStatus} />
+            <Link
+              href="/status"
+              className="rounded border border-slate-700 px-2.5 py-1.5 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400 transition-colors hover:bg-slate-900 hover:text-slate-200"
+            >
+              Status
+            </Link>
+          </div>
         </div>
 
         {/* ── Primary metrics ─────────────────────────────────────────────── */}
@@ -392,9 +401,9 @@ export function LiveEngineStatus() {
               <Label>Heartbeat</Label>
               <Value
                 className={`text-sm ${
-                  isFinite(heartbeatAgeSeconds) && heartbeatAgeSeconds <= 15
+                  isFinite(heartbeatAgeSeconds) && heartbeatAgeSeconds <= 30
                     ? "text-emerald-400"
-                    : heartbeatAgeSeconds <= 60
+                    : heartbeatAgeSeconds <= 120
                       ? "text-amber-400"
                       : "text-orange-400"
                 }`}

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { PanelHelp } from "@/components/ui/PanelHelp";
 import { formatLargeNumber, formatLargeNumberTitle } from "@/lib/collatz/format";
 
-interface IntegritySummary {
+interface LiveIntegritySummary {
   ok: boolean;
   checkedAt: string;
   scope: "latest_range";
@@ -33,13 +33,33 @@ interface IntegritySummary {
   };
 }
 
+interface LatestIntegrityRun {
+  status: "passed" | "failed" | "warning";
+  checkedAt: string;
+  highestVerifiedN: number | null;
+  numbersCataloged: number | null;
+  checksPassed: number | null;
+  checksFailed: number | null;
+  durationMs: number | null;
+  duplicateCount: number | null;
+  missingRangeCount: number | null;
+  stateMatchesCatalog: boolean | null;
+  recordsMatchCatalog: boolean | null;
+  heartbeatRecent: boolean | null;
+}
+
 type PanelStatus = "passed" | "warning" | "unavailable";
 
 const POLL_MS = 30_000;
 
-function statusFrom(summary: IntegritySummary | null, error: string | null): PanelStatus {
+function statusFrom(summary: LiveIntegritySummary | null, error: string | null): PanelStatus {
   if (error || !summary) return "unavailable";
   return summary.ok ? "passed" : "warning";
+}
+
+function fullStatusFrom(run: LatestIntegrityRun | null, error: string | null): PanelStatus {
+  if (error || !run) return "unavailable";
+  return run.status === "passed" ? "passed" : "warning";
 }
 
 function statusCopy(status: PanelStatus) {
@@ -81,6 +101,12 @@ function fmtDate(iso: string | null | undefined): string {
   });
 }
 
+function fmtDuration(ms: number | null | undefined): string {
+  if (ms == null) return "—";
+  if (ms < 1_000) return `${ms}ms`;
+  return `${(ms / 1_000).toFixed(2)}s`;
+}
+
 function CheckPill({ label, ok }: { label: string; ok: boolean | null }) {
   const cls =
     ok === true
@@ -99,8 +125,11 @@ function CheckPill({ label, ok }: { label: string; ok: boolean | null }) {
 }
 
 export function VerificationPanel() {
-  const [summary, setSummary] = useState<IntegritySummary | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [liveSummary, setLiveSummary] = useState<LiveIntegritySummary | null>(null);
+  const [liveError, setLiveError] = useState<string | null>(null);
+  const [latestRun, setLatestRun] = useState<LatestIntegrityRun | null>(null);
+  const [latestMessage, setLatestMessage] = useState<string | null>(null);
+  const [latestError, setLatestError] = useState<string | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
 
   useEffect(() => {
@@ -108,18 +137,41 @@ export function VerificationPanel() {
 
     async function load() {
       try {
-        const res = await fetch("/api/collatz/integrity", { cache: "no-store" });
-        const json = await res.json();
+        const [liveRes, latestRes] = await Promise.all([
+          fetch("/api/collatz/integrity", { cache: "no-store" }),
+          fetch("/api/collatz/integrity/latest", { cache: "no-store" }),
+        ]);
+        const [liveJson, latestJson] = await Promise.all([
+          liveRes.json(),
+          latestRes.json(),
+        ]);
         if (!mounted) return;
-        if (!res.ok || json.ok === false) {
-          setError(json.error ?? "Verification summary is unavailable.");
-          return;
+
+        if (!liveRes.ok || liveJson.ok === false) {
+          setLiveError(liveJson.error ?? "Live verification summary is unavailable.");
+        } else {
+          setLiveSummary(liveJson as LiveIntegritySummary);
+          setLiveError(null);
         }
-        setSummary(json as IntegritySummary);
-        setError(null);
+
+        if (!latestRes.ok) {
+          setLatestRun(null);
+          setLatestMessage(null);
+          setLatestError(latestJson.error ?? "Full verification status is unavailable.");
+        } else if (latestJson.ok === false) {
+          setLatestRun(null);
+          setLatestMessage(latestJson.message ?? "No full verification run recorded yet.");
+          setLatestError(null);
+        } else {
+          setLatestRun(latestJson.latest as LatestIntegrityRun);
+          setLatestMessage(null);
+          setLatestError(null);
+        }
       } catch (err) {
         if (!mounted) return;
-        setError(err instanceof Error ? err.message : "Verification summary is unavailable.");
+        const message = err instanceof Error ? err.message : "Verification summary is unavailable.";
+        setLiveError(message);
+        setLatestError(message);
       }
     }
 
@@ -131,9 +183,11 @@ export function VerificationPanel() {
     };
   }, []);
 
-  const status = statusFrom(summary, error);
-  const cfg = statusCopy(status);
-  const checks = summary?.checks;
+  const liveStatus = statusFrom(liveSummary, liveError);
+  const liveCfg = statusCopy(liveStatus);
+  const fullStatus = fullStatusFrom(latestRun, latestError);
+  const fullCfg = statusCopy(fullStatus);
+  const checks = liveSummary?.checks;
 
   return (
     <section id="verification" className="scroll-mt-20 px-4 pb-10 sm:pb-14">
@@ -152,10 +206,16 @@ export function VerificationPanel() {
                     align="left"
                   />
                 </div>
-                <span className={`inline-flex items-center gap-2 rounded border px-2.5 py-1 ${cfg.bg} ${cfg.border}`}>
-                  <span className={`h-1.5 w-1.5 rounded-full ${cfg.dot}`} />
-                  <span className={`font-mono text-[10px] font-bold uppercase tracking-[0.18em] ${cfg.text}`}>
-                    {cfg.label}
+                <span className={`inline-flex items-center gap-2 rounded border px-2.5 py-1 ${liveCfg.bg} ${liveCfg.border}`}>
+                  <span className={`h-1.5 w-1.5 rounded-full ${liveCfg.dot}`} />
+                  <span className={`font-mono text-[10px] font-bold uppercase tracking-[0.18em] ${liveCfg.text}`}>
+                    Live {liveCfg.label}
+                  </span>
+                </span>
+                <span className={`inline-flex items-center gap-2 rounded border px-2.5 py-1 ${fullCfg.bg} ${fullCfg.border}`}>
+                  <span className={`h-1.5 w-1.5 rounded-full ${fullCfg.dot}`} />
+                  <span className={`font-mono text-[10px] font-bold uppercase tracking-[0.18em] ${fullCfg.text}`}>
+                    Full {fullCfg.label}
                   </span>
                 </span>
               </div>
@@ -165,9 +225,8 @@ export function VerificationPanel() {
                 record. This system does not claim to prove the Collatz Conjecture.
               </p>
               <p className="mt-2 text-[11px] leading-relaxed text-slate-500">
-                The public summary checks the latest verified range for duplicate entries,
-                missing ranges, record consistency, and heartbeat freshness. Full catalog
-                verification remains available through the command-line integrity check.
+                Live checks monitor recent catalog health. Full verification scans review the
+                catalog for duplicate entries, missing ranges, and record consistency.
               </p>
             </div>
 
@@ -183,6 +242,12 @@ export function VerificationPanel() {
                 className="rounded border border-slate-700 px-3 py-2 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-300 transition-colors hover:bg-slate-900"
               >
                 Read methodology
+              </Link>
+              <Link
+                href="/status"
+                className="rounded border border-slate-700 px-3 py-2 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-300 transition-colors hover:bg-slate-900"
+              >
+                System status
               </Link>
               <a
                 href="/api/collatz/export?format=json&limit=1000"
@@ -209,52 +274,149 @@ export function VerificationPanel() {
             </div>
           </div>
 
-          <div className="mt-5 grid gap-px overflow-hidden rounded border border-slate-800 bg-slate-800 sm:grid-cols-3">
-            <div className="bg-slate-950 px-4 py-3">
-              <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-                Highest Verified n
-              </p>
-              <p
-                className="mt-1 font-mono text-lg font-bold text-slate-100"
-                title={summary ? formatLargeNumberTitle(summary.highestVerifiedN) : undefined}
-              >
-                {summary ? formatLargeNumber(summary.highestVerifiedN) : "—"}
-              </p>
+          <div className="mt-5 border-t border-slate-800 pt-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+                  Live Bounded Check
+                </p>
+                <p className="mt-1 text-xs leading-relaxed text-slate-500">
+                  Fast, current, and limited to the latest catalog window for public dashboard health.
+                </p>
+              </div>
+              <span className={`inline-flex items-center gap-2 rounded border px-2.5 py-1 ${liveCfg.bg} ${liveCfg.border}`}>
+                <span className={`h-1.5 w-1.5 rounded-full ${liveCfg.dot}`} />
+                <span className={`font-mono text-[10px] font-bold uppercase tracking-[0.18em] ${liveCfg.text}`}>
+                  {liveCfg.label}
+                </span>
+              </span>
             </div>
-            <div className="bg-slate-950 px-4 py-3">
-              <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-                Numbers Cataloged
-              </p>
-              <p
-                className="mt-1 font-mono text-lg font-bold text-slate-100"
-                title={summary ? formatLargeNumberTitle(summary.numbersCataloged) : undefined}
-              >
-                {summary ? formatLargeNumber(summary.numbersCataloged) : "—"}
-              </p>
+
+            <div className="mt-4 grid gap-px overflow-hidden rounded border border-slate-800 bg-slate-800 sm:grid-cols-3">
+              <div className="bg-slate-950 px-4 py-3">
+                <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                  Highest Verified n
+                </p>
+                <p
+                  className="mt-1 font-mono text-lg font-bold text-slate-100"
+                  title={liveSummary ? formatLargeNumberTitle(liveSummary.highestVerifiedN) : undefined}
+                >
+                  {liveSummary ? formatLargeNumber(liveSummary.highestVerifiedN) : "—"}
+                </p>
+              </div>
+              <div className="bg-slate-950 px-4 py-3">
+                <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                  Numbers Cataloged
+                </p>
+                <p
+                  className="mt-1 font-mono text-lg font-bold text-slate-100"
+                  title={liveSummary ? formatLargeNumberTitle(liveSummary.numbersCataloged) : undefined}
+                >
+                  {liveSummary ? formatLargeNumber(liveSummary.numbersCataloged) : "—"}
+                </p>
+              </div>
+              <div className="bg-slate-950 px-4 py-3">
+                <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                  Last Live Check
+                </p>
+                <p className="mt-1 font-mono text-sm font-bold text-slate-100">
+                  {liveSummary ? fmtDate(liveSummary.checkedAt) : "—"}
+                </p>
+              </div>
             </div>
-            <div className="bg-slate-950 px-4 py-3">
-              <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-                Last Verification Time
-              </p>
-              <p className="mt-1 font-mono text-sm font-bold text-slate-100">
-                {summary ? fmtDate(summary.lastVerificationTime) : "—"}
-              </p>
+
+            <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+              <CheckPill label="Duplicate Check" ok={checks ? checks.duplicates.ok : null} />
+              <CheckPill label="Missing Range Check" ok={checks ? checks.missingRanges.ok : null} />
+              <CheckPill label="Record Consistency" ok={checks ? checks.stateMatchesCatalog.ok : null} />
+              <CheckPill label="Worker Heartbeat" ok={checks ? checks.heartbeat.ok : null} />
+              <CheckPill label="Status Readable" ok={checks ? checks.statusReadable.ok : null} />
             </div>
           </div>
 
-          <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
-            <CheckPill label="Duplicate Check" ok={checks ? checks.duplicates.ok : null} />
-            <CheckPill label="Missing Range Check" ok={checks ? checks.missingRanges.ok : null} />
-            <CheckPill label="Record Consistency" ok={checks ? checks.stateMatchesCatalog.ok : null} />
-            <CheckPill label="Worker Heartbeat" ok={checks ? checks.heartbeat.ok : null} />
-            <CheckPill label="Status Readable" ok={checks ? checks.statusReadable.ok : null} />
+          <div className="mt-6 border-t border-slate-800 pt-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+                  Full Catalog Verification
+                </p>
+                <p className="mt-1 text-xs leading-relaxed text-slate-500">
+                  Last persisted full scan across the catalog, including duplicate entries,
+                  missing ranges, and record consistency.
+                </p>
+              </div>
+              <span className={`inline-flex items-center gap-2 rounded border px-2.5 py-1 ${fullCfg.bg} ${fullCfg.border}`}>
+                <span className={`h-1.5 w-1.5 rounded-full ${fullCfg.dot}`} />
+                <span className={`font-mono text-[10px] font-bold uppercase tracking-[0.18em] ${fullCfg.text}`}>
+                  {fullCfg.label}
+                </span>
+              </span>
+            </div>
+
+            {latestRun ? (
+              <div className="mt-4 grid gap-px overflow-hidden rounded border border-slate-800 bg-slate-800 sm:grid-cols-2 lg:grid-cols-5">
+                <div className="bg-slate-950 px-4 py-3">
+                  <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                    Last Checked
+                  </p>
+                  <p className="mt-1 font-mono text-sm font-bold text-slate-100">
+                    {fmtDate(latestRun.checkedAt)}
+                  </p>
+                </div>
+                <div className="bg-slate-950 px-4 py-3">
+                  <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                    Highest Verified n
+                  </p>
+                  <p
+                    className="mt-1 font-mono text-sm font-bold text-slate-100"
+                    title={
+                      latestRun.highestVerifiedN != null
+                        ? formatLargeNumberTitle(latestRun.highestVerifiedN)
+                        : undefined
+                    }
+                  >
+                    {latestRun.highestVerifiedN != null
+                      ? formatLargeNumber(latestRun.highestVerifiedN)
+                      : "—"}
+                  </p>
+                </div>
+                <div className="bg-slate-950 px-4 py-3">
+                  <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                    Duplicates / Gaps
+                  </p>
+                  <p className="mt-1 font-mono text-sm font-bold text-slate-100">
+                    {latestRun.duplicateCount ?? "—"} / {latestRun.missingRangeCount ?? "—"}
+                  </p>
+                </div>
+                <div className="bg-slate-950 px-4 py-3">
+                  <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                    Checks
+                  </p>
+                  <p className="mt-1 font-mono text-sm font-bold text-slate-100">
+                    {latestRun.checksPassed ?? "—"} passed · {latestRun.checksFailed ?? "—"} failed
+                  </p>
+                </div>
+                <div className="bg-slate-950 px-4 py-3">
+                  <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                    Duration
+                  </p>
+                  <p className="mt-1 font-mono text-sm font-bold text-slate-100">
+                    {fmtDuration(latestRun.durationMs)}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="mt-4 rounded border border-slate-800 bg-slate-900/40 px-4 py-3 text-sm text-slate-400">
+                {latestMessage ?? latestError ?? "No full verification run recorded yet."}
+              </div>
+            )}
           </div>
 
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
             <p className="text-[11px] text-slate-500">
-              Latest integrity summary covers the most recent{" "}
-              {summary ? summary.scopeSize.toLocaleString("en-US") : "—"} catalog entries.
-              {error ? ` ${error}` : ""}
+              Live summary covers the most recent{" "}
+              {liveSummary ? liveSummary.scopeSize.toLocaleString("en-US") : "—"} catalog entries.
+              {liveError ? ` ${liveError}` : ""}
             </p>
             <button
               onClick={() => setDetailsOpen((v) => !v)}

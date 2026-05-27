@@ -24,9 +24,9 @@ export interface LiveEngineStateResult {
   heartbeatAgeSeconds: number;
   /**
    * Derived health classification:
-   *   "live"    — running, heartbeat ≤ 15s ago
-   *   "delayed" — running, heartbeat 16–60s ago
-   *   "stalled" — running, heartbeat > 60s ago (or no heartbeat data)
+   *   "live"    — running, heartbeat ≤ 30s ago
+   *   "delayed" — running, heartbeat 31–120s ago
+   *   "stalled" — running, heartbeat > 120s ago (or no heartbeat data)
    *   "stopped" — current_status !== "running"
    *   "error"   — last_error is set (takes priority over all other states)
    */
@@ -53,8 +53,8 @@ function deriveHealth(
   if (!state) return "stopped";
   if (state.last_error) return "error";
   if (state.current_status !== "running") return "stopped";
-  if (heartbeatAgeSeconds <= 15) return "live";
-  if (heartbeatAgeSeconds <= 60) return "delayed";
+  if (heartbeatAgeSeconds <= 30) return "live";
+  if (heartbeatAgeSeconds <= 120) return "delayed";
   return "stalled";
 }
 

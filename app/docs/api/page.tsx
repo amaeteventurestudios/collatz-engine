@@ -33,6 +33,25 @@ const endpoints = [
     notes: "Useful for dashboards, monitors, and public status displays.",
   },
   {
+    path: "/api/collatz/health",
+    purpose: "Returns public operating health for the autonomous engine and latest full integrity run.",
+    parameters: "None.",
+    limits: "Public-safe operational status only. No secrets, stack traces, or infrastructure details.",
+    request: "GET /api/collatz/health",
+    response: `{
+  "ok": true,
+  "status": "live",
+  "heartbeatAgeSeconds": 6,
+  "numbersCataloged": 125000,
+  "currentStatus": "running",
+  "numbersPerSecond": 240,
+  "lastRunAt": "2026-05-27T00:00:00.000Z",
+  "lastFullIntegrityRun": { "status": "passed", "checkedAt": "2026-05-27T03:00:00.000Z" },
+  "message": "Engine is live."
+}`,
+    notes: "Useful for external status displays and lightweight uptime checks.",
+  },
+  {
     path: "/api/collatz/latest?limit=10",
     purpose: "Returns the latest verified catalog results, ordered from newest verified n downward.",
     parameters: "limit: optional positive integer, capped at 100. Defaults to 25.",
@@ -124,6 +143,31 @@ const endpoints = [
   }
 }`,
     notes: "For full catalog verification, use the repository integrity command documented in the project source.",
+  },
+  {
+    path: "/api/collatz/integrity/latest",
+    purpose: "Returns the latest persisted full catalog verification summary.",
+    parameters: "None.",
+    limits: "Returns summary fields only; detailed internal logs are not exposed.",
+    request: "GET /api/collatz/integrity/latest",
+    response: `{
+  "ok": true,
+  "latest": {
+    "status": "passed",
+    "checkedAt": "2026-05-27T03:00:00.000Z",
+    "highestVerifiedN": 125000,
+    "numbersCataloged": 125000,
+    "checksPassed": 11,
+    "checksFailed": 0,
+    "durationMs": 12345,
+    "duplicateCount": 0,
+    "missingRangeCount": 0,
+    "stateMatchesCatalog": true,
+    "recordsMatchCatalog": true,
+    "heartbeatRecent": true
+  }
+}`,
+    notes: "If no full verification is recorded yet, the endpoint returns ok=false with a public-safe message.",
   },
   {
     path: "/api/collatz/export?format=json&limit=10",

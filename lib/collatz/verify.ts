@@ -8,6 +8,8 @@ export interface CheckResult {
   detail: string;
 }
 
+export type PersistedIntegrityStatus = "passed" | "failed" | "warning";
+
 export interface EngineStateVerificationRow {
   id: string;
   started_at?: string | null;
@@ -21,6 +23,7 @@ export interface EngineStateVerificationRow {
   numbers_per_second?: number | null;
   last_run_at?: string | null;
   worker_heartbeat_at?: string | null;
+  last_error?: string | null;
 }
 
 export interface IntegritySummary {
@@ -58,6 +61,33 @@ export interface IntegritySummary {
       ok: boolean;
       status: string | null;
     };
+  };
+}
+
+export interface FullIntegrityVerificationResult {
+  checks: CheckResult[];
+  failed: number;
+  passed: number;
+  status: PersistedIntegrityStatus;
+  checkedAt: string;
+  durationMs: number;
+  highestVerifiedN: number | null;
+  numbersCataloged: number | null;
+  duplicateCount: number | null;
+  missingRangeCount: number | null;
+  stateMatchesCatalog: boolean | null;
+  highestPeakMatches: boolean | null;
+  longestStepsMatches: boolean | null;
+  heartbeatRecent: boolean | null;
+  engineStatus: string | null;
+  summary: {
+    checks: CheckResult[];
+    duplicateSample: number[];
+    missingRangeSample: Array<{ start: number; end: number }>;
+    lastCheckedNumber: number | null;
+    totalNumbersChecked: number | null;
+    uniqueNumbersCataloged: number | null;
+    stateCaughtUpAfterSeconds: number | null;
   };
 }
 
@@ -101,7 +131,7 @@ export async function readEngineState(
   const { data, error } = await client
     .from("collatz_engine_state")
     .select(
-      "id,started_at,last_checked_number,total_numbers_checked,highest_peak,longest_steps,current_status,last_batch_size,last_batch_duration_ms,numbers_per_second,last_run_at,worker_heartbeat_at",
+      "id,started_at,last_checked_number,total_numbers_checked,highest_peak,longest_steps,current_status,last_batch_size,last_batch_duration_ms,numbers_per_second,last_run_at,worker_heartbeat_at,last_error",
     )
     .eq("id", ENGINE_ID)
     .single();
@@ -200,6 +230,85 @@ export function findMissingRanges(
   return ranges.slice(0, limit);
 }
 
+function countDuplicateEntries(sortedValues: number[]): number {
+  let duplicateRows = 0;
+  let previous: number | null = null;
+
+  for (const value of sortedValues) {
+    if (value === previous) duplicateRows++;
+    previous = value;
+  }
+
+  return duplicateRows;
+}
+
+function countMissingRanges(sortedValues: number[], maxN: number, minN = 1): number {
+  let count = 0;
+  let expected = minN;
+
+  for (const value of sortedValues) {
+    if (value < expected) continue;
+    if (value > expected) count++;
+    expected = value + 1;
+  }
+
+  if (expected <= maxN) count++;
+  return count;
+}
+
+function finalizeFullVerification(input: {
+  checks: CheckResult[];
+  checkedAt: string;
+  startedAtMs: number;
+  highestVerifiedN: number | null;
+  numbersCataloged: number | null;
+  duplicateCount: number | null;
+  missingRangeCount: number | null;
+  stateMatchesCatalog: boolean | null;
+  highestPeakMatches: boolean | null;
+  longestStepsMatches: boolean | null;
+  heartbeatRecent: boolean | null;
+  engineStatus: string | null;
+  duplicateSample?: number[];
+  missingRangeSample?: Array<[number, number]>;
+  lastCheckedNumber?: number | null;
+  totalNumbersChecked?: number | null;
+  uniqueNumbersCataloged?: number | null;
+  stateCaughtUpAfterSeconds?: number | null;
+}): FullIntegrityVerificationResult {
+  const passed = input.checks.filter((check) => check.status === "PASS").length;
+  const failed = input.checks.length - passed;
+  return {
+    checks: input.checks,
+    passed,
+    failed,
+    status: failed > 0 ? "failed" : "passed",
+    checkedAt: input.checkedAt,
+    durationMs: Date.now() - input.startedAtMs,
+    highestVerifiedN: input.highestVerifiedN,
+    numbersCataloged: input.numbersCataloged,
+    duplicateCount: input.duplicateCount,
+    missingRangeCount: input.missingRangeCount,
+    stateMatchesCatalog: input.stateMatchesCatalog,
+    highestPeakMatches: input.highestPeakMatches,
+    longestStepsMatches: input.longestStepsMatches,
+    heartbeatRecent: input.heartbeatRecent,
+    engineStatus: input.engineStatus,
+    summary: {
+      checks: input.checks,
+      duplicateSample: input.duplicateSample ?? [],
+      missingRangeSample: (input.missingRangeSample ?? []).map(([start, end]) => ({
+        start,
+        end,
+      })),
+      lastCheckedNumber: input.lastCheckedNumber ?? null,
+      totalNumbersChecked: input.totalNumbersChecked ?? null,
+      uniqueNumbersCataloged: input.uniqueNumbersCataloged ?? null,
+      stateCaughtUpAfterSeconds: input.stateCaughtUpAfterSeconds ?? null,
+    },
+  };
+}
+
 async function readResultCount(client: SupabaseClient): Promise<number> {
   const { count, error } = await client
     .from("collatz_results")
@@ -228,33 +337,85 @@ async function readTopMetric(
 
 export async function runFullIntegrityVerification(
   client: SupabaseClient,
-): Promise<{ checks: CheckResult[]; failed: number; passed: number }> {
+): Promise<FullIntegrityVerificationResult> {
+  const checkedAt = new Date().toISOString();
+  const startedAtMs = Date.now();
   const checks: CheckResult[] = [];
   const initialState = await readEngineState(client);
 
   if (!initialState.state) {
     checks.push(fail("Engine state row", initialState.error ?? "No state row found for id=main"));
-    return { checks, passed: 0, failed: 1 };
+    return finalizeFullVerification({
+      checks,
+      checkedAt,
+      startedAtMs,
+      highestVerifiedN: null,
+      numbersCataloged: null,
+      duplicateCount: null,
+      missingRangeCount: null,
+      stateMatchesCatalog: null,
+      highestPeakMatches: null,
+      longestStepsMatches: null,
+      heartbeatRecent: null,
+      engineStatus: null,
+    });
   }
 
   checks.push(pass("Engine state row", "Readable state row found for id=main."));
 
+  let rowCount: number | null = null;
   try {
-    const rowCount = await readResultCount(client);
+    rowCount = await readResultCount(client);
     checks.push(pass("Catalog row count", `${rowCount.toLocaleString("en-US")} result rows readable.`));
   } catch (err) {
     checks.push(fail("Catalog row count", err instanceof Error ? err.message : "Unable to count rows."));
   }
 
-  const numbers = await readAllResultNumbers(client);
+  let numbers: number[];
+  try {
+    numbers = await readAllResultNumbers(client);
+  } catch (err) {
+    checks.push(fail("Catalog sequence scan", err instanceof Error ? err.message : "Unable to scan catalog sequence."));
+    return finalizeFullVerification({
+      checks,
+      checkedAt,
+      startedAtMs,
+      highestVerifiedN: null,
+      numbersCataloged: rowCount,
+      duplicateCount: null,
+      missingRangeCount: null,
+      stateMatchesCatalog: null,
+      highestPeakMatches: null,
+      longestStepsMatches: null,
+      heartbeatRecent: null,
+      engineStatus: initialState.state.current_status ?? null,
+      lastCheckedNumber: initialState.state.last_checked_number ?? null,
+      totalNumbersChecked: initialState.state.total_numbers_checked ?? null,
+    });
+  }
   const maxN = numbers.length > 0 ? numbers[numbers.length - 1] : 0;
   const uniqueCount = new Set(numbers).size;
   const settledState = await readSettledEngineState(client, maxN);
 
   if (!settledState.state) {
     checks.push(fail("Engine state row after result scan", settledState.error ?? "Unable to re-read state row."));
-    const passed = checks.filter((check) => check.status === "PASS").length;
-    return { checks, passed, failed: checks.length - passed };
+    return finalizeFullVerification({
+      checks,
+      checkedAt,
+      startedAtMs,
+      highestVerifiedN: maxN,
+      numbersCataloged: rowCount ?? numbers.length,
+      duplicateCount: countDuplicateEntries(numbers),
+      missingRangeCount: countMissingRanges(numbers, maxN),
+      stateMatchesCatalog: null,
+      highestPeakMatches: null,
+      longestStepsMatches: null,
+      heartbeatRecent: null,
+      engineStatus: initialState.state.current_status ?? null,
+      duplicateSample: findDuplicateValues(numbers),
+      missingRangeSample: findMissingRanges(numbers, maxN),
+      uniqueNumbersCataloged: uniqueCount,
+    });
   }
 
   const state = settledState.state;
@@ -268,6 +429,7 @@ export async function runFullIntegrityVerification(
   );
 
   const duplicates = findDuplicateValues(numbers);
+  const duplicateCount = countDuplicateEntries(numbers);
   checks.push(
     duplicates.length === 0
       ? pass("Duplicate n values", "No duplicate n values found in collatz_results.")
@@ -278,6 +440,7 @@ export async function runFullIntegrityVerification(
   );
 
   const missingRanges = findMissingRanges(numbers, maxN);
+  const missingRangeCount = countMissingRanges(numbers, maxN);
   checks.push(
     missingRanges.length === 0
       ? pass("Missing n ranges", `No missing values from 1 to ${maxN.toLocaleString("en-US")}.`)
@@ -290,8 +453,9 @@ export async function runFullIntegrityVerification(
   );
 
   const totalChecked = state.total_numbers_checked ?? 0;
+  const totalMatches = totalChecked === maxN && uniqueCount === maxN;
   checks.push(
-    totalChecked === maxN && uniqueCount === maxN
+    totalMatches
       ? pass(
           "total_numbers_checked vs max n",
           `State total ${totalChecked.toLocaleString("en-US")} matches max n ${maxN.toLocaleString("en-US")} and unique row count.`,
@@ -299,12 +463,13 @@ export async function runFullIntegrityVerification(
       : fail(
           "total_numbers_checked vs max n",
           `State total=${totalChecked.toLocaleString("en-US")}, max n=${maxN.toLocaleString("en-US")}, unique rows=${uniqueCount.toLocaleString("en-US")}.`,
-        ),
+      ),
   );
 
   const lastChecked = state.last_checked_number ?? 0;
+  const lastCheckedMatches = lastChecked === maxN;
   checks.push(
-    lastChecked === maxN
+    lastCheckedMatches
       ? pass(
           "last_checked_number continuity",
           `Last checked n=${lastChecked.toLocaleString("en-US")}; expected current/next n=${(lastChecked + 1).toLocaleString("en-US")}.`,
@@ -312,13 +477,15 @@ export async function runFullIntegrityVerification(
       : fail(
           "last_checked_number continuity",
           `last_checked_number=${lastChecked.toLocaleString("en-US")} but max stored n=${maxN.toLocaleString("en-US")}.`,
-        ),
+      ),
   );
 
+  let highestPeakMatches: boolean | null = null;
   try {
     const maxPeak = (await readTopMetric(client, "peak")).peak ?? 0;
+    highestPeakMatches = state.highest_peak === maxPeak;
     checks.push(
-      state.highest_peak === maxPeak
+      highestPeakMatches
         ? pass("highest_peak state record", `State highest_peak matches result max ${maxPeak.toLocaleString("en-US")}.`)
         : fail(
             "highest_peak state record",
@@ -329,10 +496,12 @@ export async function runFullIntegrityVerification(
     checks.push(fail("highest_peak state record", err instanceof Error ? err.message : "Unable to read peak record."));
   }
 
+  let longestStepsMatches: boolean | null = null;
   try {
     const maxSteps = (await readTopMetric(client, "steps")).steps ?? 0;
+    longestStepsMatches = state.longest_steps === maxSteps;
     checks.push(
-      state.longest_steps === maxSteps
+      longestStepsMatches
         ? pass("longest_steps state record", `State longest_steps matches result max ${maxSteps.toLocaleString("en-US")}.`)
         : fail(
             "longest_steps state record",
@@ -345,8 +514,10 @@ export async function runFullIntegrityVerification(
 
   const heartbeatAt = state.worker_heartbeat_at;
   const heartbeatAgeMs = heartbeatAt ? Date.now() - new Date(heartbeatAt).getTime() : Infinity;
+  const heartbeatRecent =
+    Number.isFinite(heartbeatAgeMs) && heartbeatAgeMs >= 0 && heartbeatAgeMs <= HEARTBEAT_RECENT_MS;
   checks.push(
-    Number.isFinite(heartbeatAgeMs) && heartbeatAgeMs >= 0 && heartbeatAgeMs <= HEARTBEAT_RECENT_MS
+    heartbeatRecent
       ? pass("Recent worker heartbeat", `Last heartbeat ${Math.round(heartbeatAgeMs / 1000)}s ago.`)
       : fail(
           "Recent worker heartbeat",
@@ -362,8 +533,30 @@ export async function runFullIntegrityVerification(
       : fail("current_status readable", "current_status is empty or unreadable."),
   );
 
-  const passed = checks.filter((check) => check.status === "PASS").length;
-  return { checks, passed, failed: checks.length - passed };
+  return finalizeFullVerification({
+    checks,
+    checkedAt,
+    startedAtMs,
+    highestVerifiedN: maxN,
+    numbersCataloged: rowCount ?? numbers.length,
+    duplicateCount,
+    missingRangeCount,
+    stateMatchesCatalog:
+      totalMatches &&
+      lastCheckedMatches &&
+      highestPeakMatches === true &&
+      longestStepsMatches === true,
+    highestPeakMatches,
+    longestStepsMatches,
+    heartbeatRecent,
+    engineStatus: state.current_status ?? null,
+    duplicateSample: duplicates,
+    missingRangeSample: missingRanges,
+    lastCheckedNumber: lastChecked,
+    totalNumbersChecked: totalChecked,
+    uniqueNumbersCataloged: uniqueCount,
+    stateCaughtUpAfterSeconds: settledState.waited,
+  });
 }
 
 export async function getIntegritySummary(
@@ -371,19 +564,20 @@ export async function getIntegritySummary(
   scopeSize = DEFAULT_SUMMARY_SCOPE_SIZE,
 ): Promise<IntegritySummary> {
   const checkedAt = new Date().toISOString();
-  const [stateResult, numbersCataloged, maxRow, peakRow, stepsRow] = await Promise.all([
-    readEngineState(client),
+  const [numbersCataloged, maxRow, peakRow, stepsRow] = await Promise.all([
     readResultCount(client),
     readTopMetric(client, "n"),
     readTopMetric(client, "peak"),
     readTopMetric(client, "steps"),
   ]);
 
+  const highestVerifiedN = maxRow.n ?? 0;
+  const stateResult = await readSettledEngineState(client, highestVerifiedN);
+
   if (!stateResult.state) {
     throw new Error(stateResult.error ?? "Live catalog state is unavailable.");
   }
 
-  const highestVerifiedN = maxRow.n ?? 0;
   const sampleLimit = Math.max(1, Math.min(scopeSize, 10_000));
   const { data, error } = await client
     .from("collatz_results")
@@ -400,7 +594,9 @@ export async function getIntegritySummary(
   const duplicates = findDuplicateValues(latestNumbers);
   const missingRanges = findMissingRanges(latestNumbers, highestVerifiedN, MAX_REPORT_ITEMS, minSampleN);
   const state = stateResult.state;
-  const totalMatches = (state.total_numbers_checked ?? 0) === highestVerifiedN;
+  const totalMatches =
+    (state.total_numbers_checked ?? 0) >= highestVerifiedN &&
+    (state.last_checked_number ?? 0) >= highestVerifiedN;
   const highestPeakMatches = (state.highest_peak ?? 0) === (peakRow.peak ?? 0);
   const longestStepsMatches = (state.longest_steps ?? 0) === (stepsRow.steps ?? 0);
   const heartbeatAt = state.worker_heartbeat_at;
