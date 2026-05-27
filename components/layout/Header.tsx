@@ -9,7 +9,7 @@ const navLinks = [
   { href: "/", label: "Dashboard" },
   { href: "/#visualizer", label: "Visualizer" },
   { href: "/#records", label: "Records" },
-  { href: "/#research", label: "Research Log" },
+  { href: "/observatory", label: "Observatory" },
   { href: "/#about", label: "About" },
   { href: "/#contribute", label: "Contribute" },
 ];

@@ -3,12 +3,11 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
-import { DEMO_NOTES, REPORT_TYPE_META, getNoteById } from "@/lib/ai-observatory/demo-notes";
+import { REPORT_TYPE_META } from "@/lib/ai-observatory/demo-notes";
+import { getPublishedNoteById } from "@/lib/ai-observatory/store";
 import { AIObservatoryDisclaimer } from "@/components/ai/AIObservatoryDisclaimer";
 
-export function generateStaticParams() {
-  return DEMO_NOTES.map((note) => ({ id: note.id }));
-}
+export const dynamic = "force-dynamic";
 
 export default async function ObservatoryNotePage({
   params,
@@ -16,7 +15,7 @@ export default async function ObservatoryNotePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const note = getNoteById(id);
+  const note = await getPublishedNoteById(id);
   if (!note) notFound();
 
   const meta = REPORT_TYPE_META[note.reportType];
