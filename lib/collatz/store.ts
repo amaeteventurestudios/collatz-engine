@@ -215,6 +215,23 @@ export async function getSampleResults(limit = 500): Promise<CollatzResultRow[]>
   return (data ?? []) as CollatzResultRow[];
 }
 
+/**
+ * Latest N verified results by n, returned in ascending order for charting.
+ */
+export async function getLatestResults(limit = 500): Promise<CollatzResultRow[]> {
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from("collatz_results")
+    .select("n, steps, peak, reached_one")
+    .order("n", { ascending: false })
+    .limit(limit);
+  if (error) {
+    console.error("[Collatz Engine] getLatestResults failed", error);
+    return [];
+  }
+  return [...((data ?? []) as CollatzResultRow[])].sort((a, b) => a.n - b.n);
+}
+
 // ─── Activity logs ────────────────────────────────────────────────────────────
 
 /**

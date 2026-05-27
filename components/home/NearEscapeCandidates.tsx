@@ -38,6 +38,21 @@ function toCandidate(row: CollatzResultRow): Candidate {
   return { n: row.n, steps: row.steps, peak: row.peak, ratio, flags };
 }
 
+function formatAge(date: Date | null, now: Date): string {
+  if (!date) return "not yet refreshed";
+  const seconds = Math.max(0, Math.floor((now.getTime() - date.getTime()) / 1000));
+  if (seconds < 60) return `${seconds}s ago`;
+  const minutes = Math.floor(seconds / 60);
+  return `${minutes}m ago`;
+}
+
+function getRangeLabel(candidates: Candidate[]): string {
+  if (candidates.length === 0) return "n = pending";
+  const min = candidates.reduce((value, row) => Math.min(value, row.n), candidates[0].n);
+  const max = candidates.reduce((value, row) => Math.max(value, row.n), candidates[0].n);
+  return `n=${min.toLocaleString("en-US")}–${max.toLocaleString("en-US")}`;
+}
+
 const tableColumns = [
   { label: "Number", hint: "Starting n" },
   { label: "Steps to 1", hint: "Trajectory length" },
@@ -115,13 +130,30 @@ function CandidateTable({ candidates }: { candidates: Candidate[] }) {
 
 // ─── Modal content ────────────────────────────────────────────────────────────
 
-function AllCandidatesModal({ candidates }: { candidates: Candidate[] }) {
+function AllCandidatesModal({
+  candidates,
+  rangeLabel,
+  refreshedLabel,
+}: {
+  candidates: Candidate[];
+  rangeLabel: string;
+  refreshedLabel: string;
+}) {
   return (
     <div>
-      <p className="mb-3 text-[11px] text-slate-400">
-        {candidates.length} candidates · sorted by peak ratio (descending) ·
-        flagged by peak ratio &gt; 50× or trajectory length &gt; 150 steps
-      </p>
+      <div className="mb-4 rounded-xl border border-slate-700 bg-slate-900/70 p-4">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+          Live ranked sample
+        </p>
+        <p className="mt-2 text-sm leading-relaxed text-slate-300">
+          {candidates.length} candidates from the latest peak sample · {rangeLabel} · refreshed{" "}
+          {refreshedLabel} · sorted by computed peak ratio, highest first.
+        </p>
+        <p className="mt-2 text-xs leading-relaxed text-slate-500">
+          Near-escape is a visualization label only. This modal shows the sampled candidate list,
+          not the full catalog.
+        </p>
+      </div>
       <div className="overflow-y-auto rounded-xl border border-slate-700" style={{ maxHeight: 440 }}>
         <table className="min-w-full text-xs">
           <thead className="sticky top-0 z-10">
@@ -192,6 +224,8 @@ export function NearEscapeCandidates() {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [allCandidates, setAllCandidates] = useState<Candidate[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
+  const [lastRefreshedAt, setLastRefreshedAt] = useState<Date | null>(null);
+  const [now, setNow] = useState(() => new Date());
   const mountedRef = useRef(false);
 
   useEffect(() => {
@@ -204,6 +238,7 @@ export function NearEscapeCandidates() {
         const all = rows.map(toCandidate).sort((a, b) => b.ratio - a.ratio);
         setAllCandidates(all);
         setCandidates(all.slice(0, TOP_N));
+        setLastRefreshedAt(new Date());
       } catch {
         // Keep last known data on transient errors
       }
@@ -211,15 +246,19 @@ export function NearEscapeCandidates() {
 
     poll();
     const pollId = window.setInterval(poll, POLL_MS);
+    const clockId = window.setInterval(() => setNow(new Date()), 1000);
 
     return () => {
       mountedRef.current = false;
       window.clearInterval(pollId);
+      window.clearInterval(clockId);
     };
   }, []);
 
   const hasCandidates = candidates.length > 0;
   const hasMore = allCandidates.length > TOP_N;
+  const rangeLabel = getRangeLabel(allCandidates);
+  const refreshedLabel = formatAge(lastRefreshedAt, now);
 
   return (
     <section id="near-escape" className="scroll-mt-20 px-4 pb-10 sm:pb-14">
@@ -233,6 +272,9 @@ export function NearEscapeCandidates() {
                 {hasCandidates
                   ? "Numbers with unusually high peak ratios or long trajectories from the live catalog"
                   : "Numbers with unusually high peak ratios or long trajectories — awaiting dataset growth"}
+              </p>
+              <p className="mt-1.5 text-[11px] leading-relaxed text-slate-400 dark:text-slate-500">
+                Live ranked candidates from the verified catalog · top {allCandidates.length || FETCH_N} peak sample · {rangeLabel} · refreshed {refreshedLabel} · refresh cadence: 10 seconds · ranking: peak ratio
               </p>
             </div>
             {hasMore && (
@@ -284,7 +326,7 @@ export function NearEscapeCandidates() {
 
           <p className="mt-3 text-center text-[11px] text-slate-400 dark:text-slate-500">
             {hasCandidates
-              ? `Showing top ${candidates.length} by peak ratio · Live catalog · All numbers reach 1`
+              ? `Showing top ${candidates.length} candidates by peak ratio from the live verified catalog · refreshed ${refreshedLabel} · all displayed candidates reached 1`
               : "Candidates flagged by peak ratio > 50× or trajectory length > 150 steps"}
           </p>
         </div>
@@ -297,7 +339,11 @@ export function NearEscapeCandidates() {
         title={`All Near-Escape Candidates (${allCandidates.length})`}
         maxWidth="max-w-2xl"
       >
-        <AllCandidatesModal candidates={allCandidates} />
+        <AllCandidatesModal
+          candidates={allCandidates}
+          rangeLabel={rangeLabel}
+          refreshedLabel={refreshedLabel}
+        />
       </Modal>
     </section>
   );

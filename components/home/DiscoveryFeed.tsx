@@ -21,7 +21,7 @@ const EVENT_STYLES: Record<string, EventStyle> = {
     iconColor: "text-blue-500 dark:text-blue-400",
     bg: "bg-blue-500/8 dark:bg-blue-400/8",
     ring: "ring-blue-500/20 dark:ring-blue-400/20",
-    tag: "Batch",
+    tag: "Verified Batch",
     tagColor: "bg-blue-500/10 text-blue-700 dark:text-blue-400",
   },
   batch_started: {
@@ -61,7 +61,7 @@ const EVENT_STYLES: Record<string, EventStyle> = {
     iconColor: "text-slate-500 dark:text-slate-400",
     bg: "bg-slate-100/60 dark:bg-slate-800/40",
     ring: "ring-slate-200/60 dark:ring-slate-700/40",
-    tag: "Checkpoint",
+    tag: "Milestone",
     tagColor: "bg-slate-200/80 text-slate-500 dark:bg-slate-700/80 dark:text-slate-400",
   },
   record_updated: {
@@ -107,6 +107,14 @@ function relativeTime(iso: string): string {
   });
 }
 
+function refreshAge(date: Date | null, now: Date): string {
+  if (!date) return "not yet refreshed";
+  const seconds = Math.max(0, Math.floor((now.getTime() - date.getTime()) / 1000));
+  if (seconds < 60) return `${seconds}s ago`;
+  const minutes = Math.floor(seconds / 60);
+  return `${minutes}m ago`;
+}
+
 function buildSubtext(log: ActivityLogRow): string {
   const parts: string[] = [];
   if (log.batch_start != null && log.batch_end != null) {
@@ -131,6 +139,8 @@ function buildSubtext(log: ActivityLogRow): string {
 export function DiscoveryFeed() {
   const [logs, setLogs] = useState<ActivityLogRow[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [lastRefreshedAt, setLastRefreshedAt] = useState<Date | null>(null);
+  const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
     let isMounted = true;
@@ -139,15 +149,21 @@ export function DiscoveryFeed() {
       if (!isMounted) return;
       setLogs(rows);
       setLoaded(true);
+      setLastRefreshedAt(new Date());
     }
     load();
     // Refresh every 30 seconds so recent batch activity surfaces quickly
     const interval = window.setInterval(load, 30_000);
+    const clock = window.setInterval(() => setNow(new Date()), 1000);
     return () => {
       isMounted = false;
       window.clearInterval(interval);
+      window.clearInterval(clock);
     };
   }, []);
+
+  const refreshedLabel = refreshAge(lastRefreshedAt, now);
+  const recordEvents = logs.filter((log) => log.event_type === "record_updated").length;
 
   return (
     <section id="feed" className="scroll-mt-20 px-4 pb-10 sm:pb-14">
@@ -158,7 +174,11 @@ export function DiscoveryFeed() {
             <div>
               <p className="section-heading">Discovery Feed</p>
               <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-                Operational activity log from the live catalog
+                Live feed from verified engine activity
+              </p>
+              <p className="mt-1.5 text-[11px] leading-relaxed text-slate-400 dark:text-slate-500">
+                Last refreshed {refreshedLabel} · showing latest {logs.length || 20} events · source:
+                verified catalog activity · refresh cadence: 30 seconds
               </p>
             </div>
             {logs.length > 0 && (
@@ -183,6 +203,11 @@ export function DiscoveryFeed() {
             </div>
           ) : (
             <div className="space-y-3">
+              {loaded && recordEvents === 0 && (
+                <div className="rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3 text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-400">
+                  No new record events in the latest refresh.
+                </div>
+              )}
               {(loaded ? logs : Array.from({ length: 3 })).map((log, i) => {
                 if (!loaded) {
                   // Loading skeleton
@@ -243,8 +268,8 @@ export function DiscoveryFeed() {
           )}
 
           <p className="mt-4 text-center text-[11px] text-slate-400 dark:text-slate-500">
-            Showing the {logs.length > 0 ? `${logs.length} most recent` : "latest"} operational
-            events · Refreshes every 30 seconds · Live catalog activity
+            Live feed from verified engine activity · refreshed {refreshedLabel} · refresh cadence:
+            30 seconds
           </p>
         </div>
       </div>

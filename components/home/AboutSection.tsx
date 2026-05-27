@@ -1,3 +1,8 @@
+"use client";
+
+import { useState } from "react";
+import { Modal } from "@/components/ui/Modal";
+
 const sections = [
   {
     num: "1",
@@ -20,7 +25,7 @@ const sections = [
   {
     num: "4",
     title: "How The Collatz Engine Works",
-    body: "The Collatz Engine uses computing to catalog, analyze, and visualize Collatz sequences for all positive integers up to very large values. It flags unusual values and leverages AI-assisted analysis to support research into this enduring mathematical mystery.",
+    body: "The Collatz Engine uses computation to catalog, analyze, and visualize Collatz sequences for positive integers as the verified catalog grows. It surfaces unusual trajectories and records without claiming proof.",
     cta: "Learn more →",
   },
   {
@@ -31,7 +36,91 @@ const sections = [
   },
 ];
 
+const modalContent: Record<
+  string,
+  {
+    intro?: string;
+    points?: string[];
+    faqs?: { question: string; answer: string }[];
+  }
+> = {
+  "What is the Collatz Conjecture?": {
+    intro:
+      "The Collatz Conjecture begins with any positive integer and applies one of two simple rules repeatedly.",
+    points: [
+      "If the number is even, divide it by 2.",
+      "If the number is odd, multiply it by 3 and add 1.",
+      "Repeat the process with the new value.",
+      "The conjecture says every positive integer eventually reaches 1.",
+      "It remains unproven.",
+    ],
+  },
+  "Definition of the Collatz Function": {
+    intro:
+      "The Collatz function is a rule for moving from one integer to the next in a sequence.",
+    points: [
+      "f(n) = n / 2 if n is even.",
+      "f(n) = 3n + 1 if n is odd.",
+      "The engine applies this function repeatedly and records trajectory statistics.",
+      "Those records support computational exploration, not a proof claim.",
+    ],
+  },
+  "Behavior of Collatz Sequences": {
+    intro:
+      "Collatz sequences can behave very differently even though they follow the same two rules.",
+    points: [
+      "Some sequences fall quickly.",
+      "Some climb high before descending.",
+      "Some take many steps before reaching 1.",
+      "No counterexample has been found through extensive computation, but computation alone is not proof.",
+    ],
+  },
+  "How The Collatz Engine Works": {
+    intro:
+      "The Collatz Engine is an autonomous computation system that builds a public verified catalog.",
+    points: [
+      "The engine starts at 1 and advances sequentially.",
+      "It processes integers in verified batches.",
+      "Completed results are stored in the catalog.",
+      "The dashboard displays live state, records, trajectories, heatmaps, and integrity checks.",
+      "This is computational exploration, not proof of the conjecture.",
+    ],
+  },
+  FAQs: {
+    faqs: [
+      {
+        question: "Is the Collatz Conjecture proven?",
+        answer: "No.",
+      },
+      {
+        question: "Does this engine prove it?",
+        answer: "No. It explores and catalogs computational behavior.",
+      },
+      {
+        question: "Does the engine skip numbers?",
+        answer: "No. It processes integers sequentially in verified batches.",
+      },
+      {
+        question: "Why does the dashboard appear to jump?",
+        answer:
+          "It writes completed batches to the catalog instead of updating after every single integer.",
+      },
+      {
+        question: "Can I export data?",
+        answer: "Yes. Use the public API and export tools.",
+      },
+      {
+        question: "Can I contribute?",
+        answer: "Yes. Use the Get Involved form.",
+      },
+    ],
+  },
+};
+
 export function AboutSection() {
+  const [activeTitle, setActiveTitle] = useState<string | null>(null);
+  const activeContent = activeTitle ? modalContent[activeTitle] : null;
+
   return (
     <section
       id="about"
@@ -62,7 +151,11 @@ export function AboutSection() {
               <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
                 {sec.body}
               </p>
-              <button className="mt-auto text-left text-xs font-medium text-teal-600 transition-colors hover:text-teal-500 dark:text-teal-400 dark:hover:text-teal-300">
+              <button
+                type="button"
+                onClick={() => setActiveTitle(sec.title)}
+                className="mt-auto text-left text-xs font-medium text-teal-600 transition-colors hover:text-teal-500 dark:text-teal-400 dark:hover:text-teal-300"
+              >
                 {sec.cta}
               </button>
             </div>
@@ -107,6 +200,37 @@ export function AboutSection() {
           </div>
         </div>
       </div>
+
+      <Modal
+        open={activeTitle !== null}
+        onClose={() => setActiveTitle(null)}
+        title={activeTitle ?? ""}
+        maxWidth="max-w-2xl"
+      >
+        {activeContent?.intro && (
+          <p className="text-sm leading-relaxed text-slate-300">{activeContent.intro}</p>
+        )}
+        {activeContent?.points && (
+          <ul className="mt-5 space-y-3">
+            {activeContent.points.map((point) => (
+              <li key={point} className="flex gap-3 text-sm leading-relaxed text-slate-300">
+                <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-teal-400" />
+                <span>{point}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+        {activeContent?.faqs && (
+          <div className="space-y-4">
+            {activeContent.faqs.map((faq) => (
+              <div key={faq.question} className="rounded-xl border border-slate-700 bg-slate-900/70 p-4">
+                <p className="text-sm font-semibold text-slate-100">{faq.question}</p>
+                <p className="mt-1.5 text-sm leading-relaxed text-slate-300">{faq.answer}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </Modal>
     </section>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { getSampleResults } from "@/lib/collatz/store";
+import { getLatestResults } from "@/lib/collatz/store";
 import type { CollatzResultRow } from "@/lib/collatz/store";
 import { Modal } from "@/components/ui/Modal";
 import { formatLargeNumber, formatLargeNumberTitle } from "@/lib/collatz/format";
@@ -20,6 +20,7 @@ const COLS = 20;
 const ROWS = 8;
 const MIN_FOR_HEATMAP = 40;
 const POLL_MS = 10_000;
+const SAMPLE_SIZE = 500;
 
 // ─── Heatmap builders ─────────────────────────────────────────────────────────
 
@@ -100,28 +101,47 @@ function buildRatioHeatmap(results: CollatzResultRow[]): number[][] | null {
 
 // ─── View metadata ────────────────────────────────────────────────────────────
 
-const VIEW_META: Record<PatternView, { xLabel: string; yLabel: string; desc: string }> = {
+const VIEW_META: Record<PatternView, { xLabel: string; yLabel: string; desc: string; helper: string }> = {
   "Steps to 1": {
     xLabel: "→ n ranges (ascending)",
     yLabel: "Step bands",
     desc: "Rows = step count bands (high → low) · Columns = n ranges · Color = relative frequency",
+    helper: "Highlights where longer trajectories appear inside the latest verified window.",
   },
   "Peak Value": {
     xLabel: "→ n ranges (ascending)",
     yLabel: "Peak bands",
     desc: "Rows = peak value bands (high → low) · Columns = n ranges · Color = relative frequency",
+    helper: "Highlights where trajectories climb to larger peak values.",
   },
   "Steps × Peak": {
     xLabel: "→ step count bands",
     yLabel: "Peak bands",
     desc: "Correlation of trajectory length vs peak value · Rows = peak value bands · Columns = step count bands",
+    helper: "Combines trajectory length and peak size to surface unusually intense paths.",
   },
   "Peak Ratio": {
     xLabel: "→ n ranges (ascending)",
     yLabel: "Peak/n ratio",
     desc: "Rows = peak÷n ratio bands (high → low) · Columns = n ranges · Color = relative frequency",
+    helper: "Shows how large the peak became relative to the starting integer.",
   },
 };
+
+function formatAge(date: Date | null, now: Date): string {
+  if (!date) return "not yet refreshed";
+  const seconds = Math.max(0, Math.floor((now.getTime() - date.getTime()) / 1000));
+  if (seconds < 60) return `${seconds}s ago`;
+  const minutes = Math.floor(seconds / 60);
+  return `${minutes}m ago`;
+}
+
+function getRangeLabel(results: CollatzResultRow[]): string {
+  if (results.length === 0) return "n = pending";
+  const min = results.reduce((value, row) => Math.min(value, row.n), results[0].n);
+  const max = results.reduce((value, row) => Math.max(value, row.n), results[0].n);
+  return `n=${min.toLocaleString("en-US")}–${max.toLocaleString("en-US")}`;
+}
 
 // ─── Color helper ─────────────────────────────────────────────────────────────
 
@@ -222,16 +242,33 @@ function HeatmapSkeleton() {
 
 // ─── "View all" modal content ─────────────────────────────────────────────────
 
-function AllResultsTable({ results }: { results: CollatzResultRow[] }) {
+function AllResultsTable({
+  results,
+  activeView,
+  rangeLabel,
+  refreshedLabel,
+}: {
+  results: CollatzResultRow[];
+  activeView: PatternView;
+  rangeLabel: string;
+  refreshedLabel: string;
+}) {
   const sorted = useMemo(
     () => [...results].sort((a, b) => b.steps - a.steps),
     [results],
   );
   return (
     <div>
-      <p className="mb-3 text-[11px] text-slate-400">
-        {sorted.length} trajectories · sorted by steps (descending)
-      </p>
+      <div className="mb-4 rounded-xl border border-slate-700 bg-slate-900/70 p-4">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+          Latest-window sample
+        </p>
+        <p className="mt-2 text-sm leading-relaxed text-slate-300">
+          {sorted.length} verified trajectories · {rangeLabel} · refreshed {refreshedLabel} ·
+          active metric: {activeView}. This modal shows the sampled latest window, not the full
+          catalog.
+        </p>
+      </div>
       <div className="overflow-y-auto rounded-xl border border-slate-700" style={{ maxHeight: 420 }}>
         <table className="min-w-full text-xs">
           <thead className="sticky top-0 z-10">
@@ -284,6 +321,8 @@ export function PatternViews() {
   const [results, setResults] = useState<CollatzResultRow[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
+  const [lastRefreshedAt, setLastRefreshedAt] = useState<Date | null>(null);
+  const [now, setNow] = useState(() => new Date());
   const mountedRef = useRef(false);
 
   useEffect(() => {
@@ -291,10 +330,11 @@ export function PatternViews() {
 
     async function poll() {
       try {
-        const rows = await getSampleResults(500);
+        const rows = await getLatestResults(SAMPLE_SIZE);
         if (!mountedRef.current) return;
         setResults(rows);
         setLoaded(true);
+        setLastRefreshedAt(new Date());
       } catch {
         // Keep last known data on transient errors
       }
@@ -302,10 +342,12 @@ export function PatternViews() {
 
     poll();
     const pollId = window.setInterval(poll, POLL_MS);
+    const clockId = window.setInterval(() => setNow(new Date()), 1000);
 
     return () => {
       mountedRef.current = false;
       window.clearInterval(pollId);
+      window.clearInterval(clockId);
     };
   }, []);
 
@@ -325,6 +367,8 @@ export function PatternViews() {
   const activeGrid = gridMap[activeView];
   const meta = VIEW_META[activeView];
   const hasData = activeGrid !== null;
+  const rangeLabel = getRangeLabel(results);
+  const refreshedLabel = formatAge(lastRefreshedAt, now);
 
   return (
     <section className="px-4 pb-10 sm:pb-14">
@@ -332,7 +376,12 @@ export function PatternViews() {
         <div className="engine-card">
           {/* Header */}
           <div className="mb-4 flex items-center justify-between gap-2">
-            <p className="section-heading">Heatmaps &amp; Pattern Views</p>
+            <div>
+              <p className="section-heading">Heatmaps &amp; Pattern Views</p>
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                Latest {Math.min(results.length || SAMPLE_SIZE, SAMPLE_SIZE).toLocaleString("en-US")} verified trajectories · {rangeLabel} · refreshed {refreshedLabel} · refresh cadence: 10 seconds
+              </p>
+            </div>
             {results.length > 0 && (
               <button
                 onClick={() => setModalOpen(true)}
@@ -342,6 +391,10 @@ export function PatternViews() {
               </button>
             )}
           </div>
+
+          <p className="mb-4 rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2 text-xs leading-relaxed text-slate-500 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-400">
+            {meta.helper}
+          </p>
 
           {/* View tabs */}
           <div className="-mx-5 mb-5 flex gap-1.5 overflow-x-auto px-5 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:pb-0">
@@ -384,7 +437,7 @@ export function PatternViews() {
 
           <p className="mt-3 text-center text-[11px] text-slate-400 dark:text-slate-500">
             {hasData
-              ? `${results.length} cataloged trajectories · ${meta.desc}`
+              ? `Latest ${results.length} verified trajectories · ${rangeLabel} · ${meta.desc}`
               : "Rows = bucketed trajectory groups · Columns = cataloged number ranges · Color = relative activity intensity"}
           </p>
         </div>
@@ -397,7 +450,12 @@ export function PatternViews() {
         title={`All Cataloged Trajectories (${results.length})`}
         maxWidth="max-w-2xl"
       >
-        <AllResultsTable results={results} />
+        <AllResultsTable
+          results={results}
+          activeView={activeView}
+          rangeLabel={rangeLabel}
+          refreshedLabel={refreshedLabel}
+        />
       </Modal>
     </section>
   );

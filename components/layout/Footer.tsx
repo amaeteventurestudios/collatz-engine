@@ -53,20 +53,24 @@ export function Footer() {
             <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400">
               Contact
             </p>
-            <p className="text-xs text-slate-600 dark:text-slate-400">collatz.engine@gmail.com</p>
+            <Link
+              href="/#contribute"
+              className="text-xs font-medium text-teal-600 transition-colors hover:text-teal-500 dark:text-teal-400 dark:hover:text-teal-300"
+            >
+              Use the Get Involved form
+            </Link>
             <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
-              Responses within 48 hours
+              Observations, ideas, and issue reports
             </p>
             <div className="mt-3 flex items-center gap-4">
-              {["Twitter/X", "YouTube", "GitHub"].map((s) => (
-                <a
-                  key={s}
-                  href="#"
-                  className="text-xs text-slate-400 transition-colors hover:text-teal-600 dark:text-slate-500 dark:hover:text-teal-400"
-                >
-                  {s}
-                </a>
-              ))}
+              <a
+                href="https://github.com/amaeteventurestudios/collatz-engine"
+                target="_blank"
+                rel="noreferrer"
+                className="text-xs text-slate-400 transition-colors hover:text-teal-600 dark:text-slate-500 dark:hover:text-teal-400"
+              >
+                GitHub
+              </a>
             </div>
           </div>
         </div>
