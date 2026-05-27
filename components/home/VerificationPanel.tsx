@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { formatLargeNumber, formatLargeNumberTitle } from "@/lib/collatz/format";
 
 interface IntegritySummary {
@@ -162,19 +163,34 @@ export function VerificationPanel() {
               </p>
             </div>
 
-            <div className="flex flex-wrap gap-2 lg:justify-end">
-              <a
-                href="/api/collatz/export?format=csv&limit=1000"
+            <div className="flex flex-wrap gap-2 lg:max-w-sm lg:justify-end">
+              <Link
+                href="/docs/api"
                 className="rounded border border-teal-500/40 bg-teal-500/10 px-3 py-2 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-teal-300 transition-colors hover:bg-teal-500/15"
               >
-                Export latest verified catalog sample
-              </a>
+                View API docs
+              </Link>
+              <Link
+                href="/methodology"
+                className="rounded border border-slate-700 px-3 py-2 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-300 transition-colors hover:bg-slate-900"
+              >
+                Read methodology
+              </Link>
               <a
                 href="/api/collatz/export?format=json&limit=1000"
                 className="rounded border border-slate-700 px-3 py-2 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-300 transition-colors hover:bg-slate-900"
               >
-                JSON sample
+                Export JSON sample
               </a>
+              <a
+                href="/api/collatz/export?format=csv&limit=1000"
+                className="rounded border border-slate-700 px-3 py-2 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-300 transition-colors hover:bg-slate-900"
+              >
+                Export CSV sample
+              </a>
+              <p className="basis-full text-right text-[11px] leading-relaxed text-slate-500 lg:text-left">
+                Limited export samples are capped for public access.
+              </p>
             </div>
           </div>
 
