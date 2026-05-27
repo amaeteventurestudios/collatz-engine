@@ -2,6 +2,7 @@ import { computeCollatzSummary } from "./engine";
 import {
   getEngineState,
   insertBatchResults,
+  readCommittedMaxN,
   updateEngineState,
   insertActivityLog,
   type CollatzResultRow,
@@ -96,6 +97,32 @@ export async function runAutonomousBatch(
 
     // ── Persist results ────────────────────────────────────────────────────────
     await insertBatchResults(rows);
+
+    // ── Verify inserted rows are visible before advancing state ────────────────
+    // A read-back confirms the upsert is committed and readable. If the max
+    // visible n is below batchEnd, state is NOT advanced and a failure event
+    // is logged so the batch can be retried on the next iteration.
+    const verifiedMaxN = await readCommittedMaxN(batchStart, batchEnd);
+    if (verifiedMaxN < batchEnd) {
+      const verifyMsg =
+        `Batch insert verification failed: batch ${batchStart.toLocaleString("en-US")}` +
+        `–${batchEnd.toLocaleString("en-US")}, ` +
+        `highest visible n=${verifiedMaxN.toLocaleString("en-US")}. ` +
+        `Engine state not advanced.`;
+      await insertActivityLog({
+        event_type: "batch_insert_verification_failed",
+        message: verifyMsg,
+        batch_start: batchStart,
+        batch_end: batchEnd,
+        metadata: { expected_max_n: batchEnd, confirmed_max_n: verifiedMaxN },
+      }).catch((logErr: unknown) => {
+        console.warn(
+          "[Collatz Engine] batch_insert_verification_failed log failed (non-fatal):",
+          logErr,
+        );
+      });
+      throw new Error(verifyMsg);
+    }
 
     const durationMs = Date.now() - wallStart;
     const numbersPerSecond =

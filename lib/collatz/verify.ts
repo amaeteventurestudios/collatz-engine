@@ -167,13 +167,14 @@ export async function readSettledEngineState(
 
 export async function readAllResultNumbers(client: SupabaseClient): Promise<number[]> {
   const values: number[] = [];
-  for (let from = 0; ; from += FULL_PAGE_SIZE) {
-    const to = from + FULL_PAGE_SIZE - 1;
+  let lastN = 0;
+  for (;;) {
     const { data, error } = await client
       .from("collatz_results")
       .select("n")
+      .gt("n", lastN)
       .order("n", { ascending: true })
-      .range(from, to);
+      .limit(FULL_PAGE_SIZE);
 
     if (error) throw new Error(`Unable to read result numbers: ${error.message}`);
 
@@ -181,6 +182,41 @@ export async function readAllResultNumbers(client: SupabaseClient): Promise<numb
     values.push(...rows.map((row) => row.n));
 
     if (rows.length < FULL_PAGE_SIZE) break;
+    lastN = rows[rows.length - 1].n;
+  }
+  return values;
+}
+
+/**
+ * Read all result n values up to and including boundaryN.
+ *
+ * Unlike readAllResultNumbers, this scan is bounded by a pre-captured state
+ * snapshot so that rows inserted by a live engine batch during the scan do
+ * not pollute the comparison. The engine's write order guarantees that every
+ * n ≤ boundaryN was committed before last_checked_number was advanced.
+ */
+export async function readResultNumbersUpTo(
+  client: SupabaseClient,
+  boundaryN: number,
+): Promise<number[]> {
+  const values: number[] = [];
+  let lastN = 0;
+  for (;;) {
+    const { data, error } = await client
+      .from("collatz_results")
+      .select("n")
+      .gt("n", lastN)
+      .lte("n", boundaryN)
+      .order("n", { ascending: true })
+      .limit(FULL_PAGE_SIZE);
+
+    if (error) throw new Error(`Unable to read result numbers up to ${boundaryN}: ${error.message}`);
+
+    const rows = (data ?? []) as ResultNumberRow[];
+    values.push(...rows.map((row) => row.n));
+
+    if (rows.length < FULL_PAGE_SIZE) break;
+    lastN = rows[rows.length - 1].n;
   }
   return values;
 }
@@ -363,6 +399,12 @@ export async function runFullIntegrityVerification(
 
   checks.push(pass("Engine state row", "Readable state row found for id=main."));
 
+  // Capture boundary from the initial state snapshot. Every n ≤ boundaryN was
+  // committed to collatz_results before last_checked_number was advanced.
+  // Scanning only up to boundaryN eliminates the TOCTOU gap where a batch
+  // completes mid-scan and makes state appear ahead of the observed maxN.
+  const boundaryN = initialState.state.last_checked_number ?? 0;
+
   let rowCount: number | null = null;
   try {
     rowCount = await readResultCount(client);
@@ -373,7 +415,7 @@ export async function runFullIntegrityVerification(
 
   let numbers: number[];
   try {
-    numbers = await readAllResultNumbers(client);
+    numbers = await readResultNumbersUpTo(client, boundaryN);
   } catch (err) {
     checks.push(fail("Catalog sequence scan", err instanceof Error ? err.message : "Unable to scan catalog sequence."));
     return finalizeFullVerification({
@@ -395,38 +437,13 @@ export async function runFullIntegrityVerification(
   }
   const maxN = numbers.length > 0 ? numbers[numbers.length - 1] : 0;
   const uniqueCount = new Set(numbers).size;
-  const settledState = await readSettledEngineState(client, maxN);
 
-  if (!settledState.state) {
-    checks.push(fail("Engine state row after result scan", settledState.error ?? "Unable to re-read state row."));
-    return finalizeFullVerification({
-      checks,
-      checkedAt,
-      startedAtMs,
-      highestVerifiedN: maxN,
-      numbersCataloged: rowCount ?? numbers.length,
-      duplicateCount: countDuplicateEntries(numbers),
-      missingRangeCount: countMissingRanges(numbers, maxN),
-      stateMatchesCatalog: null,
-      highestPeakMatches: null,
-      longestStepsMatches: null,
-      heartbeatRecent: null,
-      engineStatus: initialState.state.current_status ?? null,
-      duplicateSample: findDuplicateValues(numbers),
-      missingRangeSample: findMissingRanges(numbers, maxN),
-      uniqueNumbersCataloged: uniqueCount,
-    });
-  }
+  // Re-read state once after the scan for a fresh heartbeat timestamp.
+  // No settling loop needed — the bounded scan already avoids the timing gap.
+  const finalStateResult = await readEngineState(client);
+  const state = finalStateResult.state ?? initialState.state;
 
-  const state = settledState.state;
-  checks.push(
-    pass(
-      "Engine state after result scan",
-      settledState.waited > 0
-        ? `State re-read after ${settledState.waited}s to avoid a live batch timing window.`
-        : "State re-read immediately after result scan.",
-    ),
-  );
+  checks.push(pass("Engine state after result scan", "State re-read immediately after result scan."));
 
   const duplicates = findDuplicateValues(numbers);
   const duplicateCount = countDuplicateEntries(numbers);
@@ -439,11 +456,12 @@ export async function runFullIntegrityVerification(
         ),
   );
 
-  const missingRanges = findMissingRanges(numbers, maxN);
-  const missingRangeCount = countMissingRanges(numbers, maxN);
+  // Use boundaryN as the ceiling for missing-range checks since the scan was bounded there.
+  const missingRanges = findMissingRanges(numbers, boundaryN);
+  const missingRangeCount = countMissingRanges(numbers, boundaryN);
   checks.push(
     missingRanges.length === 0
-      ? pass("Missing n ranges", `No missing values from 1 to ${maxN.toLocaleString("en-US")}.`)
+      ? pass("Missing n ranges", `No missing values from 1 to ${boundaryN.toLocaleString("en-US")}.`)
       : fail(
           "Missing n ranges",
           `First ${missingRanges.length} missing ranges: ${missingRanges
@@ -452,13 +470,15 @@ export async function runFullIntegrityVerification(
         ),
   );
 
-  const totalChecked = state.total_numbers_checked ?? 0;
-  const totalMatches = totalChecked === maxN && uniqueCount === maxN;
+  // Compare against the initial state snapshot, not re-read state, so that a
+  // batch completing during the scan cannot create a false mismatch.
+  const totalChecked = initialState.state.total_numbers_checked ?? 0;
+  const totalMatches = totalChecked === boundaryN && uniqueCount === boundaryN;
   checks.push(
     totalMatches
       ? pass(
           "total_numbers_checked vs max n",
-          `State total ${totalChecked.toLocaleString("en-US")} matches max n ${maxN.toLocaleString("en-US")} and unique row count.`,
+          `State total ${totalChecked.toLocaleString("en-US")} matches max n ${boundaryN.toLocaleString("en-US")} and unique row count.`,
         )
       : fail(
           "total_numbers_checked vs max n",
@@ -466,7 +486,7 @@ export async function runFullIntegrityVerification(
       ),
   );
 
-  const lastChecked = state.last_checked_number ?? 0;
+  const lastChecked = initialState.state.last_checked_number ?? 0;
   const lastCheckedMatches = lastChecked === maxN;
   checks.push(
     lastCheckedMatches
@@ -555,7 +575,7 @@ export async function runFullIntegrityVerification(
     lastCheckedNumber: lastChecked,
     totalNumbersChecked: totalChecked,
     uniqueNumbersCataloged: uniqueCount,
-    stateCaughtUpAfterSeconds: settledState.waited,
+    stateCaughtUpAfterSeconds: 0,
   });
 }
 

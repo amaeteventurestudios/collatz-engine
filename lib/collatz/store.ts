@@ -279,6 +279,29 @@ export async function getRecentActivityLogs(limit = 20): Promise<ActivityLogRow[
 }
 
 /**
+ * Read the highest committed n within [rangeStart, rangeEnd].
+ *
+ * Used by the autonomous runner to verify that a batch upsert is visible
+ * to subsequent reads before the engine state counter is advanced.
+ * Returns 0 if no rows exist in the range or Supabase is not configured.
+ */
+export async function readCommittedMaxN(
+  rangeStart: number,
+  rangeEnd: number,
+): Promise<number> {
+  if (!supabase) return 0;
+  const { data, error } = await supabase
+    .from("collatz_results")
+    .select("n")
+    .gte("n", rangeStart)
+    .lte("n", rangeEnd)
+    .order("n", { ascending: false })
+    .limit(1);
+  if (error || !data || data.length === 0) return 0;
+  return (data[0] as { n: number }).n;
+}
+
+/**
  * Convenience wrapper to update throughput-tracking columns on engine state.
  */
 export async function updateThroughputState(updates: {
