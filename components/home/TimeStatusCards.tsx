@@ -45,10 +45,10 @@ export function LocalTimeCard() {
     <div className="flex flex-col items-center justify-center rounded-xl bg-teal-500/5 px-3 py-3 text-center ring-1 ring-teal-500/20 dark:bg-teal-400/5 dark:ring-teal-400/20">
       <p className="stat-label">Your Local Time</p>
       <p className="mt-1.5 text-sm font-bold leading-tight tabular-nums text-slate-900 dark:text-slate-100">
-        {display?.time ?? "—"}
+        {display?.time ?? "Pending"}
       </p>
       <p className="mt-0.5 text-[10px] leading-snug text-slate-400 dark:text-slate-500">
-        {display?.tz || "Detecting timezone…"}
+        {display?.tz || "Detecting timezone..."}
       </p>
     </div>
   );

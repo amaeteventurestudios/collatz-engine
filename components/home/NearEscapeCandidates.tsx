@@ -51,7 +51,7 @@ function getRangeLabel(candidates: Candidate[]): string {
   if (candidates.length === 0) return "n = pending";
   const min = candidates.reduce((value, row) => Math.min(value, row.n), candidates[0].n);
   const max = candidates.reduce((value, row) => Math.max(value, row.n), candidates[0].n);
-  return `n=${min.toLocaleString("en-US")}–${max.toLocaleString("en-US")}`;
+  return `n=${min.toLocaleString("en-US")} to ${max.toLocaleString("en-US")}`;
 }
 
 const tableColumns = [
@@ -119,7 +119,7 @@ function CandidateTable({ candidates }: { candidates: Candidate[] }) {
                   </span>
                 ))
               ) : (
-                <span className="text-[9px] text-slate-400 dark:text-slate-500">—</span>
+                <span className="text-[9px] text-slate-400 dark:text-slate-500">Pending</span>
               )}
             </div>
           </div>
@@ -206,7 +206,7 @@ function AllCandidatesModal({
                         </span>
                       ))
                     ) : (
-                      <span className="text-[9px] text-slate-600">—</span>
+                      <span className="text-[9px] text-slate-600">Pending</span>
                     )}
                   </div>
                 </td>
@@ -279,7 +279,7 @@ export function NearEscapeCandidates() {
               <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                 {hasCandidates
                   ? "Numbers with unusually high peak ratios or long trajectories from the live catalog"
-                  : "Numbers with unusually high peak ratios or long trajectories — awaiting dataset growth"}
+                  : "Numbers with unusually high peak ratios or long trajectories, awaiting dataset growth"}
               </p>
               <p className="mt-1.5 text-[11px] leading-relaxed text-slate-400 dark:text-slate-500">
                 Live ranked candidates from the verified catalog · top {allCandidates.length || FETCH_N} peak sample · {rangeLabel} · refreshed {refreshedLabel} · refresh cadence: 10 seconds · ranking: peak ratio

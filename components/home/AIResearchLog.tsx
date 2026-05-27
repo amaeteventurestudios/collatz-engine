@@ -36,7 +36,7 @@ function buildNotes(state: EngineState | null): Note[] {
         statusBadgeColor: "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400",
         reviewBadge: "Needs Admin Review",
         time: "Awaiting first computation batch",
-        title: "Engine online — no trajectories cataloged yet",
+        title: "Engine online, no trajectories cataloged yet",
         body: "AI-assisted observations will be drafted once the computation engine begins processing trajectories. Drafts are private and require admin approval before appearing here. AI observations require review before publication.",
       },
       {
@@ -66,7 +66,7 @@ function buildNotes(state: EngineState | null): Note[] {
       statusBadgeColor: "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400",
       reviewBadge: "Needs Admin Review",
       time: `${fmt(state.total_numbers_checked)} numbers checked`,
-      title: `Catalog operational — ${fmt(state.total_numbers_checked)} trajectories verified`,
+      title: `Catalog operational, ${fmt(state.total_numbers_checked)} trajectories verified`,
       body: `The Collatz engine has processed ${fmt(state.total_numbers_checked)} starting numbers (up to n = ${fmt(state.last_checked_number)}). Longest trajectory: ${fmt(state.longest_steps)} steps. Highest peak: ${fmt(state.highest_peak)}.${throughput}${lastRun} All verified trajectories reach 1. AI observations require review before publication.`,
     },
     {
@@ -74,8 +74,8 @@ function buildNotes(state: EngineState | null): Note[] {
       statusBadge: "Private Draft",
       statusBadgeColor: "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400",
       reviewBadge: "Needs Admin Review",
-      time: `Range 1 – ${fmt(state.last_checked_number)}`,
-      title: "Pattern analysis queued — awaiting admin approval",
+      time: `Range 1 to ${fmt(state.last_checked_number)}`,
+      title: "Pattern analysis queued, awaiting admin approval",
       body: `Statistical analysis of ${fmt(state.total_numbers_checked)} cataloged trajectories is queued.${throughput} Observations are generated as private drafts and require explicit admin approval before public release. This log makes no claims about the Collatz conjecture. AI observations require review before publication.`,
     },
   ];
@@ -125,7 +125,7 @@ export function AIResearchLog() {
             <div>
               <div className="mb-1.5 flex flex-wrap items-center gap-2">
                 <p className="text-xs font-bold text-blue-700 dark:text-blue-300">
-                  Human review required — approved notes only
+                  Human review required, approved notes only
                 </p>
                 <span className="rounded-full bg-blue-500/15 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-blue-600 dark:text-blue-400">
                   Guardrail Active

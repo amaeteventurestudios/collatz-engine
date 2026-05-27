@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Admin — The Collatz Engine",
+  title: "Admin | The Collatz Engine",
   robots: { index: false, follow: false },
 };
 
@@ -39,7 +39,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           <div className="flex shrink-0 items-center gap-2">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-yellow-500/15 px-2.5 py-1 text-[10px] font-semibold text-yellow-600 dark:text-yellow-400">
               <span className="h-1.5 w-1.5 rounded-full bg-yellow-500" />
-              <span className="hidden sm:inline">Phase 2 —</span> Placeholder
+              <span className="hidden sm:inline">Phase 2:</span> Placeholder
             </span>
           </div>
         </div>

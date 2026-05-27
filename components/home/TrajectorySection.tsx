@@ -67,7 +67,7 @@ export function TrajectorySection() {
             <div className="flex items-center gap-2">
               {loading && (
                 <span className="font-mono text-[10px] text-slate-400 dark:text-slate-500">
-                  Loading…
+                  Loading...
                 </span>
               )}
               {error && (

@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { PanelHelp } from "@/components/ui/PanelHelp";
 import { formatLargeNumber, formatLargeNumberTitle } from "@/lib/collatz/format";
+import { EVENT_COLORS } from "@/lib/collatz/event-visuals";
 import type { AnalyticsChartRow, AnalyticsRecordRow } from "@/hooks/useCollatzAnalyticsData";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -60,17 +61,17 @@ export function StoppingTimeGraph({ results, topBySteps, loading }: Props) {
   const chips = [
     {
       label: "Longest Trajectory",
-      value: topRecord ? topRecord.steps.toLocaleString("en-US") + " steps" : "—",
+      value: topRecord ? topRecord.steps.toLocaleString("en-US") + " steps" : "Pending",
       title: "",
     },
     {
       label: "Produced by n =",
-      value: topRecord ? topRecord.n.toLocaleString("en-US") : "—",
+      value: topRecord ? topRecord.n.toLocaleString("en-US") : "Pending",
       title: "",
     },
     {
       label: "Peak for record n",
-      value: topRecord ? formatLargeNumber(topRecord.peak) : "—",
+      value: topRecord ? formatLargeNumber(topRecord.peak) : "Pending",
       title: topRecord ? formatLargeNumberTitle(topRecord.peak) : "",
     },
     {
@@ -127,7 +128,7 @@ export function StoppingTimeGraph({ results, topBySteps, loading }: Props) {
             </div>
             {loading && (
               <span className="self-start rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-400 dark:bg-slate-800 dark:text-slate-500">
-                Updating…
+                Updating...
               </span>
             )}
           </div>
@@ -164,7 +165,7 @@ export function StoppingTimeGraph({ results, topBySteps, loading }: Props) {
                 width="100%"
                 height="auto"
                 className="block"
-                aria-label={`Stopping time graph, ${results.length} numbers charted, longest trajectory ${topRecord?.steps.toLocaleString("en-US") ?? "—"} steps`}
+                aria-label={`Stopping time graph, ${results.length} numbers charted, longest trajectory ${topRecord?.steps.toLocaleString("en-US") ?? "pending"} steps`}
               >
                 {/* Grid lines */}
                 {gridLines.map(({ v, y, label }) => (
@@ -211,7 +212,7 @@ export function StoppingTimeGraph({ results, topBySteps, loading }: Props) {
                       cx={d.x}
                       cy={d.y}
                       r={i === 0 ? 4.5 : 3}
-                      fill={i === 0 ? "#22c55e" : "#16a34a"}
+                      fill={i === 0 ? EVENT_COLORS.violet.svg : "#a78bfa"}
                       stroke="#ffffff"
                       strokeWidth="1.5"
                       opacity="0.9"
@@ -242,7 +243,7 @@ export function StoppingTimeGraph({ results, topBySteps, loading }: Props) {
                   <linearGradient id="stLine" x1="0%" y1="0%" x2="100%" y2="0%">
                     <stop offset="0%" stopColor="#0ea5e9" />
                     <stop offset="60%" stopColor="#14b8a6" />
-                    <stop offset="100%" stopColor="#22c55e" />
+                    <stop offset="100%" stopColor={EVENT_COLORS.violet.svg} />
                   </linearGradient>
                   <linearGradient id="stFill" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="#14b8a6" stopOpacity="0.14" />
@@ -257,7 +258,7 @@ export function StoppingTimeGraph({ results, topBySteps, loading }: Props) {
           <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-slate-200 pt-4 dark:border-slate-800">
             {[
               { color: "bg-teal-400", label: "Steps to 1 per starting number" },
-              { color: "bg-green-400", label: "Longest trajectory records" },
+              { color: EVENT_COLORS.violet.dot, label: "Longest trajectory records" },
             ].map((item) => (
               <div key={item.label} className="flex items-center gap-2">
                 <span className={`h-2.5 w-2.5 flex-shrink-0 rounded-sm ${item.color}`} />
@@ -267,7 +268,7 @@ export function StoppingTimeGraph({ results, topBySteps, loading }: Props) {
               </div>
             ))}
             <span className="ml-auto text-[10px] text-slate-400 dark:text-slate-500">
-              n = {minN.toLocaleString("en-US")} – {maxN.toLocaleString("en-US")}
+              n = {minN.toLocaleString("en-US")} to {maxN.toLocaleString("en-US")}
             </span>
           </div>
         </div>

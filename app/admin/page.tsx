@@ -53,10 +53,10 @@ const cards = [
 
 const engineTimingStats = [
   { label: "Engine Status", value: "Offline", valueClass: "text-slate-500 dark:text-slate-400" },
-  { label: "Started At", value: "—", valueClass: "text-slate-900 dark:text-slate-100" },
-  { label: "Runtime", value: "—", valueClass: "text-slate-900 dark:text-slate-100" },
-  { label: "Last Batch", value: "—", valueClass: "text-slate-900 dark:text-slate-100" },
-  { label: "Next Batch Start", value: "—", valueClass: "text-slate-900 dark:text-slate-100" },
+  { label: "Started At", value: "Pending", valueClass: "text-slate-900 dark:text-slate-100" },
+  { label: "Runtime", value: "Pending", valueClass: "text-slate-900 dark:text-slate-100" },
+  { label: "Last Batch", value: "Pending", valueClass: "text-slate-900 dark:text-slate-100" },
+  { label: "Next Batch Start", value: "Pending", valueClass: "text-slate-900 dark:text-slate-100" },
 ];
 
 export default function AdminDashboardPage() {
@@ -103,7 +103,7 @@ export default function AdminDashboardPage() {
           ))}
         </div>
 
-        {/* Control buttons — disabled placeholders */}
+        {/* Control buttons, disabled placeholders */}
         <div className="flex flex-wrap items-center gap-2.5 border-t border-slate-200 bg-slate-50/60 px-5 py-4 dark:border-slate-800 dark:bg-slate-900/30">
           <p className="mr-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
             Controls:
@@ -134,7 +134,7 @@ export default function AdminDashboardPage() {
           { label: "Engine Status", value: "Offline", valueClass: "text-slate-500" },
           {
             label: "Trajectories Catalogued",
-            value: "—",
+            value: "Pending",
             valueClass: "text-slate-900 dark:text-slate-100",
           },
           {

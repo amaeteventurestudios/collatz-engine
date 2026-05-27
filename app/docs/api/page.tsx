@@ -18,17 +18,17 @@ const endpoints = [
     limits: "Read-only status endpoint. No catalog rows are returned.",
     request: "GET /api/collatz/state",
     response: `{
-  "ok": true,
-  "generatedAt": "2026-05-27T00:00:00.000Z",
-  "status": "running",
-  "numbersCataloged": 125000,
-  "highestVerifiedN": 125000,
-  "currentlyAnalyzingN": 125001,
-  "lastVerifiedBatch": { "start": 124901, "end": 125000, "size": 100 },
-  "nextBatchQueued": { "start": 125001, "end": 125100, "size": 100 },
-  "throughput": { "numbersPerSecond": 240, "lastBatchDurationMs": 416 },
-  "heartbeatAgeSeconds": 12,
-  "runtimeSeconds": 86400
+  "ok": "boolean",
+  "generatedAt": "ISO timestamp",
+  "status": "engine status",
+  "numbersCataloged": "number",
+  "highestVerifiedN": "number",
+  "currentlyAnalyzingN": "number",
+  "lastVerifiedBatch": { "start": "number", "end": "number", "size": "number" },
+  "nextBatchQueued": { "start": "number", "end": "number", "size": "number" },
+  "throughput": { "numbersPerSecond": "number", "lastBatchDurationMs": "number" },
+  "heartbeatAgeSeconds": "number",
+  "runtimeSeconds": "number"
 }`,
     notes: "Useful for dashboards, monitors, and public status displays.",
   },
@@ -39,15 +39,15 @@ const endpoints = [
     limits: "Public-safe operational status only. No secrets, stack traces, or infrastructure details.",
     request: "GET /api/collatz/health",
     response: `{
-  "ok": true,
-  "status": "live",
-  "heartbeatAgeSeconds": 6,
-  "numbersCataloged": 125000,
-  "currentStatus": "running",
-  "numbersPerSecond": 240,
-  "lastRunAt": "2026-05-27T00:00:00.000Z",
-  "lastFullIntegrityRun": { "status": "passed", "checkedAt": "2026-05-27T03:00:00.000Z" },
-  "message": "Engine is live."
+  "ok": "boolean",
+  "status": "health status",
+  "heartbeatAgeSeconds": "number",
+  "numbersCataloged": "number",
+  "currentStatus": "engine status",
+  "numbersPerSecond": "number",
+  "lastRunAt": "ISO timestamp or null",
+  "lastFullIntegrityRun": { "status": "status", "checkedAt": "ISO timestamp" },
+  "message": "public status message"
 }`,
     notes: "Useful for external status displays and lightweight uptime checks.",
   },
@@ -58,19 +58,19 @@ const endpoints = [
     limits: "Returns a bounded result set only.",
     request: "GET /api/collatz/latest?limit=10",
     response: `{
-  "ok": true,
-  "generatedAt": "2026-05-27T00:00:00.000Z",
-  "highestVerifiedN": 125000,
-  "limit": 10,
-  "count": 10,
+  "ok": "boolean",
+  "generatedAt": "ISO timestamp",
+  "highestVerifiedN": "number",
+  "limit": "number",
+  "count": "number",
   "data": [
     {
-      "n": 125000,
-      "steps_to_one": 128,
-      "highest_peak": 923200,
-      "peak_ratio": 7.3856,
-      "reached_one": true,
-      "cataloged_at": "2026-05-27T00:00:00.000Z"
+      "n": "number",
+      "steps_to_one": "number",
+      "highest_peak": "number",
+      "peak_ratio": "number",
+      "reached_one": "boolean",
+      "cataloged_at": "ISO timestamp"
     }
   ]
 }`,
@@ -83,13 +83,13 @@ const endpoints = [
     limits: "Peak-ratio record is computed from a bounded high-peak catalog sample.",
     request: "GET /api/collatz/records",
     response: `{
-  "ok": true,
-  "generatedAt": "2026-05-27T00:00:00.000Z",
-  "catalogSize": 125000,
-  "highestVerifiedN": 125000,
-  "longestTrajectoryRecord": { "n": 77031, "steps_to_one": 350 },
-  "highestPeakRecord": { "n": 106239, "highest_peak": 104674832 },
-  "highestPeakRatioRecord": { "n": 77671, "peak_ratio": 2018.1 },
+  "ok": "boolean",
+  "generatedAt": "ISO timestamp",
+  "catalogSize": "number",
+  "highestVerifiedN": "number",
+  "longestTrajectoryRecord": { "n": "number", "steps_to_one": "number" },
+  "highestPeakRecord": { "n": "number", "highest_peak": "number" },
+  "highestPeakRatioRecord": { "n": "number", "peak_ratio": "number" },
   "highestPeakRatioRecordScope": "computed from the highest-peak catalog sample"
 }`,
     notes: "Record objects use the same public result shape as latest and export endpoints.",
@@ -101,19 +101,19 @@ const endpoints = [
     limits: "For peak_ratio sorting, ranking is derived from a bounded high-peak sample.",
     request: "GET /api/collatz/near-escapes?limit=10&sort=peak_ratio",
     response: `{
-  "ok": true,
-  "generatedAt": "2026-05-27T00:00:00.000Z",
-  "highestVerifiedN": 125000,
-  "limit": 10,
+  "ok": "boolean",
+  "generatedAt": "ISO timestamp",
+  "highestVerifiedN": "number",
+  "limit": "number",
   "sort": "peak_ratio",
-  "count": 10,
+  "count": "number",
   "data": [
     {
-      "n": 77671,
-      "steps_to_one": 231,
-      "highest_peak": 156914378,
-      "peak_ratio": 2018.1,
-      "reached_one": true,
+      "n": "number",
+      "steps_to_one": "number",
+      "highest_peak": "number",
+      "peak_ratio": "number",
+      "reached_one": "boolean",
       "flags": ["high_peak_ratio", "long_path"]
     }
   ],
@@ -128,18 +128,18 @@ const endpoints = [
     limits: "The public endpoint checks a recent bounded range for performance.",
     request: "GET /api/collatz/integrity",
     response: `{
-  "ok": true,
-  "checkedAt": "2026-05-27T00:00:00.000Z",
+  "ok": "boolean",
+  "checkedAt": "ISO timestamp",
   "scope": "latest_range",
-  "scopeSize": 1000,
-  "highestVerifiedN": 125000,
-  "numbersCataloged": 125000,
+  "scopeSize": "number",
+  "highestVerifiedN": "number",
+  "numbersCataloged": "number",
   "checks": {
-    "duplicates": { "ok": true, "count": 0, "sample": [] },
-    "missingRanges": { "ok": true, "count": 0, "sample": [] },
-    "stateMatchesCatalog": { "ok": true },
-    "heartbeat": { "ok": true, "ageSeconds": 12 },
-    "statusReadable": { "ok": true, "status": "running" }
+    "duplicates": { "ok": "boolean", "count": "number", "sample": [] },
+    "missingRanges": { "ok": "boolean", "count": "number", "sample": [] },
+    "stateMatchesCatalog": { "ok": "boolean" },
+    "heartbeat": { "ok": "boolean", "ageSeconds": "number" },
+    "statusReadable": { "ok": "boolean", "status": "engine status" }
   }
 }`,
     notes: "For full catalog verification, use the repository integrity command documented in the project source.",
@@ -151,20 +151,20 @@ const endpoints = [
     limits: "Returns summary fields only; detailed internal logs are not exposed.",
     request: "GET /api/collatz/integrity/latest",
     response: `{
-  "ok": true,
+  "ok": "boolean",
   "latest": {
-    "status": "passed",
-    "checkedAt": "2026-05-27T03:00:00.000Z",
-    "highestVerifiedN": 125000,
-    "numbersCataloged": 125000,
-    "checksPassed": 11,
-    "checksFailed": 0,
-    "durationMs": 12345,
-    "duplicateCount": 0,
-    "missingRangeCount": 0,
-    "stateMatchesCatalog": true,
-    "recordsMatchCatalog": true,
-    "heartbeatRecent": true
+    "status": "passed, failed, or warning",
+    "checkedAt": "ISO timestamp",
+    "highestVerifiedN": "number",
+    "numbersCataloged": "number",
+    "checksPassed": "number",
+    "checksFailed": "number",
+    "durationMs": "number",
+    "duplicateCount": "number",
+    "missingRangeCount": "number",
+    "stateMatchesCatalog": "boolean",
+    "recordsMatchCatalog": "boolean",
+    "heartbeatRecent": "boolean"
   }
 }`,
     notes: "If no full verification is recorded yet, the endpoint returns ok=false with a public-safe message.",
@@ -176,14 +176,14 @@ const endpoints = [
     limits: "Exports are capped samples, not unlimited full-catalog dumps.",
     request: "GET /api/collatz/export?format=json&limit=10",
     response: `{
-  "ok": true,
-  "generatedAt": "2026-05-27T00:00:00.000Z",
-  "highestVerifiedN": 125000,
-  "limit": 10,
-  "offset": 0,
+  "ok": "boolean",
+  "generatedAt": "ISO timestamp",
+  "highestVerifiedN": "number",
+  "limit": "number",
+  "offset": "number",
   "order": "desc",
-  "count": 10,
-  "data": [{ "n": 125000, "steps_to_one": 128 }]
+  "count": "number",
+  "data": [{ "n": "number", "steps_to_one": "number" }]
 }`,
     notes: "Use this for small public analysis samples and reproducible examples.",
   },
@@ -194,7 +194,7 @@ const endpoints = [
     limits: "Exports are capped samples, not unlimited full-catalog dumps.",
     request: "GET /api/collatz/export?format=csv&limit=10",
     response: `n,steps_to_one,highest_peak,peak_ratio,reached_one,cataloged_at
-125000,128,923200,7.3856,true,2026-05-27T00:00:00.000Z`,
+`,
     notes: "CSV responses are returned as downloadable public catalog samples.",
   },
 ];
@@ -285,7 +285,7 @@ export default function ApiDocsPage() {
               </h1>
               <PanelHelp
                 title="Public API"
-                description="Provides read-only access to selected live catalog data, records, verification summaries, and export samples."
+                description="Provides structured access to the engine's public computational data so others can inspect, verify, or build from the recorded results."
                 align="left"
               />
             </div>
@@ -317,7 +317,7 @@ export default function ApiDocsPage() {
               </p>
               <PanelHelp
                 title="Export Samples"
-                description="Lets visitors download limited JSON or CSV samples from the verified catalog for inspection or analysis."
+                description="Shows examples of the engine's recorded data in exportable formats for analysis, verification, and reuse."
                 align="left"
               />
               <p className="text-xs text-slate-500 dark:text-slate-400">

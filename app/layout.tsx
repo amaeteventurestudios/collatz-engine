@@ -13,17 +13,52 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL
+  ? new URL(process.env.NEXT_PUBLIC_SITE_URL)
+  : undefined;
+
 export const metadata: Metadata = {
-  title: "The Collatz Engine",
+  metadataBase: siteUrl,
+  title: {
+    default: "The Collatz Engine",
+    template: "%s | The Collatz Engine",
+  },
   description:
-    "A public visual observatory for exploring one of mathematics' most famous unsolved problems.",
-  keywords: ["Collatz Conjecture", "mathematics", "visualization", "number theory"],
+    "A public autonomous system exploring the Collatz Conjecture through persistent computation, live trajectory visualization, and transparent engine records.",
+  keywords: [
+    "Collatz Conjecture",
+    "3n + 1 problem",
+    "mathematics",
+    "computational exploration",
+    "autonomous engine",
+    "trajectory visualization",
+    "stopping time",
+    "number theory",
+    "public research dashboard",
+    "mathematical observatory",
+  ],
+  applicationName: "The Collatz Engine",
   authors: [{ name: "Amaete Umanah" }],
+  creator: "Amaete Umanah",
+  publisher: "The Collatz Engine",
   openGraph: {
     title: "The Collatz Engine",
     description:
-      "A public visual observatory for exploring one of mathematics' most famous unsolved problems.",
+      "A public autonomous system exploring one of mathematics' most famous unsolved problems through live computation, persistent records, and transparent visualizations.",
+    url: siteUrl,
+    siteName: "The Collatz Engine",
     type: "website",
+    locale: "en_US",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "The Collatz Engine",
+    description:
+      "Live computation, trajectory visualization, and public records from an autonomous Collatz Conjecture exploration engine.",
+  },
+  robots: {
+    index: true,
+    follow: true,
   },
 };
 

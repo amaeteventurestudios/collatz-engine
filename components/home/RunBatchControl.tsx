@@ -60,7 +60,7 @@ export function RunBatchControl() {
     <div className="flex items-center gap-2">
       {runState.status === "success" && (
         <span className="text-[11px] font-medium text-teal-600 dark:text-teal-400">
-          Processed {runState.batchStart.toLocaleString("en-US")}–
+          Processed {runState.batchStart.toLocaleString("en-US")} to{" "}
           {runState.batchEnd.toLocaleString("en-US")}
         </span>
       )}
@@ -83,7 +83,7 @@ export function RunBatchControl() {
             : "bg-teal-500 text-white shadow-sm hover:bg-teal-600 active:bg-teal-700 dark:hover:bg-teal-400"
         }`}
       >
-        {isLoading ? "Running…" : "Run Next 100"}
+        {isLoading ? "Running..." : "Run Next 100"}
       </button>
     </div>
   );

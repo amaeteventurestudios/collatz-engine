@@ -9,6 +9,7 @@ import {
 import type { EngineState, CollatzResultRow } from "@/lib/collatz/store";
 import { PanelHelp } from "@/components/ui/PanelHelp";
 import { formatLargeNumber, formatLargeNumberTitle } from "@/lib/collatz/format";
+import { EVENT_COLORS } from "@/lib/collatz/event-visuals";
 
 const POLL_MS = 5_000;
 
@@ -43,78 +44,78 @@ function buildRecords(
     {
       icon: "⏱",
       label: "Longest Path",
-      value: topTrajectory ? `${fmt(topTrajectory.steps)} steps` : "—",
+      value: topTrajectory ? `${fmt(topTrajectory.steps)} steps` : "Pending",
       sub: topTrajectory
         ? `n = ${fmt(topTrajectory.n)}`
         : "Awaiting dataset growth",
-      color: "text-orange-500 dark:text-orange-400",
-      ring: "ring-orange-500/20 dark:ring-orange-400/20",
-      bg: "bg-orange-500/5 dark:bg-orange-500/5",
+      color: EVENT_COLORS.violet.text,
+      ring: EVENT_COLORS.violet.ring,
+      bg: EVENT_COLORS.violet.bg,
     },
     {
       icon: "▲",
       label: "Highest Peak",
-      value: topPeaks[0] ? formatLargeNumber(topPeaks[0].peak) : "—",
+      value: topPeaks[0] ? formatLargeNumber(topPeaks[0].peak) : "Pending",
       valueTitle: topPeaks[0] ? formatLargeNumberTitle(topPeaks[0].peak) : undefined,
       sub: topPeaks[0]
         ? `n = ${fmt(topPeaks[0].n)}`
         : "Awaiting dataset growth",
-      color: "text-blue-500 dark:text-blue-400",
-      ring: "ring-blue-500/20 dark:ring-blue-400/20",
-      bg: "bg-blue-500/5 dark:bg-blue-500/5",
+      color: EVENT_COLORS.amber.text,
+      ring: EVENT_COLORS.amber.ring,
+      bg: EVENT_COLORS.amber.bg,
     },
     {
       icon: "↗",
       label: "Highest Peak Ratio",
-      value: bestRatio.n > 0 ? `×${bestRatio.ratio.toFixed(0)}` : "—",
+      value: bestRatio.n > 0 ? `×${bestRatio.ratio.toFixed(0)}` : "Pending",
       sub: bestRatio.n > 0
         ? `n = ${fmt(bestRatio.n)} · peak ÷ n`
         : "Awaiting dataset growth",
-      color: "text-green-500 dark:text-green-400",
-      ring: "ring-green-500/20 dark:ring-green-400/20",
-      bg: "bg-green-500/5 dark:bg-green-500/5",
+      color: EVENT_COLORS.amber.text,
+      ring: EVENT_COLORS.amber.ring,
+      bg: EVENT_COLORS.amber.bg,
     },
     {
       icon: "≡",
       label: "Numbers Cataloged",
-      value: engineState ? fmt(engineState.total_numbers_checked) : "—",
+      value: engineState ? fmt(engineState.total_numbers_checked) : "Pending",
       sub: engineState
         ? `up to n = ${fmt(engineState.last_checked_number)}`
         : "Engine state unavailable",
-      color: "text-teal-500 dark:text-teal-400",
-      ring: "ring-teal-500/20 dark:ring-teal-400/20",
-      bg: "bg-teal-500/5 dark:bg-teal-500/5",
+      color: EVENT_COLORS.blue.text,
+      ring: EVENT_COLORS.blue.ring,
+      bg: EVENT_COLORS.blue.bg,
     },
     {
       icon: "→",
       label: "Highest n Checked",
-      value: engineState ? fmt(engineState.last_checked_number) : "—",
+      value: engineState ? fmt(engineState.last_checked_number) : "Pending",
       sub: engineState
         ? `Engine: ${engineState.current_status}`
         : "Engine state unavailable",
-      color: "text-violet-500 dark:text-violet-400",
-      ring: "ring-violet-500/20 dark:ring-violet-400/20",
-      bg: "bg-violet-500/5 dark:bg-violet-500/5",
+      color: EVENT_COLORS.blue.text,
+      ring: EVENT_COLORS.blue.ring,
+      bg: EVENT_COLORS.blue.bg,
     },
     {
       icon: "★",
       label: "Catalog Status",
-      value: engineState ? engineState.current_status.toUpperCase() : "—",
+      value: engineState ? engineState.current_status.toUpperCase() : "Pending",
       sub: engineState?.started_at
         ? `Running since ${new Date(engineState.started_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`
         : "Not yet started",
       color:
         engineState?.current_status === "running"
-          ? "text-green-500 dark:text-green-400"
-          : "text-slate-500 dark:text-slate-400",
+          ? EVENT_COLORS.cyan.text
+          : EVENT_COLORS.slate.text,
       ring:
         engineState?.current_status === "running"
-          ? "ring-green-500/20 dark:ring-green-400/20"
-          : "ring-slate-200/60 dark:ring-slate-700/40",
+          ? EVENT_COLORS.cyan.ring
+          : EVENT_COLORS.slate.ring,
       bg:
         engineState?.current_status === "running"
-          ? "bg-green-500/5 dark:bg-green-500/5"
-          : "bg-slate-50 dark:bg-slate-800/40",
+          ? EVENT_COLORS.cyan.bg
+          : EVENT_COLORS.slate.bg,
     },
   ];
 }

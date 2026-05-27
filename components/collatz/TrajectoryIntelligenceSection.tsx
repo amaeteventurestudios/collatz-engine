@@ -6,7 +6,10 @@ import { LiveDescentProfile } from "@/components/collatz/LiveDescentProfile";
 import { PeakGrowthGraph } from "@/components/collatz/PeakGrowthGraph";
 import { StoppingTimeGraph } from "@/components/collatz/StoppingTimeGraph";
 import { OddEvenTransitionGraph } from "@/components/collatz/OddEvenTransitionGraph";
-import { RecordBreakerTimeline } from "@/components/collatz/RecordBreakerTimeline";
+import {
+  RecordBreakerTimeline,
+  RecordLeaderboards,
+} from "@/components/collatz/RecordBreakerTimeline";
 
 export function TrajectoryIntelligenceSection() {
   const { result, loading: trajectoryLoading } = useCollatzSelectedTrajectory();
@@ -16,7 +19,7 @@ export function TrajectoryIntelligenceSection() {
     topBySteps,
     topByPeak,
     loading: analyticsLoading,
-  } = useCollatzAnalyticsData(500, 25);
+  } = useCollatzAnalyticsData(500, 100);
 
   return (
     <>
@@ -33,6 +36,11 @@ export function TrajectoryIntelligenceSection() {
       />
       <OddEvenTransitionGraph result={result} loading={trajectoryLoading} />
       <RecordBreakerTimeline
+        topBySteps={topBySteps}
+        topByPeak={topByPeak}
+        loading={analyticsLoading}
+      />
+      <RecordLeaderboards
         topBySteps={topBySteps}
         topByPeak={topByPeak}
         loading={analyticsLoading}

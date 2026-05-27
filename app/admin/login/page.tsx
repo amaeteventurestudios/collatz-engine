@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Admin Login — The Collatz Engine",
+  title: "Admin Login | The Collatz Engine",
   robots: { index: false, follow: false },
 };
 
@@ -29,7 +29,7 @@ export default function AdminLoginPage() {
           </Link>
           <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">Admin Access</h1>
           <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-            The Collatz Engine — restricted area
+            The Collatz Engine, restricted area
           </p>
         </div>
 
@@ -38,7 +38,7 @@ export default function AdminLoginPage() {
           {/* Phase notice */}
           <div className="mb-5 rounded-xl border border-yellow-500/30 bg-yellow-500/10 px-4 py-3">
             <p className="text-xs font-medium text-yellow-700 dark:text-yellow-400">
-              Phase 2 placeholder — authentication arrives in Phase 3.
+              Phase 2 placeholder. Authentication arrives in Phase 3.
             </p>
           </div>
 

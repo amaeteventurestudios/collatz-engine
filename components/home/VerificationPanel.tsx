@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { PanelHelp } from "@/components/ui/PanelHelp";
 import { formatLargeNumber, formatLargeNumberTitle } from "@/lib/collatz/format";
+import { EVENT_COLORS } from "@/lib/collatz/event-visuals";
 
 interface LiveIntegritySummary {
   ok: boolean;
@@ -66,32 +67,32 @@ function statusCopy(status: PanelStatus) {
   if (status === "passed") {
     return {
       label: "Passed",
-      dot: "bg-emerald-400",
-      text: "text-emerald-400",
-      border: "border-emerald-500/40",
-      bg: "bg-emerald-500/10",
+      dot: EVENT_COLORS.emerald.dot,
+      text: EVENT_COLORS.emerald.text,
+      border: EVENT_COLORS.emerald.border,
+      bg: EVENT_COLORS.emerald.subtleBg,
     };
   }
   if (status === "warning") {
     return {
       label: "Warning",
-      dot: "bg-amber-400",
-      text: "text-amber-400",
-      border: "border-amber-500/40",
-      bg: "bg-amber-500/10",
+      dot: EVENT_COLORS.slate.dot,
+      text: EVENT_COLORS.slate.text,
+      border: EVENT_COLORS.slate.border,
+      bg: EVENT_COLORS.slate.subtleBg,
     };
   }
   return {
     label: "Unavailable",
-    dot: "bg-slate-500",
-    text: "text-slate-400",
-    border: "border-slate-700",
-    bg: "bg-slate-800/60",
+    dot: EVENT_COLORS.slate.dot,
+    text: EVENT_COLORS.slate.text,
+    border: EVENT_COLORS.slate.border,
+    bg: EVENT_COLORS.slate.subtleBg,
   };
 }
 
 function fmtDate(iso: string | null | undefined): string {
-  if (!iso) return "—";
+  if (!iso) return "Pending";
   return new Date(iso).toLocaleString("en-US", {
     month: "short",
     day: "numeric",
@@ -102,7 +103,7 @@ function fmtDate(iso: string | null | undefined): string {
 }
 
 function fmtDuration(ms: number | null | undefined): string {
-  if (ms == null) return "—";
+  if (ms == null) return "Pending";
   if (ms < 1_000) return `${ms}ms`;
   return `${(ms / 1_000).toFixed(2)}s`;
 }
@@ -110,16 +111,16 @@ function fmtDuration(ms: number | null | undefined): string {
 function CheckPill({ label, ok }: { label: string; ok: boolean | null }) {
   const cls =
     ok === true
-      ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+      ? EVENT_COLORS.emerald.chip
       : ok === false
-        ? "border-amber-500/30 bg-amber-500/10 text-amber-300"
-        : "border-slate-700 bg-slate-800/60 text-slate-400";
+        ? EVENT_COLORS.slate.chip
+        : EVENT_COLORS.slate.chip;
   return (
     <div className={`rounded border px-3 py-2 ${cls}`}>
       <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.16em] opacity-80">
         {label}
       </p>
-      <p className="mt-1 font-mono text-sm font-bold">{ok === null ? "—" : ok ? "OK" : "Review"}</p>
+      <p className="mt-1 font-mono text-sm font-bold">{ok === null ? "Pending" : ok ? "OK" : "Review"}</p>
     </div>
   );
 }
@@ -198,11 +199,11 @@ export function VerificationPanel() {
               <div className="mb-3 flex flex-wrap items-center gap-3">
                 <div className="flex items-center gap-2">
                   <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-                    Catalog Verification
+                    System Integrity
                   </p>
                   <PanelHelp
-                    title="Catalog Verification"
-                    description="Shows checks that help confirm the catalog is consistent, including duplicate checks, missing range checks, and record consistency checks."
+                    title="System Integrity"
+                    description="Shows whether the engine, database, persistence layer, and verification checks are behaving correctly."
                     align="left"
                   />
                 </div>
@@ -267,7 +268,7 @@ export function VerificationPanel() {
               <div className="basis-full lg:flex lg:justify-end">
                 <PanelHelp
                   title="Export Samples"
-                  description="Lets visitors download limited JSON or CSV samples from the verified catalog for inspection or analysis."
+                  description="Shows examples of the engine's recorded data in exportable formats for analysis, verification, and reuse."
                   align="right"
                 />
               </div>
@@ -301,7 +302,7 @@ export function VerificationPanel() {
                   className="mt-1 font-mono text-lg font-bold text-slate-100"
                   title={liveSummary ? formatLargeNumberTitle(liveSummary.highestVerifiedN) : undefined}
                 >
-                  {liveSummary ? formatLargeNumber(liveSummary.highestVerifiedN) : "—"}
+                  {liveSummary ? formatLargeNumber(liveSummary.highestVerifiedN) : "Pending"}
                 </p>
               </div>
               <div className="bg-slate-950 px-4 py-3">
@@ -312,7 +313,7 @@ export function VerificationPanel() {
                   className="mt-1 font-mono text-lg font-bold text-slate-100"
                   title={liveSummary ? formatLargeNumberTitle(liveSummary.numbersCataloged) : undefined}
                 >
-                  {liveSummary ? formatLargeNumber(liveSummary.numbersCataloged) : "—"}
+                  {liveSummary ? formatLargeNumber(liveSummary.numbersCataloged) : "Pending"}
                 </p>
               </div>
               <div className="bg-slate-950 px-4 py-3">
@@ -320,7 +321,7 @@ export function VerificationPanel() {
                   Last Live Check
                 </p>
                 <p className="mt-1 font-mono text-sm font-bold text-slate-100">
-                  {liveSummary ? fmtDate(liveSummary.checkedAt) : "—"}
+                  {liveSummary ? fmtDate(liveSummary.checkedAt) : "Pending"}
                 </p>
               </div>
             </div>
@@ -377,7 +378,7 @@ export function VerificationPanel() {
                   >
                     {latestRun.highestVerifiedN != null
                       ? formatLargeNumber(latestRun.highestVerifiedN)
-                      : "—"}
+                      : "Pending"}
                   </p>
                 </div>
                 <div className="bg-slate-950 px-4 py-3">
@@ -385,7 +386,7 @@ export function VerificationPanel() {
                     Duplicates / Gaps
                   </p>
                   <p className="mt-1 font-mono text-sm font-bold text-slate-100">
-                    {latestRun.duplicateCount ?? "—"} / {latestRun.missingRangeCount ?? "—"}
+                    {latestRun.duplicateCount ?? "Pending"} / {latestRun.missingRangeCount ?? "Pending"}
                   </p>
                 </div>
                 <div className="bg-slate-950 px-4 py-3">
@@ -393,7 +394,7 @@ export function VerificationPanel() {
                     Checks
                   </p>
                   <p className="mt-1 font-mono text-sm font-bold text-slate-100">
-                    {latestRun.checksPassed ?? "—"} passed · {latestRun.checksFailed ?? "—"} failed
+                    {latestRun.checksPassed ?? "Pending"} passed, {latestRun.checksFailed ?? "Pending"} failed
                   </p>
                 </div>
                 <div className="bg-slate-950 px-4 py-3">
@@ -415,7 +416,7 @@ export function VerificationPanel() {
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
             <p className="text-[11px] text-slate-500">
               Live summary covers the most recent{" "}
-              {liveSummary ? liveSummary.scopeSize.toLocaleString("en-US") : "—"} catalog entries.
+              {liveSummary ? liveSummary.scopeSize.toLocaleString("en-US") : "Pending"} catalog entries.
               {liveError ? ` ${liveError}` : ""}
             </p>
             <button
@@ -435,8 +436,8 @@ export function VerificationPanel() {
                   ? checks.missingRanges.sample.map((r) => `${r.start}-${r.end}`).join(", ")
                   : "none"}
               </p>
-              <p>Heartbeat age: {checks.heartbeat.ageSeconds == null ? "—" : `${checks.heartbeat.ageSeconds}s`}</p>
-              <p>Status: {checks.statusReadable.status ?? "—"}</p>
+              <p>Heartbeat age: {checks.heartbeat.ageSeconds == null ? "Pending" : `${checks.heartbeat.ageSeconds}s`}</p>
+              <p>Status: {checks.statusReadable.status ?? "Pending"}</p>
             </div>
           )}
         </div>

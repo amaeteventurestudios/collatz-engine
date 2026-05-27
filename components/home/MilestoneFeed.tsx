@@ -29,7 +29,7 @@ const catalogMilestones = [
 ];
 
 function fmtRate(value: number | null | undefined): string {
-  if (!value || value <= 0) return "—";
+  if (!value || value <= 0) return "Pending";
   return `${value.toFixed(1)}/sec`;
 }
 
@@ -105,7 +105,7 @@ export function MilestoneFeed() {
                 className="mt-1 font-mono text-lg font-bold tabular-nums text-slate-50"
                 title={formatLargeNumberTitle(verified)}
               >
-                {loading ? "—" : formatLargeNumber(verified)}
+                {loading ? "Pending" : formatLargeNumber(verified)}
               </p>
             </div>
           </div>
@@ -163,7 +163,7 @@ export function MilestoneFeed() {
                   <p className="mt-2 font-mono text-2xl font-bold text-slate-100">
                     {milestoneState.secondsRemaining != null && milestoneState.target
                       ? formatDurationApprox(milestoneState.secondsRemaining)
-                      : "—"}
+                      : "Pending"}
                   </p>
                   <p className="mt-1 text-xs text-slate-500">
                     {milestoneState.secondsRemaining != null && milestoneState.target

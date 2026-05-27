@@ -3,7 +3,7 @@ const focusAreas = [
     icon: "◈",
     color: "text-teal-500 dark:text-teal-400",
     title: "Public visualization",
-    body: "The primary goal is a visually accessible interface for exploring Collatz trajectories — browsable by starting number, sortable by metric, and readable without a mathematics background.",
+    body: "The primary goal is a visually accessible interface for exploring Collatz trajectories, browsable by starting number, sortable by metric, and readable without a mathematics background.",
   },
   {
     icon: "▤",
@@ -15,7 +15,7 @@ const focusAreas = [
     icon: "≡",
     color: "text-violet-500 dark:text-violet-400",
     title: "Pattern exploration",
-    body: "Heatmaps, distribution charts, and record leaderboards surface statistical structure across large ranges — patterns visible only in aggregate.",
+    body: "Heatmaps, distribution charts, and record leaderboards surface statistical structure across large ranges. These patterns are visible only in aggregate.",
   },
   {
     icon: "✦",
@@ -62,7 +62,7 @@ export function PriorWork() {
             Prior Work &amp; Related Projects
           </h2>
           <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
-            This engine is not the largest or fastest verification effort — here is what it is
+            This engine is not the largest or fastest verification effort. Here is what it is
           </p>
         </div>
 
@@ -74,7 +74,7 @@ export function PriorWork() {
               Scope clarification
             </p>
             <p className="mt-1 text-xs leading-relaxed text-blue-600/80 dark:text-blue-300/70">
-              Extensive Collatz verification efforts exist — the verified range already exceeds 2⁶⁸.
+              Extensive Collatz verification efforts exist. The verified range already exceeds 2⁶⁸.
               This engine is not attempting to surpass those records. Its purpose is public
               visualization, systematic cataloging of trajectory statistics, and human-reviewed AI
               observations over a tractable range.

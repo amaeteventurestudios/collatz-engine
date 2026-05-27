@@ -68,7 +68,7 @@ function buildPeakHeatmap(results: CollatzResultRow[]): number[][] | null {
   return normalizeGrid(grid);
 }
 
-/** Rows = peak value bands (high→low), Cols = step count bands — correlation view */
+/** Rows = peak value bands (high to low), cols = step count bands. Correlation view. */
 function buildCorrelationHeatmap(results: CollatzResultRow[]): number[][] | null {
   if (results.length < MIN_FOR_HEATMAP) return null;
   const maxSteps = results.reduce((m, r) => Math.max(m, r.steps), 0);
@@ -141,7 +141,7 @@ function getRangeLabel(results: CollatzResultRow[]): string {
   if (results.length === 0) return "n = pending";
   const min = results.reduce((value, row) => Math.min(value, row.n), results[0].n);
   const max = results.reduce((value, row) => Math.max(value, row.n), results[0].n);
-  return `n=${min.toLocaleString("en-US")}–${max.toLocaleString("en-US")}`;
+  return `n=${min.toLocaleString("en-US")} to ${max.toLocaleString("en-US")}`;
 }
 
 // ─── Color helper ─────────────────────────────────────────────────────────────
@@ -286,7 +286,7 @@ function AllResultsTable({
           </thead>
           <tbody className="divide-y divide-slate-800">
             {sorted.map((r) => {
-              const ratio = r.n > 0 ? (r.peak / r.n).toFixed(1) : "—";
+              const ratio = r.n > 0 ? (r.peak / r.n).toFixed(1) : "Pending";
               return (
                 <tr key={r.n} className="hover:bg-slate-800/50">
                   <td className="px-3 py-2 font-mono font-bold text-slate-100">

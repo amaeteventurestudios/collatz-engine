@@ -9,7 +9,7 @@ function fmt(n: number | null | undefined) {
 }
 
 function fmtTime(iso: string | null | undefined) {
-  if (!iso) return "—";
+  if (!iso) return "Pending";
   return new Date(iso).toLocaleString("en-US", {
     month: "short",
     day: "numeric",
@@ -21,7 +21,7 @@ function fmtTime(iso: string | null | undefined) {
 
 function fmtMs(ms: number | null | undefined) {
   const v = Number(ms ?? 0);
-  if (v === 0) return "—";
+  if (v === 0) return "Pending";
   if (v < 1000) return `${v}ms`;
   return `${(v / 1000).toFixed(2)}s`;
 }
@@ -36,7 +36,7 @@ export function OperationalHealthCard() {
       if (isMounted) setEngineState(s);
     }
     load();
-    // Refresh every 30 s — operational health doesn't need tight polling
+    // Refresh every 30 s. Operational health does not need tight polling.
     const id = window.setInterval(load, 30_000);
     return () => {
       isMounted = false;
@@ -50,31 +50,31 @@ export function OperationalHealthCard() {
   const metrics = [
     {
       label: "Last Batch Size",
-      value: hasData ? fmt(state?.last_batch_size) : "—",
+      value: hasData ? fmt(state?.last_batch_size) : "Pending",
       sub: "numbers processed",
     },
     {
       label: "Batch Duration",
-      value: hasData ? fmtMs(state?.last_batch_duration_ms) : "—",
+      value: hasData ? fmtMs(state?.last_batch_duration_ms) : "Pending",
       sub: "wall-clock time",
     },
     {
       label: "Throughput",
-      value: throughput > 0 ? `${throughput.toFixed(1)}/sec` : "—",
+      value: throughput > 0 ? `${throughput.toFixed(1)}/sec` : "Pending",
       sub: "numbers per second",
     },
     {
       label: "Last Run",
       value: state?.last_run_at
         ? fmtTime(state.last_run_at)
-        : "—",
+        : "Pending",
       sub: "batch completed at",
     },
     {
       label: "Worker Heartbeat",
       value: state?.worker_heartbeat_at
         ? fmtTime(state.worker_heartbeat_at)
-        : "—",
+        : "Pending",
       sub: "last heartbeat",
     },
   ];

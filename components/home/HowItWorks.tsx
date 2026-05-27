@@ -45,7 +45,7 @@ export function HowItWorks() {
             </h2>
             <PanelHelp
               title="How the Engine Works"
-              description="Explains the engine’s basic method: test numbers in order, record the results, verify the catalog, and display the data publicly."
+              description="Explains the engine's basic method: test numbers in order, record the results, verify the catalog, and display the data publicly."
               align="center"
             />
           </div>

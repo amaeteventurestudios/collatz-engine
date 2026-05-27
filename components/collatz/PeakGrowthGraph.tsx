@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { PanelHelp } from "@/components/ui/PanelHelp";
 import { formatLargeNumber, formatLargeNumberTitle } from "@/lib/collatz/format";
+import { EVENT_COLORS } from "@/lib/collatz/event-visuals";
 import type { AnalyticsChartRow, AnalyticsRecordRow } from "@/hooks/useCollatzAnalyticsData";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -65,12 +66,12 @@ export function PeakGrowthGraph({ results, topByPeak, loading }: Props) {
   const chips = [
     {
       label: "Highest Peak",
-      value: topPeakRecord ? formatLargeNumber(topPeakRecord.peak) : "—",
+      value: topPeakRecord ? formatLargeNumber(topPeakRecord.peak) : "Pending",
       title: topPeakRecord ? formatLargeNumberTitle(topPeakRecord.peak) : "",
     },
     {
       label: "Produced by n =",
-      value: topPeakRecord ? topPeakRecord.n.toLocaleString("en-US") : "—",
+      value: topPeakRecord ? topPeakRecord.n.toLocaleString("en-US") : "Pending",
       title: "",
     },
     {
@@ -141,7 +142,7 @@ export function PeakGrowthGraph({ results, topByPeak, loading }: Props) {
             </div>
             {loading && (
               <span className="self-start rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-400 dark:bg-slate-800 dark:text-slate-500">
-                Updating…
+                Updating...
               </span>
             )}
           </div>
@@ -225,7 +226,7 @@ export function PeakGrowthGraph({ results, topByPeak, loading }: Props) {
                       cx={d.x}
                       cy={d.y}
                       r={i === 0 ? 4.5 : 3}
-                      fill={i === 0 ? "#facc15" : "#f59e0b"}
+                      fill={i === 0 ? EVENT_COLORS.amber.svg : "#fbbf24"}
                       stroke="#ffffff"
                       strokeWidth="1.5"
                       opacity="0.9"
@@ -279,7 +280,7 @@ export function PeakGrowthGraph({ results, topByPeak, loading }: Props) {
           <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-slate-200 pt-4 dark:border-slate-800">
             {[
               { color: "bg-indigo-400", label: "Peak value per starting number (log scale)" },
-              { color: "bg-yellow-400", label: "Highest peak records" },
+              { color: EVENT_COLORS.amber.dot, label: "Highest peak records" },
             ].map((item) => (
               <div key={item.label} className="flex items-center gap-2">
                 <span className={`h-2.5 w-2.5 flex-shrink-0 rounded-sm ${item.color}`} />
@@ -289,7 +290,7 @@ export function PeakGrowthGraph({ results, topByPeak, loading }: Props) {
               </div>
             ))}
             <span className="ml-auto text-[10px] text-slate-400 dark:text-slate-500">
-              n = {minN.toLocaleString("en-US")} – {maxN.toLocaleString("en-US")}
+              n = {minN.toLocaleString("en-US")} to {maxN.toLocaleString("en-US")}
             </span>
           </div>
         </div>

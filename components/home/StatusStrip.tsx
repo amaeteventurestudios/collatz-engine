@@ -3,8 +3,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { LocalTimeCard } from "@/components/home/TimeStatusCards";
+import { PanelHelp } from "@/components/ui/PanelHelp";
 import type { EngineState } from "@/lib/collatz/store";
 import { formatLargeNumber, formatLargeNumberTitle } from "@/lib/collatz/format";
+import { EVENT_COLORS } from "@/lib/collatz/event-visuals";
 
 function formatNumber(value: number | null | undefined) {
   return Number(value ?? 0).toLocaleString("en-US");
@@ -126,10 +128,8 @@ export function StatusStrip() {
 
   const statusValueClass =
     status === "running"
-      ? "text-green-600 dark:text-green-400"
-      : status === "stopped"
-        ? "text-amber-600 dark:text-amber-400"
-        : "text-slate-500 dark:text-slate-400";
+      ? EVENT_COLORS.cyan.text
+      : EVENT_COLORS.slate.text;
 
   const throughput = state?.numbers_per_second
     ? Number(state.numbers_per_second)
@@ -150,7 +150,7 @@ export function StatusStrip() {
       label: "Runtime",
       value: runtime,
       sub: state?.started_at ? "Persistent runtime" : "Waiting for engine start",
-      valueClass: "text-teal-600 dark:text-teal-400",
+      valueClass: EVENT_COLORS.cyan.text,
     },
     {
       label: "Current Number",
@@ -166,24 +166,24 @@ export function StatusStrip() {
     },
     {
       label: "Highest Peak",
-      value: state?.highest_peak != null ? formatLargeNumber(state.highest_peak) : "—",
+      value: state?.highest_peak != null ? formatLargeNumber(state.highest_peak) : "Pending",
       valueTitle: state?.highest_peak != null ? formatLargeNumberTitle(state.highest_peak) : undefined,
       sub: "Largest value encountered",
-      valueClass: "text-slate-900 dark:text-slate-100",
+      valueClass: EVENT_COLORS.amber.text,
     },
     {
       label: "Longest Trajectory",
       value: `${formatNumber(state?.longest_steps)} steps`,
       sub: "Current record trajectory length",
-      valueClass: "text-slate-900 dark:text-slate-100",
+      valueClass: EVENT_COLORS.violet.text,
     },
     {
       label: "Throughput",
-      value: throughput > 0 ? `${throughput.toFixed(1)}/sec` : "—",
+      value: throughput > 0 ? `${throughput.toFixed(1)}/sec` : "Pending",
       sub: lastRunSub,
       valueClass: throughput > 0
-        ? "text-teal-600 dark:text-teal-400"
-        : "text-slate-500 dark:text-slate-400",
+        ? EVENT_COLORS.cyan.text
+        : EVENT_COLORS.slate.text,
     },
   ];
 
@@ -193,15 +193,20 @@ export function StatusStrip() {
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-4 py-2.5 dark:border-slate-800 sm:px-6">
         <div className="flex items-center gap-2.5">
           <span className="live-dot" />
-          <span className="text-xs font-bold uppercase tracking-widest text-green-600 dark:text-green-400">
+          <span className={`text-xs font-bold uppercase tracking-[0.08em] ${EVENT_COLORS.cyan.text}`}>
             Live
           </span>
+          <PanelHelp
+            title="Historical Statistics"
+            description="Summarizes what the engine has recorded over time, including checked numbers, long trajectories, high peaks, throughput, and persistent runtime."
+            align="left"
+          />
           <span className="hidden text-[11px] text-slate-500 dark:text-slate-400 sm:inline">
-            — Live catalog active · autonomous runner connected
+            Live catalog active, autonomous runner connected
           </span>
         </div>
 
-        <span className="rounded-full bg-teal-500/10 px-2.5 py-1 text-[10px] font-semibold text-teal-600 dark:text-teal-400">
+        <span className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold ${EVENT_COLORS.cyan.chip}`}>
           Verified Catalog State
         </span>
       </div>

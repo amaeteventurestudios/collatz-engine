@@ -109,14 +109,14 @@ export function OddEvenTransitionGraph({ result, loading }: Props) {
   const ratio =
     result.even_steps > 0
       ? (result.odd_steps / result.even_steps).toFixed(2)
-      : "—";
+      : "Pending";
 
   const chips = [
     { label: "Odd transitions", value: result.odd_steps.toLocaleString("en-US"), cls: "bg-violet-500/10 text-violet-700 dark:text-violet-300" },
     { label: "Even transitions", value: result.even_steps.toLocaleString("en-US"), cls: "bg-sky-500/10 text-sky-700 dark:text-sky-300" },
     { label: "Odd / Even ratio", value: `${ratio}`, cls: "bg-slate-100 text-slate-700 dark:bg-slate-800/60 dark:text-slate-300" },
-    { label: "Longest odd run", value: longestOddRun > 0 ? longestOddRun.toString() : "—", cls: "bg-violet-500/10 text-violet-700 dark:text-violet-300" },
-    { label: "Longest even run", value: longestEvenRun > 0 ? longestEvenRun.toString() : "—", cls: "bg-sky-500/10 text-sky-700 dark:text-sky-300" },
+    { label: "Longest odd run", value: longestOddRun > 0 ? longestOddRun.toString() : "Pending", cls: "bg-violet-500/10 text-violet-700 dark:text-violet-300" },
+    { label: "Longest even run", value: longestEvenRun > 0 ? longestEvenRun.toString() : "Pending", cls: "bg-sky-500/10 text-sky-700 dark:text-sky-300" },
   ];
 
   // Chart axis ticks
@@ -149,7 +149,7 @@ export function OddEvenTransitionGraph({ result, loading }: Props) {
             </div>
             {loading && (
               <span className="self-start rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-400 dark:bg-slate-800 dark:text-slate-500">
-                Updating…
+                Updating...
               </span>
             )}
           </div>

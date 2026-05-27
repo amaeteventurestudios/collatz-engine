@@ -5,16 +5,17 @@ import { useCollatzLiveState } from "@/hooks/useCollatzLiveState";
 import type { HealthStatus } from "@/hooks/useCollatzLiveState";
 import { PanelHelp } from "@/components/ui/PanelHelp";
 import { formatLargeNumber, formatLargeNumberTitle } from "@/lib/collatz/format";
+import { EVENT_COLORS } from "@/lib/collatz/event-visuals";
 
 // ─── Format helpers ───────────────────────────────────────────────────────────
 
 function fmtN(n: number | null | undefined): string {
-  if (n == null) return "—";
+  if (n == null) return "Pending";
   return Number(n).toLocaleString("en-US");
 }
 
 function fmtRuntime(seconds: number): string {
-  if (seconds <= 0) return "—";
+  if (seconds <= 0) return "Pending";
   const d = Math.floor(seconds / 86_400);
   const h = Math.floor((seconds % 86_400) / 3_600);
   const m = Math.floor((seconds % 3_600) / 60);
@@ -26,7 +27,7 @@ function fmtRuntime(seconds: number): string {
 }
 
 function fmtAge(seconds: number): string {
-  if (!isFinite(seconds)) return "—";
+  if (!isFinite(seconds)) return "Pending";
   if (seconds < 5) return "< 5s ago";
   if (seconds < 60) return `${seconds}s ago`;
   const m = Math.floor(seconds / 60);
@@ -35,18 +36,18 @@ function fmtAge(seconds: number): string {
 }
 
 function fmtMs(ms: number | null | undefined): string {
-  if (ms == null || ms === 0) return "—";
+  if (ms == null || ms === 0) return "Pending";
   if (ms < 1_000) return `${ms}ms`;
   return `${(ms / 1_000).toFixed(2)}s`;
 }
 
 function fmtRate(rps: number | null | undefined): string {
-  if (rps == null || Number(rps) === 0) return "—";
+  if (rps == null || Number(rps) === 0) return "Pending";
   return `${Number(rps).toFixed(1)}/sec`;
 }
 
 function fmtDateTime(iso: string | null | undefined): string {
-  if (!iso) return "—";
+  if (!iso) return "Pending";
   return new Date(iso).toLocaleString("en-US", {
     month: "short",
     day: "numeric",
@@ -65,38 +66,38 @@ const HEALTH_CONFIG: Record<
 > = {
   live: {
     label: "LIVE",
-    dot: "bg-emerald-400 animate-ping",
-    text: "text-emerald-400",
-    border: "border-emerald-500/40",
-    bg: "bg-emerald-500/10",
+    dot: `${EVENT_COLORS.cyan.dot} animate-ping`,
+    text: EVENT_COLORS.cyan.text,
+    border: EVENT_COLORS.cyan.border,
+    bg: EVENT_COLORS.cyan.subtleBg,
   },
   delayed: {
     label: "DELAYED",
-    dot: "bg-amber-400",
-    text: "text-amber-400",
-    border: "border-amber-500/40",
-    bg: "bg-amber-500/10",
+    dot: EVENT_COLORS.slate.dot,
+    text: EVENT_COLORS.slate.text,
+    border: EVENT_COLORS.slate.border,
+    bg: EVENT_COLORS.slate.subtleBg,
   },
   stalled: {
     label: "STALLED",
-    dot: "bg-orange-500",
-    text: "text-orange-400",
-    border: "border-orange-500/40",
-    bg: "bg-orange-500/10",
+    dot: EVENT_COLORS.slate.dot,
+    text: EVENT_COLORS.slate.text,
+    border: EVENT_COLORS.slate.border,
+    bg: EVENT_COLORS.slate.subtleBg,
   },
   stopped: {
     label: "STOPPED",
-    dot: "bg-slate-500",
-    text: "text-slate-400",
-    border: "border-slate-700",
-    bg: "bg-slate-800/40",
+    dot: EVENT_COLORS.slate.dot,
+    text: EVENT_COLORS.slate.text,
+    border: EVENT_COLORS.slate.border,
+    bg: EVENT_COLORS.slate.subtleBg,
   },
   error: {
     label: "ERROR",
-    dot: "bg-red-500 animate-ping",
-    text: "text-red-400",
-    border: "border-red-500/40",
-    bg: "bg-red-500/10",
+    dot: `${EVENT_COLORS.slate.dot} animate-ping`,
+    text: EVENT_COLORS.slate.text,
+    border: EVENT_COLORS.slate.border,
+    bg: EVENT_COLORS.slate.subtleBg,
   },
 };
 
@@ -327,14 +328,14 @@ export function LiveEngineStatus() {
             </div>
 
             {/* Currently processing */}
-            <div className="rounded border border-teal-800/40 bg-teal-900/20 px-4 py-3">
-              <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.15em] text-teal-600">
+            <div className={`rounded border px-4 py-3 ${EVENT_COLORS.cyan.border} ${EVENT_COLORS.cyan.bg}`}>
+              <p className={`font-mono text-[9px] font-semibold uppercase tracking-[0.15em] ${EVENT_COLORS.cyan.text}`}>
                 Currently Processing
               </p>
-              <p className="mt-1.5 font-mono text-sm font-bold text-teal-300 tabular-nums">
+              <p className={`mt-1.5 font-mono text-sm font-bold tabular-nums ${EVENT_COLORS.cyan.text}`}>
                 n = {fmtN(nextBatchStart)} → {fmtN(nextBatchEnd)}
               </p>
-              <p className="mt-0.5 font-mono text-[10px] text-teal-800">
+              <p className="mt-0.5 font-mono text-[10px] text-cyan-800">
                 {fmtN(batchSize)} numbers per batch
               </p>
             </div>
@@ -380,7 +381,7 @@ export function LiveEngineStatus() {
             <div>
               <Label>Last Batch</Label>
               <Value className="text-slate-100 text-sm">
-                {state.last_batch_size ? fmtN(state.last_batch_size) : "—"}
+                {state.last_batch_size ? fmtN(state.last_batch_size) : "Pending"}
               </Value>
               <p className="mt-0.5 font-mono text-[9px] text-slate-700">
                 numbers in batch
@@ -402,10 +403,8 @@ export function LiveEngineStatus() {
               <Value
                 className={`text-sm ${
                   isFinite(heartbeatAgeSeconds) && heartbeatAgeSeconds <= 30
-                    ? "text-emerald-400"
-                    : heartbeatAgeSeconds <= 120
-                      ? "text-amber-400"
-                      : "text-orange-400"
+                    ? EVENT_COLORS.emerald.text
+                    : EVENT_COLORS.slate.text
                 }`}
               >
                 {fmtAge(heartbeatAgeSeconds)}
@@ -423,7 +422,7 @@ export function LiveEngineStatus() {
             <div>
               <Label>Longest Trajectory on Record</Label>
               <div className="mt-2 flex items-baseline gap-3">
-                <span className="font-mono text-2xl font-bold text-slate-100 tabular-nums">
+                <span className={`font-mono text-2xl font-bold tabular-nums ${EVENT_COLORS.violet.text}`}>
                   {fmtN(state.longest_steps)}
                 </span>
                 <span className="font-mono text-[11px] text-slate-500">steps to reach 1</span>
@@ -434,10 +433,10 @@ export function LiveEngineStatus() {
               <Label>Highest Peak Value on Record</Label>
               <div className="mt-2 flex items-baseline gap-3">
                 <span
-                  className="font-mono text-2xl font-bold text-slate-100 tabular-nums"
+                  className={`font-mono text-2xl font-bold tabular-nums ${EVENT_COLORS.amber.text}`}
                   title={state.highest_peak != null ? formatLargeNumberTitle(state.highest_peak) : undefined}
                 >
-                  {state.highest_peak != null ? formatLargeNumber(state.highest_peak) : "—"}
+                  {state.highest_peak != null ? formatLargeNumber(state.highest_peak) : "Pending"}
                 </span>
                 <span className="font-mono text-[11px] text-slate-500">largest value encountered</span>
               </div>

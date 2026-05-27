@@ -93,7 +93,7 @@ export function formatLargeNumber(n: number | bigint): string {
     return `${sign}${digits[0]}.${decimal} × 10^${exp}`;
   }
 
-  if (!Number.isFinite(n) || Number.isNaN(n)) return "—";
+  if (!Number.isFinite(n) || Number.isNaN(n)) return "Pending";
   const v = Math.trunc(n);
   const abs = Math.abs(v);
   if (abs < BILLION) return v.toLocaleString("en-US");
@@ -127,7 +127,7 @@ export function formatMilestonePower(n: number): string {
 }
 
 export function formatDurationApprox(seconds: number): string {
-  if (!Number.isFinite(seconds) || seconds < 0) return "—";
+  if (!Number.isFinite(seconds) || seconds < 0) return "Pending";
   if (seconds < 60) return "< 1 minute";
   const minutes = seconds / 60;
   if (minutes < 60) return `${Math.ceil(minutes)} minutes`;

@@ -39,16 +39,16 @@ const FALLBACK: CollatzResult = getSeedResult(27);
 const RECORDS_POLL_MS = 5_000;
 
 const LABELS: Record<DisplayMode, (n: number) => string> = {
-  latest_verified: (n) => `Latest verified — n=${n.toLocaleString("en-US")}`,
-  current_batch: (n) => `Current batch sample — n=${n.toLocaleString("en-US")}`,
-  longest_record: (n) => `Longest record — n=${n.toLocaleString("en-US")}`,
-  highest_peak: (n) => `Highest peak record — n=${n.toLocaleString("en-US")}`,
+  latest_verified: (n) => `Latest verified, n=${n.toLocaleString("en-US")}`,
+  current_batch: (n) => `Current batch sample, n=${n.toLocaleString("en-US")}`,
+  longest_record: (n) => `Longest record, n=${n.toLocaleString("en-US")}`,
+  highest_peak: (n) => `Highest peak record, n=${n.toLocaleString("en-US")}`,
 };
 
 const HELPER_COPY: Record<DisplayMode, string | null> = {
   latest_verified: null,
   current_batch:
-    "Computed from the active batch — not yet stored in the catalog.",
+    "Computed from the active batch, not yet stored in the catalog.",
   longest_record:
     "Updates only when a new record trajectory is discovered.",
   highest_peak:

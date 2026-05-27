@@ -72,14 +72,14 @@ export function LiveDescentProfile({ result, loading }: Props) {
       : null;
 
   const peakRatio =
-    startN > 0 ? (peakN / startN).toFixed(2) : "—";
+    startN > 0 ? (peakN / startN).toFixed(2) : "Pending";
 
   const chips = [
     { label: "Start", value: formatLargeNumber(start), title: formatLargeNumberTitle(start) },
     { label: "Peak", value: formatLargeNumber(peak), title: formatLargeNumberTitle(peak) },
     {
       label: "First descent",
-      value: firstDescentStep !== null ? `Step ${firstDescentStep.toLocaleString("en-US")}` : "—",
+      value: firstDescentStep !== null ? `Step ${firstDescentStep.toLocaleString("en-US")}` : "Pending",
       title: "",
     },
     { label: "Total steps", value: formatSteps(result.steps_to_1), title: "" },
@@ -107,7 +107,7 @@ export function LiveDescentProfile({ result, loading }: Props) {
             </div>
             {loading && (
               <span className="self-start rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-400 dark:bg-slate-800 dark:text-slate-500">
-                Updating…
+                Updating...
               </span>
             )}
           </div>

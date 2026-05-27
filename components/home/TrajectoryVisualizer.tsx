@@ -113,7 +113,7 @@ function SequenceView({ result }: { result: CollatzResult }) {
                     )}
                   </td>
                   <td className="px-3 py-2 font-mono text-slate-500 dark:text-slate-400">
-                    {isLast ? "—" : isOdd ? "3n + 1" : "n / 2"}
+                    {isLast ? "Complete" : isOdd ? "3n + 1" : "n / 2"}
                   </td>
                 </tr>
               );
@@ -151,7 +151,7 @@ function OddOnlyView({ result }: { result: CollatzResult }) {
   const pct =
     result.steps_to_1 > 0
       ? ((oddSteps.length / result.steps_to_1) * 100).toFixed(1)
-      : "—";
+      : "Pending";
 
   return (
     <div>

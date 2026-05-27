@@ -10,7 +10,7 @@ const methodSections = [
       "Total step count (length of path to 1)",
       "Peak value reached and the step at which it occurs",
       "Peak ratio (peak / n) as a normalized comparison metric",
-      "First descent delay — steps before the value first falls below n",
+      "First descent delay: steps before the value first falls below n",
       "Odd-step count and odd-step density (odd steps / total steps)",
     ],
   },
@@ -21,7 +21,7 @@ const methodSections = [
     ring: "ring-blue-500/20",
     title: "What data is stored",
     items: [
-      "Compact batch summaries: max steps, peak values, ratios, and residue stats — not full sequences for every number",
+      "Compact batch summaries: max steps, peak values, ratios, and residue stats, not full sequences for every number",
       "Full sequences are reserved for record breakers, near-escape candidates, and selected demo samples",
       "Batch summary data is local until persistence is added in Phase 5",
       "Record-breaking trajectories are flagged and stored in full for inspection",
@@ -37,9 +37,9 @@ const methodSections = [
     title: "AI-assisted observations",
     items: [
       "An AI model reviews batches of trajectory statistics for statistical patterns",
-      "Observations are generated as private draft notes — never published automatically",
+      "Observations are generated as private draft notes and never published automatically",
       "Every observation requires explicit admin approval before appearing publicly",
-      "Notes describe statistical observations only — no proof claims are made",
+      "Notes describe statistical observations only. No proof claims are made",
       "The AI model does not have access to unpublished drafts from other sessions",
     ],
   },
@@ -50,7 +50,7 @@ const methodSections = [
     ring: "ring-orange-500/20",
     title: "Why no proof claim",
     items: [
-      "The Collatz Conjecture is an open problem in mathematics — no proof or disproof is known",
+      "The Collatz Conjecture is an open problem in mathematics. No proof or disproof is known",
       "This engine verifies that specific numbers reach 1; it does not prove the general case",
       "Verification for n ≤ N tells us nothing about all n > N without a mathematical proof",
       "AI-drafted notes are statistical observations, not mathematical arguments",
@@ -69,7 +69,7 @@ export function DataMethodology() {
             Data &amp; Methodology
           </h2>
           <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
-            What this engine computes, stores, and observes — and what it does not claim
+            What this engine computes, stores, and observes, and what it does not claim
           </p>
         </div>
 
