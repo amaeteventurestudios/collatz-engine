@@ -4,6 +4,7 @@ import { HeroSection } from "@/components/home/HeroSection";
 import { StatusStrip } from "@/components/home/StatusStrip";
 import { LiveEngineStatus } from "@/components/home/LiveEngineStatus";
 import { TrajectorySection } from "@/components/home/TrajectorySection";
+import { TrajectoryIntelligenceSection } from "@/components/collatz/TrajectoryIntelligenceSection";
 import { RecordsPreview } from "@/components/home/RecordsPreview";
 import { MilestoneFeed } from "@/components/home/MilestoneFeed";
 import { VerificationPanel } from "@/components/home/VerificationPanel";
@@ -27,6 +28,7 @@ export default function HomePage() {
         <StatusStrip />
         <LiveEngineStatus />
         <TrajectorySection />
+        <TrajectoryIntelligenceSection />
         <RecordsPreview />
         <MilestoneFeed />
         <VerificationPanel />
