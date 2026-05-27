@@ -142,7 +142,7 @@ const endpoints = [
     "statusReadable": { "ok": "boolean", "status": "engine status" }
   }
 }`,
-    notes: "For full catalog verification, use the repository integrity command documented in the project source.",
+    notes: "For full catalog verification, use the integrity endpoint documented in the Methodology page.",
   },
   {
     path: "/api/collatz/integrity/latest",

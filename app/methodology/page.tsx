@@ -40,7 +40,7 @@ const sections = [
   {
     title: "Full verification vs live bounded checks",
     body: [
-      "The repository verification command performs a full read-only catalog integrity check.",
+      "The full verification command performs a complete read-only catalog integrity check.",
       "The public integrity API performs a bounded live check so the dashboard can report health without expensive full scans on every request.",
       "The bounded check is useful for live dashboard health, but it is not a substitute for the full verification scan.",
     ],
@@ -93,14 +93,6 @@ export default function MethodologyPage() {
               className="rounded border border-slate-300 px-3 py-2 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-600 transition-colors hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-900"
             >
               Export sample
-            </a>
-            <a
-              href="https://github.com/amaeteventurestudios/collatz-engine"
-              target="_blank"
-              rel="noreferrer"
-              className="rounded border border-slate-300 px-3 py-2 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-600 transition-colors hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-900"
-            >
-              GitHub repo
             </a>
             <Link
               href="/#contribute"

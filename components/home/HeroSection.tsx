@@ -32,8 +32,14 @@ export function HeroSection() {
 
         {/* Subtitle */}
         <p className="mx-auto mt-5 max-w-xl px-2 text-base leading-relaxed text-slate-600 dark:text-slate-400 sm:px-0 sm:text-lg">
-          A public visual observatory for exploring one of mathematics&apos; most famous unsolved
-          problems. Continuously cataloging, visualizing, and analyzing Collatz trajectories.
+          A public autonomous observatory exploring one of mathematics&apos; most famous unsolved
+          problems.
+        </p>
+
+        {/* Supporting description */}
+        <p className="mx-auto mt-3 max-w-xl px-2 text-sm leading-relaxed text-slate-500 dark:text-slate-400 sm:px-0">
+          The engine continuously catalogs, visualizes, and analyzes Collatz trajectories using
+          persistent computation, transparent records, and live mathematical telemetry.
         </p>
 
         {/* Credibility note */}
@@ -54,7 +60,7 @@ export function HeroSection() {
             href="/#about"
             className="inline-flex h-12 w-full items-center justify-center rounded-xl border border-slate-200 px-8 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 sm:h-11 sm:w-auto dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
           >
-            About This Project
+            How the Engine Works
           </Link>
         </div>
 

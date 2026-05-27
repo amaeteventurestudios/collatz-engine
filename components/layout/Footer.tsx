@@ -65,16 +65,6 @@ export function Footer() {
             <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
               Observations, ideas, and issue reports
             </p>
-            <div className="mt-3 flex items-center gap-4">
-              <a
-                href="https://github.com/amaeteventurestudios/collatz-engine"
-                target="_blank"
-                rel="noreferrer"
-                className="text-xs text-slate-400 transition-colors hover:text-teal-600 dark:text-slate-500 dark:hover:text-teal-400"
-              >
-                GitHub
-              </a>
-            </div>
           </div>
         </div>
 
@@ -90,7 +80,14 @@ export function Footer() {
           </div>
           <p className="text-xs text-slate-400 dark:text-slate-500">
             Created by{" "}
-            <span className="font-medium text-teal-600 dark:text-teal-400">Amaete Umanah</span>
+            <a
+              href="https://www.linkedin.com/in/amaeteumanah/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-teal-600 transition-colors hover:text-teal-500 dark:text-teal-400 dark:hover:text-teal-300"
+            >
+              Amaete Umanah
+            </a>
           </p>
         </div>
       </div>

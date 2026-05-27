@@ -26,9 +26,9 @@ type SubmissionType = (typeof submissionTypes)[number];
 
 const getInvolvedLinks = [
   {
-    label: "View on GitHub",
+    label: "How the Engine Works",
     icon: Code2,
-    href: "https://github.com/amaeteventurestudios/collatz-engine",
+    href: "/#about",
   },
   { label: "Submit an observation", icon: Telescope, type: "Observation" as SubmissionType },
   { label: "Share an idea", icon: Lightbulb, type: "Idea" as SubmissionType },
@@ -157,8 +157,6 @@ export function ContributeSection() {
                       {"href" in item ? (
                         <a
                           href={item.href}
-                          target="_blank"
-                          rel="noreferrer"
                           className="flex items-center gap-3 rounded-md border border-transparent px-3 py-3 text-sm text-slate-600 transition-colors hover:border-slate-300 hover:bg-white hover:text-teal-700 dark:text-slate-400 dark:hover:border-slate-700 dark:hover:bg-slate-900 dark:hover:text-teal-300"
                         >
                           <Icon className="h-4 w-4 text-slate-400" />
