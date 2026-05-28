@@ -22,12 +22,18 @@ interface ConvergenceTreeControlsProps {
   layoutMode: ConvergenceLayoutMode;
   hasRecordData: boolean;
   highlightRecords: boolean;
+  showLatestPath: boolean;
+  showMergeDensity: boolean;
+  showOlderBranches: boolean;
   capped: boolean;
   performanceCapNote: string | null;
   onTreePathCountChange: (count: number) => void;
   onLiveUpdatesChange: (live: boolean) => void;
   onLayoutModeChange: (mode: ConvergenceLayoutMode) => void;
   onHighlightRecordsChange: (highlight: boolean) => void;
+  onShowLatestPathChange: (show: boolean) => void;
+  onShowMergeDensityChange: (show: boolean) => void;
+  onShowOlderBranchesChange: (show: boolean) => void;
   onResetCamera: () => void;
 }
 
@@ -41,12 +47,18 @@ export function ConvergenceTreeControls({
   layoutMode,
   hasRecordData,
   highlightRecords,
+  showLatestPath,
+  showMergeDensity,
+  showOlderBranches,
   capped,
   performanceCapNote,
   onTreePathCountChange,
   onLiveUpdatesChange,
   onLayoutModeChange,
   onHighlightRecordsChange,
+  onShowLatestPathChange,
+  onShowMergeDensityChange,
+  onShowOlderBranchesChange,
   onResetCamera,
 }: ConvergenceTreeControlsProps) {
   return (
@@ -110,33 +122,51 @@ export function ConvergenceTreeControls({
       <VisualMetricCard title="Layout">
         <div className="grid gap-2">
           <LayoutButton
-            active={layoutMode === "rooted"}
-            label="Rooted View"
-            onClick={() => onLayoutModeChange("rooted")}
-          />
-          <LayoutButton
-            active={layoutMode === "peaks"}
-            label="Elevated Peaks"
-            onClick={() => onLayoutModeChange("peaks")}
-          />
-          <LayoutButton
-            active={layoutMode === "density"}
-            label="Merge Density"
-            onClick={() => onLayoutModeChange("density")}
+            active={layoutMode === "radial"}
+            label="Hierarchical Radial"
+            onClick={() => onLayoutModeChange("radial")}
           />
         </div>
       </VisualMetricCard>
 
       <VisualMetricCard title="Highlights">
         <div className="space-y-2">
-          <span className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-amber-300/50 bg-amber-300/10 px-3 py-2 text-xs font-semibold text-amber-200">
+          <button
+            type="button"
+            onClick={() => onShowLatestPathChange(!showLatestPath)}
+            className={`inline-flex w-full items-center justify-center gap-2 rounded-md border px-3 py-2 text-xs font-semibold transition-colors ${
+              showLatestPath
+                ? "border-amber-300/50 bg-amber-300/10 text-amber-200"
+                : "border-slate-700 bg-slate-900/60 text-slate-500 hover:text-slate-200"
+            }`}
+          >
             <Rows3 className="h-3.5 w-3.5" aria-hidden />
             Latest Path
-          </span>
-          <span className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-cyan-300/40 bg-cyan-300/10 px-3 py-2 text-xs font-semibold text-cyan-200">
+          </button>
+          <button
+            type="button"
+            onClick={() => onShowMergeDensityChange(!showMergeDensity)}
+            className={`inline-flex w-full items-center justify-center gap-2 rounded-md border px-3 py-2 text-xs font-semibold transition-colors ${
+              showMergeDensity
+                ? "border-cyan-300/40 bg-cyan-300/10 text-cyan-200"
+                : "border-slate-700 bg-slate-900/60 text-slate-500 hover:text-slate-200"
+            }`}
+          >
             <GitMerge className="h-3.5 w-3.5" aria-hidden />
             Merge Density
-          </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => onShowOlderBranchesChange(!showOlderBranches)}
+            className={`inline-flex w-full items-center justify-center gap-2 rounded-md border px-3 py-2 text-xs font-semibold transition-colors ${
+              showOlderBranches
+                ? "border-violet-300/45 bg-violet-400/10 text-violet-200"
+                : "border-slate-700 bg-slate-900/60 text-slate-500 hover:text-slate-200"
+            }`}
+          >
+            <GitMerge className="h-3.5 w-3.5" aria-hidden />
+            Older Branches
+          </button>
           <button
             type="button"
             disabled={!hasRecordData}
@@ -176,8 +206,8 @@ export function ConvergenceTreeControls({
       >
         <p className="text-xs leading-relaxed text-slate-400">
           This view maps computed Collatz transitions as a bounded 3D convergence
-          graph. Nodes are values, edges are transitions, and repeated downstream
-          paths reveal shared structure.
+          tree. Each node is a Collatz value. Directed edges connect n -&gt; next(n).
+          Many upstream paths converge as values merge toward 1.
         </p>
         <div className="mt-3 flex flex-wrap gap-2 text-[10px] text-slate-500">
           <span className="inline-flex items-center gap-1">

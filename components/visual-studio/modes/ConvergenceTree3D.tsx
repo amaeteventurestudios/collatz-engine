@@ -2,35 +2,51 @@
 
 import { useMemo } from "react";
 import { Line, Stars, Text } from "@react-three/drei";
-import { BufferGeometry, Float32BufferAttribute } from "three";
+import type { ThreeEvent } from "@react-three/fiber";
 import {
-  opacityForTone,
-  VISUAL_STUDIO_COLORS,
-} from "../collatzColorMaps";
+  AdditiveBlending,
+  BufferGeometry,
+  Float32BufferAttribute,
+  LineBasicMaterial,
+} from "three";
 import type { ConvergenceGraph, ConvergenceNode } from "../convergenceTreeGeometry";
 import type { VisualPathTone } from "../visualStudioTypes";
+
+export interface ConvergenceTreeVisualLayers {
+  latest: boolean;
+  density: boolean;
+  older: boolean;
+}
 
 interface ConvergenceTree3DProps {
   graph: ConvergenceGraph;
   selectedNodeId: string | null;
+  visualLayers: ConvergenceTreeVisualLayers;
   onSelectNode: (nodeId: string) => void;
+  onHoverNode: (node: ConvergenceNode | null) => void;
 }
 
 const NODE_COLORS: Record<VisualPathTone | "root", string> = {
   latest: "#f8c44f",
-  recent: "#22d3ee",
-  older: "#8b5cf6",
+  recent: "#22f4ff",
+  older: "#a855f7",
   record: "#fb923c",
-  root: "#f8fafc",
+  root: "#ffffff",
 };
 
 export function ConvergenceTree3D({
   graph,
   selectedNodeId,
+  visualLayers,
   onSelectNode,
+  onHoverNode,
 }: ConvergenceTree3DProps) {
   const pointGroups = useMemo(() => buildPointGroups(graph.nodes), [graph.nodes]);
-  const interactiveNodes = useMemo(
+  const edgeGroups = useMemo(
+    () => buildEdgeGroups(graph, selectedNodeId, visualLayers),
+    [graph, selectedNodeId, visualLayers],
+  );
+  const accentNodes = useMemo(
     () =>
       graph.nodes
         .filter(
@@ -39,83 +55,74 @@ export function ConvergenceTree3D({
             node.isLatest ||
             node.isSelected ||
             node.isRecord ||
-            node.visitCount > 1,
+            node.nodeType === "merge",
         )
-        .sort((left, right) => right.visitCount - left.visitCount)
-        .slice(0, 180),
+        .sort((left, right) => right.upstreamPathCount - left.upstreamPathCount)
+        .slice(0, 260),
     [graph.nodes],
   );
 
   return (
     <>
-      <ambientLight intensity={0.42} />
-      <pointLight position={[0, 15, 8]} intensity={34} color="#22d3ee" />
-      <pointLight position={[-18, 20, 22]} intensity={18} color="#8b5cf6" />
-      <pointLight position={[18, 11, -10]} intensity={14} color="#f8c44f" />
+      <ambientLight intensity={0.55} />
+      <pointLight position={[0, 5, 2]} intensity={52} color="#67e8f9" />
+      <pointLight position={[-18, 16, -4]} intensity={22} color="#a855f7" />
+      <pointLight position={[18, 18, 4]} intensity={24} color="#f8c44f" />
       <Stars
         radius={62}
-        depth={34}
-        count={620}
-        factor={2.1}
+        depth={36}
+        count={720}
+        factor={2.3}
         saturation={0}
         fade
-        speed={0.14}
+        speed={0.12}
       />
 
       <ConvergenceGrid />
 
-      <group position={[0, 0, -8]}>
-        {graph.edges.map((edge) => {
-          const selected = edge.fromId === selectedNodeId || edge.toId === selectedNodeId;
-          const isDense = edge.traversalCount > 1;
-          const color = VISUAL_STUDIO_COLORS[edge.tone];
-          const opacity = selected
-            ? 0.98
-            : isDense
-              ? Math.min(0.92, 0.35 + edge.traversalCount / graph.maxVisitCount)
-              : opacityForTone(edge.tone, false) * 0.72;
-          const lineWidth = selected
-            ? 2.7
-            : edge.isLatest
-              ? 2.2
-              : isDense
-                ? 1.15 + Math.min(1.15, edge.traversalCount / graph.maxVisitCount)
-                : 0.72;
+      <group position={[0, -0.9, -5]}>
+        {edgeGroups.map((group) => (
+          <lineSegments key={group.key} geometry={group.geometry}>
+            <primitive object={group.material} attach="material" />
+          </lineSegments>
+        ))}
+
+        {pointGroups.map((group) => {
+          if (!visualLayers.latest && group.tone === "latest") return null;
+          if (!visualLayers.older && group.tone === "older") return null;
+          if (!visualLayers.density && group.tone === "recent") return null;
 
           return (
-            <Line
-              key={edge.id}
-              points={edge.points}
-              color={color}
-              lineWidth={lineWidth}
-              transparent
-              opacity={opacity}
-              depthWrite={false}
-            />
+            <points
+              key={group.key}
+              geometry={group.geometry}
+              onClick={(event) => handlePointEvent(event, group.nodes, onSelectNode)}
+              onPointerMove={(event) => handlePointHover(event, group.nodes, onHoverNode)}
+              onPointerOut={() => onHoverNode(null)}
+            >
+              <pointsMaterial
+                color={group.color}
+                size={group.size}
+                transparent
+                opacity={group.opacity}
+                depthWrite={false}
+                sizeAttenuation
+                blending={AdditiveBlending}
+              />
+            </points>
           );
         })}
 
-        {pointGroups.map((group) => (
-          <points key={group.key} geometry={group.geometry}>
-            <pointsMaterial
-              color={group.color}
-              size={group.size}
-              transparent
-              opacity={group.opacity}
-              depthWrite={false}
-              sizeAttenuation
-            />
-          </points>
-        ))}
-
-        {interactiveNodes.map((node) => {
+        {accentNodes.map((node) => {
           const selected = node.id === selectedNodeId;
           const color = node.isRoot ? NODE_COLORS.root : NODE_COLORS[node.tone];
           const radius = node.isRoot
-            ? 0.22
+            ? 0.34
             : selected
-              ? 0.2
-              : 0.08 + Math.min(0.12, node.visitCount / graph.maxVisitCount / 6);
+              ? 0.24
+              : node.nodeType === "merge"
+                ? 0.11 + Math.min(0.16, node.upstreamPathCount / graph.maxVisitCount / 2.8)
+                : 0.09;
 
           return (
             <group key={node.id} position={node.position}>
@@ -124,25 +131,32 @@ export function ConvergenceTree3D({
                   event.stopPropagation();
                   onSelectNode(node.id);
                 }}
+                onPointerOver={(event) => {
+                  event.stopPropagation();
+                  onHoverNode(node);
+                }}
+                onPointerOut={(event) => {
+                  event.stopPropagation();
+                  onHoverNode(null);
+                }}
               >
-                <sphereGeometry args={[radius, 18, 18]} />
-                <meshBasicMaterial color={color} transparent opacity={selected ? 1 : 0.86} />
+                <sphereGeometry args={[radius, 20, 20]} />
+                <meshBasicMaterial color={color} transparent opacity={selected ? 1 : 0.92} />
               </mesh>
-              {(selected || node.isRoot || node.isLatest) && (
-                <mesh>
-                  <sphereGeometry args={[radius * 3.2, 24, 24]} />
-                  <meshBasicMaterial
-                    color={node.isRoot ? "#e0f2fe" : color}
-                    transparent
-                    opacity={selected ? 0.16 : 0.11}
-                    depthWrite={false}
-                  />
-                </mesh>
-              )}
+              <mesh>
+                <sphereGeometry args={[radius * (node.isRoot ? 6 : selected ? 4.2 : 3.4), 24, 24]} />
+                <meshBasicMaterial
+                  color={node.isRoot ? "#e0faff" : color}
+                  transparent
+                  opacity={node.isRoot ? 0.2 : selected ? 0.18 : 0.1}
+                  depthWrite={false}
+                  blending={AdditiveBlending}
+                />
+              </mesh>
               {(selected || node.isRoot) && (
                 <Text
-                  position={[0, radius + 0.45, 0]}
-                  fontSize={node.isRoot ? 0.48 : 0.36}
+                  position={[0, -0.52, 0]}
+                  fontSize={node.isRoot ? 0.48 : 0.34}
                   color={node.isRoot ? "#f8fafc" : "#fef3c7"}
                   anchorX="center"
                   anchorY="middle"
@@ -175,33 +189,163 @@ function buildPointGroups(nodes: ConvergenceNode[]) {
     return [
       {
         key: tone,
+        tone,
+        nodes: matching,
         geometry,
         color: NODE_COLORS[tone],
-        opacity: tone === "older" ? 0.52 : tone === "recent" ? 0.68 : 0.82,
-        size: tone === "older" ? 0.075 : tone === "recent" ? 0.095 : 0.12,
+        opacity: tone === "older" ? 0.78 : tone === "recent" ? 0.88 : 0.95,
+        size: tone === "older" ? 0.13 : tone === "recent" ? 0.17 : 0.2,
       },
     ];
   });
 }
 
+function buildEdgeGroups(
+  graph: ConvergenceGraph,
+  selectedNodeId: string | null,
+  visualLayers: ConvergenceTreeVisualLayers,
+) {
+  const buckets = new Map<
+    string,
+    {
+      color: string;
+      opacity: number;
+      positions: number[];
+      priority: number;
+    }
+  >();
+
+  function addSegment(key: string, color: string, opacity: number, priority: number, points: [Vector3Like, Vector3Like]) {
+    const bucket = buckets.get(key) ?? { color, opacity, positions: [], priority };
+    bucket.positions.push(
+      points[0].x,
+      points[0].y,
+      points[0].z,
+      points[1].x,
+      points[1].y,
+      points[1].z,
+    );
+    buckets.set(key, bucket);
+  }
+
+  graph.edges.forEach((edge) => {
+    if (!visualLayers.latest && edge.isLatest) return;
+    if (!visualLayers.older && edge.tone === "older") return;
+    if (!visualLayers.density && edge.tone === "recent" && !edge.isLatest) return;
+
+    const selected = edge.fromId === selectedNodeId || edge.toId === selectedNodeId;
+    const denseRatio = edge.traversalCount / Math.max(graph.maxVisitCount, 1);
+    const dense = edge.traversalCount > 1;
+    const key = selected
+      ? "selected"
+      : edge.isLatest
+        ? "latest"
+        : edge.isRecord
+          ? "record"
+          : dense
+            ? "density"
+            : "older";
+
+    const color =
+      key === "selected"
+        ? "#fef9c3"
+        : key === "latest"
+          ? "#f8c44f"
+          : key === "density"
+            ? "#22f4ff"
+            : key === "record"
+              ? "#fb923c"
+              : "#a855f7";
+    const opacity =
+      key === "selected"
+        ? 0.98
+        : key === "latest"
+          ? 0.96
+          : key === "density"
+            ? Math.min(0.9, 0.5 + denseRatio * 0.85)
+            : key === "record"
+              ? 0.8
+              : 0.42;
+
+    addSegment(key, color, opacity, selected ? 5 : edge.isLatest ? 4 : dense ? 3 : 1, edge.points);
+
+    if (selected || edge.isLatest || denseRatio > 0.18) {
+      addSegment(
+        `${key}-glow`,
+        color,
+        selected ? 0.18 : edge.isLatest ? 0.14 : 0.08,
+        selected ? 6 : 2,
+        edge.points,
+      );
+    }
+  });
+
+  return Array.from(buckets.entries())
+    .sort((left, right) => left[1].priority - right[1].priority)
+    .map(([key, bucket]) => {
+      const geometry = new BufferGeometry();
+      geometry.setAttribute(
+        "position",
+        new Float32BufferAttribute(new Float32Array(bucket.positions), 3),
+      );
+      const material = new LineBasicMaterial({
+        color: bucket.color,
+        transparent: true,
+        opacity: bucket.opacity,
+        depthWrite: false,
+        blending: AdditiveBlending,
+      });
+      return { key, geometry, material };
+    });
+}
+
+interface Vector3Like {
+  x: number;
+  y: number;
+  z: number;
+}
+
+function handlePointEvent(
+  event: ThreeEvent<MouseEvent>,
+  nodes: ConvergenceNode[],
+  onSelectNode: (nodeId: string) => void,
+) {
+  event.stopPropagation();
+  const index = event.index;
+  if (typeof index !== "number") return;
+  const node = nodes[index];
+  if (node) onSelectNode(node.id);
+}
+
+function handlePointHover(
+  event: ThreeEvent<PointerEvent>,
+  nodes: ConvergenceNode[],
+  onHoverNode: (node: ConvergenceNode | null) => void,
+) {
+  event.stopPropagation();
+  const index = event.index;
+  if (typeof index !== "number") return;
+  onHoverNode(nodes[index] ?? null);
+}
+
 function ConvergenceGrid() {
   const lines = useMemo(() => {
     const grid: { key: string; points: [number, number, number][]; major: boolean }[] = [];
-    for (let index = 0; index <= 12; index++) {
-      const offset = -18 + index * 3;
+    for (let index = 0; index <= 18; index++) {
+      const offset = -24 + index * 3;
       grid.push({
         key: `x-${index}`,
         points: [
-          [-20, -0.04, offset - 8],
-          [20, -0.04, offset - 8],
+          [-24, -0.08, offset - 5],
+          [24, -0.08, offset - 5],
         ],
         major: index % 3 === 0,
       });
       grid.push({
         key: `z-${index}`,
         points: [
-          [offset, -0.04, -26],
-          [offset, -0.04, 10],
+          [offset, -0.08, -29],
+          [offset, -0.08, 19],
         ],
         major: index % 3 === 0,
       });
@@ -215,33 +359,33 @@ function ConvergenceGrid() {
         <Line
           key={line.key}
           points={line.points}
-          color={line.major ? "#14506e" : "#08263b"}
-          lineWidth={line.major ? 0.75 : 0.42}
+          color={line.major ? "#0e7490" : "#08344c"}
+          lineWidth={line.major ? 0.82 : 0.5}
           transparent
-          opacity={line.major ? 0.32 : 0.17}
+          opacity={line.major ? 0.42 : 0.24}
           depthWrite={false}
         />
       ))}
       <Line
         points={[
-          [0, 0, -8],
-          [0, 10, -8],
+          [0, -0.04, -5],
+          [0, 18, -5],
         ]}
-        color="#f8fafc"
-        lineWidth={1}
+        color="#67e8f9"
+        lineWidth={1.2}
         transparent
-        opacity={0.34}
+        opacity={0.36}
       />
-      <Text
-        position={[0, -0.75, -8]}
-        rotation={[-Math.PI / 2.6, 0, 0]}
-        fontSize={0.54}
-        color="#dbeafe"
-        anchorX="center"
-        anchorY="middle"
-      >
-        convergence root
-      </Text>
+      <Line
+        points={[
+          [-1.2, -0.03, -5],
+          [1.2, -0.03, -5],
+        ]}
+        color="#e0faff"
+        lineWidth={2.2}
+        transparent
+        opacity={0.6}
+      />
     </group>
   );
 }

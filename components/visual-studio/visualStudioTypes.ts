@@ -10,7 +10,7 @@ export type ScaleMode = "log" | "linear";
 
 export type VisualPathTone = "latest" | "recent" | "older" | "record";
 
-export type ConvergenceLayoutMode = "rooted" | "peaks" | "density";
+export type ConvergenceLayoutMode = "radial";
 
 export type VisualStudioDataSource = "connected" | "unconfigured" | "error";
 

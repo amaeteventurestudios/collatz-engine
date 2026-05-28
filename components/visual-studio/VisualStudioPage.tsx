@@ -14,9 +14,16 @@ import { ThreeSceneShell } from "./ThreeSceneShell";
 import { VisualStudioTabs } from "./VisualStudioTabs";
 import { useVisualStudioData } from "./useVisualStudioData";
 import { ComingSoonMode } from "./modes/ComingSoonMode";
-import { ConvergenceTree3D } from "./modes/ConvergenceTree3D";
+import {
+  ConvergenceTree3D,
+  type ConvergenceTreeVisualLayers,
+} from "./modes/ConvergenceTree3D";
 import { LiveSequenceStack3D } from "./modes/LiveSequenceStack3D";
-import { buildConvergenceGraph } from "./convergenceTreeGeometry";
+import {
+  buildConvergenceGraph,
+  type ConvergenceGraph,
+  type ConvergenceNode,
+} from "./convergenceTreeGeometry";
 import type {
   CameraCommand,
   ConvergenceLayoutMode,
@@ -39,11 +46,15 @@ export function VisualStudioPage() {
   const [liveUpdates, setLiveUpdates] = useState(true);
   const [scaleMode, setScaleMode] = useState<ScaleMode>("log");
   const [treeLayoutMode, setTreeLayoutMode] =
-    useState<ConvergenceLayoutMode>("rooted");
+    useState<ConvergenceLayoutMode>("radial");
   const [highlightRecords, setHighlightRecords] = useState(true);
+  const [showLatestPath, setShowLatestPath] = useState(true);
+  const [showMergeDensity, setShowMergeDensity] = useState(true);
+  const [showOlderBranches, setShowOlderBranches] = useState(true);
   const [selectedPathId, setSelectedPathId] = useState<string | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [hoveredPath, setHoveredPath] = useState<VisualTrajectory | null>(null);
+  const [hoveredNode, setHoveredNode] = useState<ConvergenceNode | null>(null);
   const [resetSignal, setResetSignal] = useState(0);
   const [cameraCommand, setCameraCommand] = useState<CameraCommand | null>(null);
 
@@ -69,21 +80,44 @@ export function VisualStudioPage() {
     );
   }, [selectedPathId, visibleTrajectories]);
 
-  const convergenceGraph = useMemo(() => {
-    if (!isConvergenceTree || visibleTrajectories.length === 0) return null;
-    return buildConvergenceGraph({
-      trajectories: visibleTrajectories,
-      selectedPathId: selectedTrajectory?.id ?? null,
-      highlightRecords,
-      layoutMode: treeLayoutMode,
-    });
+  const treeFullValuesReady =
+    !isConvergenceTree ||
+    visibleTrajectories.length === 0 ||
+    visibleTrajectories.every((trajectory) => (trajectory.fullValues?.length ?? 0) > 0);
+
+  const convergenceBuild = useMemo<{
+    graph: ConvergenceGraph | null;
+    error: string | null;
+  }>(() => {
+    if (!isConvergenceTree || visibleTrajectories.length === 0 || !treeFullValuesReady) {
+      return { graph: null, error: null };
+    }
+
+    try {
+      return {
+        graph: buildConvergenceGraph({
+          trajectories: visibleTrajectories,
+          selectedPathId: selectedTrajectory?.id ?? null,
+          highlightRecords,
+          layoutMode: treeLayoutMode,
+        }),
+        error: null,
+      };
+    } catch {
+      return {
+        graph: null,
+        error: "Unable to build convergence graph from the available trajectory data.",
+      };
+    }
   }, [
     highlightRecords,
     isConvergenceTree,
     selectedTrajectory?.id,
     treeLayoutMode,
+    treeFullValuesReady,
     visibleTrajectories,
   ]);
+  const convergenceGraph = convergenceBuild.graph;
 
   const selectedNode = useMemo(() => {
     if (!convergenceGraph || !selectedNodeId) return null;
@@ -96,6 +130,17 @@ export function VisualStudioPage() {
       : null;
 
   const hasRenderableData = visibleTrajectories.length > 0;
+  const treeSceneLoading =
+    isConvergenceTree && hasRenderableData && !treeFullValuesReady && !data.error;
+  const treeSceneError = data.error ?? convergenceBuild.error;
+  const treeVisualLayers = useMemo<ConvergenceTreeVisualLayers>(
+    () => ({
+      latest: showLatestPath,
+      density: showMergeDensity,
+      older: showOlderBranches,
+    }),
+    [showLatestPath, showMergeDensity, showOlderBranches],
+  );
   const showRecordLegend =
     data.hasRecordData &&
     highlightRecords &&
@@ -203,9 +248,14 @@ export function VisualStudioPage() {
               <ThreeSceneShell
                 title="Convergence Tree 3D"
                 subtitle="Computed paths merge into shared downstream structure."
-                loading={data.loading}
+                loading={data.loading || treeSceneLoading}
                 empty={!data.loading && !data.error && !hasRenderableData}
-                error={data.error}
+                error={treeSceneError}
+                errorTitle={
+                  convergenceBuild.error
+                    ? "Unable to build convergence graph from the available trajectory data."
+                    : undefined
+                }
                 onRetry={data.retry}
                 resetSignal={resetSignal}
                 cameraCommand={cameraCommand}
@@ -221,12 +271,15 @@ export function VisualStudioPage() {
                   ) : null
                 }
                 legend={<TreeLegend showRecord={showRecordLegend} />}
+                tooltip={<ConvergenceNodeTooltip node={hoveredNode} hasRecordData={data.hasRecordData} />}
               >
                 {hasRenderableData && convergenceGraph && (
                   <ConvergenceTree3D
                     graph={convergenceGraph}
                     selectedNodeId={selectedNodeId}
+                    visualLayers={treeVisualLayers}
                     onSelectNode={setSelectedNodeId}
+                    onHoverNode={setHoveredNode}
                   />
                 )}
               </ThreeSceneShell>
@@ -246,12 +299,18 @@ export function VisualStudioPage() {
               layoutMode={treeLayoutMode}
               hasRecordData={data.hasRecordData}
               highlightRecords={highlightRecords}
+              showLatestPath={showLatestPath}
+              showMergeDensity={showMergeDensity}
+              showOlderBranches={showOlderBranches}
               capped={Boolean(convergenceGraph?.capped)}
               performanceCapNote={performanceCapNote}
               onTreePathCountChange={setTreePathCount}
               onLiveUpdatesChange={setLiveUpdates}
               onLayoutModeChange={setTreeLayoutMode}
               onHighlightRecordsChange={setHighlightRecords}
+              onShowLatestPathChange={setShowLatestPath}
+              onShowMergeDensityChange={setShowMergeDensity}
+              onShowOlderBranchesChange={setShowOlderBranches}
               onResetCamera={() => {
                 setResetSignal((value) => value + 1);
                 setCameraCommand({ action: "reset", key: Date.now() });
@@ -346,6 +405,58 @@ function TreeLegend({ showRecord }: { showRecord: boolean }) {
           </span>
         ))}
       </div>
+    </div>
+  );
+}
+
+function ConvergenceNodeTooltip({
+  node,
+  hasRecordData,
+}: {
+  node: ConvergenceNode | null;
+  hasRecordData: boolean;
+}) {
+  if (!node) return null;
+
+  return (
+    <div className="pointer-events-none absolute right-4 top-20 z-20 w-64 rounded-lg border border-cyan-300/20 bg-slate-950/82 p-3 text-xs shadow-2xl shadow-black/40 backdrop-blur">
+      <p className="font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-cyan-200">
+        Node Hover
+      </p>
+      <div className="mt-2 space-y-1.5 text-slate-400">
+        <TooltipMetric label="Value" value={node.valueLabel} valueClassName="text-slate-100" />
+        <TooltipMetric label="Depth" value={node.approxDepth.toLocaleString("en-US")} />
+        <TooltipMetric label="Visit count" value={node.visitCount.toLocaleString("en-US")} />
+        <TooltipMetric
+          label="Upstream paths"
+          value={node.upstreamPathCount.toLocaleString("en-US")}
+        />
+        <TooltipMetric label="Children" value={node.childrenCount.toLocaleString("en-US")} />
+        <TooltipMetric label="Type" value={node.nodeType} />
+        <TooltipMetric label="Latest path" value={node.isLatest ? "Included" : "No"} />
+        {hasRecordData && (
+          <TooltipMetric label="Record" value={node.isRecord ? "Included" : "Not indicated"} />
+        )}
+      </div>
+    </div>
+  );
+}
+
+function TooltipMetric({
+  label,
+  value,
+  valueClassName = "text-cyan-200",
+}: {
+  label: string;
+  value: string;
+  valueClassName?: string;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <span>{label}</span>
+      <span className={`font-mono font-semibold tabular-nums ${valueClassName}`}>
+        {value}
+      </span>
     </div>
   );
 }

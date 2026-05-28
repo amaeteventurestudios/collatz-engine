@@ -27,6 +27,7 @@ interface ThreeSceneShellProps {
   loading?: boolean;
   empty?: boolean;
   error?: string | null;
+  errorTitle?: string;
   onRetry?: () => void;
   resetSignal: number;
   cameraCommand?: CameraCommand | null;
@@ -46,6 +47,7 @@ export function ThreeSceneShell({
   loading = false,
   empty = false,
   error = null,
+  errorTitle,
   onRetry,
   resetSignal,
   cameraCommand = null,
@@ -135,6 +137,7 @@ export function ThreeSceneShell({
             loading={loading}
             empty={empty}
             error={error}
+            errorTitle={errorTitle}
             onRetry={onRetry}
           />
         )}
@@ -169,15 +172,17 @@ function SceneStateOverlay({
   loading,
   empty,
   error,
+  errorTitle,
   onRetry,
 }: {
   loading: boolean;
   empty: boolean;
   error: string | null;
+  errorTitle?: string;
   onRetry?: () => void;
 }) {
   const message = error
-    ? "Unable to load Visual Studio data right now."
+    ? errorTitle ?? "Unable to load Visual Studio data right now."
     : loading
       ? "Loading computed trajectories."
       : empty
