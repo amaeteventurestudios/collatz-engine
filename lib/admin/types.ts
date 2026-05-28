@@ -66,6 +66,19 @@ export interface RuntimeConfig {
   milestoneInterval: number;
   autoThrottleEnabled: boolean;
   pauseOnCriticalStorage: boolean;
+  updatedAt?: string | null;
+}
+
+export interface CleanupResult {
+  ok: boolean;
+  error?: string;
+  resultsBefore?: number;
+  resultsAfter?: number;
+  resultsDeleted?: number;
+  logsBefore?: number;
+  logsAfter?: number;
+  logsDeleted?: number;
+  ranAt?: string;
 }
 
 export interface AdminMetrics {

@@ -106,6 +106,27 @@ export async function stopEngine(): Promise<void> {
 }
 
 /**
+ * Pause engine — worker respects this on its next iteration
+ */
+export async function pauseEngine(): Promise<void> {
+  await updateEngineState({
+    current_status: "paused",
+    worker_heartbeat_at: new Date().toISOString(),
+  });
+}
+
+/**
+ * Resume engine from paused state
+ */
+export async function resumeEngine(): Promise<void> {
+  await updateEngineState({
+    current_status: "running",
+    worker_heartbeat_at: new Date().toISOString(),
+    last_error: null,
+  });
+}
+
+/**
  * Insert one Collatz result
  */
 export async function insertCollatzResult(

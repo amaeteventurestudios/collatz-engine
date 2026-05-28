@@ -7,6 +7,7 @@ import {
   insertActivityLog,
   type CollatzResultRow,
 } from "./store";
+import { pruneResultsIfNeeded } from "./runtime-config";
 
 export interface AutonomousRunnerOptions {
   batchSize?: number;
@@ -20,6 +21,16 @@ export interface AutonomousRunnerOptions {
    * Default: true (single-run scripts always log).
    */
   shouldLogActivity?: boolean;
+  /**
+   * Storage mode from runtime config. When "free-tier", collatz_results is
+   * pruned to keepRecentResults after every batch. Default: "free-tier".
+   */
+  storageMode?: string;
+  /**
+   * Max rows to keep in collatz_results when storageMode is "free-tier".
+   * Default: 1000 (recovery default).
+   */
+  keepRecentResults?: number;
 }
 
 // Default batch size: read from env so operators can tune without code changes.
@@ -63,6 +74,8 @@ export async function runAutonomousBatch(
   const batchSize = options.batchSize ?? DEFAULT_BATCH_SIZE;
   const maxSteps = options.maxSteps;
   const logActivity = options.shouldLogActivity !== false;
+  const storageMode = options.storageMode ?? process.env.COLLATZ_STORAGE_MODE ?? "free-tier";
+  const keepRecentResults = options.keepRecentResults ?? 1_000;
 
   const state = await getEngineState();
 
@@ -114,6 +127,15 @@ export async function runAutonomousBatch(
 
     // ── Persist results ────────────────────────────────────────────────────────
     await insertBatchResults(rows);
+
+    // ── Free-tier rolling buffer: prune old results after every batch ──────────
+    // Keeps collatz_results bounded to keepRecentResults rows (highest n).
+    // Runs asynchronously and never blocks the main loop on failure.
+    if (storageMode === "free-tier") {
+      pruneResultsIfNeeded(keepRecentResults).catch((err: unknown) => {
+        console.warn("[Collatz Runner] Inline prune failed (non-fatal):", err);
+      });
+    }
 
     // ── Verify inserted rows are visible before advancing state ────────────────
     // A read-back confirms the upsert is committed and readable. If the max

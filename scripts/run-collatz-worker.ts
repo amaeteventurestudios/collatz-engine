@@ -4,42 +4,21 @@
  * Runs batches in a tight loop until the engine status is no longer "running"
  * or the process receives SIGINT / SIGTERM (Ctrl+C).
  *
- * Usage:
- *   npm run collatz:worker                    # uses env-var defaults
- *   npm run collatz:worker -- 5000            # batchSize=5000, default delay
- *   npm run collatz:worker -- 5000 500        # batchSize=5000, delay=500ms
- *   npm run collatz:worker -- 5000 0          # no delay between batches
+ * Runtime config is read from collatz_engine_runtime_config at startup and
+ * refreshed every 60 seconds. Env vars are fallbacks; recovery defaults are
+ * used if neither source is available.
  *
- * Environment variables (all optional — CLI args take precedence):
- *   COLLATZ_RESULT_BATCH_SIZE   Numbers per batch. Default: 5000.
- *                               Larger = fewer DB round-trips per number,
- *                               lower Disk IO overhead. Max crash-recovery
- *                               window = one batch worth of numbers.
- *   COLLATZ_LOG_INTERVAL_MS     Minimum wall-clock ms between activity log
- *                               writes. Default: 30000 (30 s). Set to 0 to
- *                               log every batch (not recommended in prod).
- *   COLLATZ_BATCH_DELAY_MS      Default inter-batch delay when not supplied
- *                               via CLI. Default: 0 (run as fast as safely
- *                               possible — state is still written every batch).
+ * Usage:
+ *   npm run collatz:worker          # reads runtime config from Supabase
+ *
+ * Env var overrides (all optional — runtime config table takes precedence):
+ *   COLLATZ_RESULT_BATCH_SIZE, COLLATZ_BATCH_DELAY_MS, COLLATZ_LOG_INTERVAL_MS
  */
 
 import { loadEnvConfig } from "@next/env";
 
 // Must run before any Supabase / store imports so env vars are present.
 loadEnvConfig(process.cwd());
-
-// ── Env-var config ────────────────────────────────────────────────────────────
-
-function envInt(key: string, fallback: number): number {
-  const raw = process.env[key];
-  if (!raw) return fallback;
-  const parsed = parseInt(raw, 10);
-  return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
-}
-
-const ENV_BATCH_SIZE = envInt("COLLATZ_RESULT_BATCH_SIZE", 5_000);
-const ENV_LOG_INTERVAL_MS = envInt("COLLATZ_LOG_INTERVAL_MS", 30_000);
-const ENV_BATCH_DELAY_MS = envInt("COLLATZ_BATCH_DELAY_MS", 0);
 
 // ── Interruptible sleep ───────────────────────────────────────────────────────
 
@@ -105,40 +84,24 @@ async function main() {
   // Dynamic imports — env must be loaded first
   const { runAutonomousBatch } = await import("../lib/collatz/autonomous-runner");
   const { getEngineState } = await import("../lib/collatz/store");
+  const { getRuntimeConfig, invalidateRuntimeConfigCache } =
+    await import("../lib/collatz/runtime-config");
 
-  // ── Parse & validate CLI args ─────────────────────────────────────────────
-  const args = process.argv.slice(2);
-
-  // CLI arg overrides env var; env var overrides hard default
-  const rawBatch = parseInt(args[0] ?? "", 10);
-  const batchSize = Number.isFinite(rawBatch) && rawBatch > 0 ? rawBatch : ENV_BATCH_SIZE;
-
-  const rawDelay = parseInt(args[1] ?? "", 10);
-  const delayMs = Number.isFinite(rawDelay) && rawDelay >= 0 ? rawDelay : ENV_BATCH_DELAY_MS;
-
-  if (!Number.isInteger(batchSize) || batchSize < 1 || batchSize > 100_000) {
-    console.error(
-      "Error: batchSize must be an integer between 1 and 100,000.\n" +
-        "Usage: npm run collatz:worker -- [batchSize] [delayMs]",
-    );
-    process.exit(1);
-  }
-
-  if (!Number.isInteger(delayMs) || delayMs < 0) {
-    console.error(
-      "Error: delayMs must be a non-negative integer.\n" +
-        "Usage: npm run collatz:worker -- [batchSize] [delayMs]",
-    );
-    process.exit(1);
-  }
+  // ── Load runtime config (with fallback to recovery defaults) ──────────────
+  let cfg = await getRuntimeConfig();
+  let lastConfigRefreshMs = Date.now();
+  const CONFIG_REFRESH_INTERVAL_MS = 60_000;
 
   // ── Banner ────────────────────────────────────────────────────────────────
   console.log("\n┌──────────────────────────────────────────┐");
   console.log("│       Collatz Continuous Worker           │");
   console.log("└──────────────────────────────────────────┘");
-  console.log(`  Batch size    ${fmtN(batchSize)} numbers per batch`);
-  console.log(`  Delay         ${fmtN(delayMs)}ms between batches`);
-  console.log(`  Activity log  every ${fmtN(ENV_LOG_INTERVAL_MS)}ms (COLLATZ_LOG_INTERVAL_MS)`);
+  console.log(`  Mode          ${cfg.mode}`);
+  console.log(`  Batch size    ${fmtN(cfg.batchSize)} numbers per batch`);
+  console.log(`  Delay         ${fmtN(cfg.batchDelayMs)}ms between batches`);
+  console.log(`  Storage mode  ${cfg.storageMode} (keep ${fmtN(cfg.keepRecentResults)} results)`);
+  console.log(`  Activity log  every ${fmtN(cfg.logIntervalMs)}ms`);
+  console.log(`  Config source Supabase collatz_engine_runtime_config (refreshed every 60s)`);
   console.log(`  State store   Supabase (id = "main")`);
   console.log(`  Stop          Ctrl+C\n`);
   console.log(
@@ -154,11 +117,19 @@ async function main() {
   const MAX_CONSECUTIVE_ERRORS = 5;
   const workerStart = Date.now();
 
-  // Wall-clock throttle: activity logs are written at most once per interval.
+  // Wall-clock throttle: activity logs written at most once per logIntervalMs.
   let lastActivityLogMs = 0;
 
   while (!shouldStop) {
-    // Read latest engine state on every iteration (detects stop from admin)
+    // ── Refresh runtime config every 60s ────────────────────────────────────
+    const nowMs = Date.now();
+    if (nowMs - lastConfigRefreshMs >= CONFIG_REFRESH_INTERVAL_MS) {
+      invalidateRuntimeConfigCache();
+      cfg = await getRuntimeConfig();
+      lastConfigRefreshMs = nowMs;
+    }
+
+    // Read latest engine state on every iteration (detects pause/stop from admin)
     const state = await getEngineState();
 
     if (!state) {
@@ -173,18 +144,15 @@ async function main() {
     if (state.current_status !== "running") {
       process.stdout.write(
         `  [paused]   Engine status is "${state.current_status}" — ` +
-          `waiting ${fmtN(delayMs > 0 ? delayMs : 2000)}ms...\r`,
+          `waiting ${fmtN(cfg.batchDelayMs > 0 ? cfg.batchDelayMs : 5000)}ms...\r`,
       );
-      await sleep(delayMs > 0 ? delayMs : 2000);
+      await sleep(cfg.batchDelayMs > 0 ? cfg.batchDelayMs : 5000);
       continue;
     }
 
     // ── Activity log throttle ────────────────────────────────────────────────
-    // Write batch_started/batch_completed at most once per ENV_LOG_INTERVAL_MS.
-    // batch_failed is always written unconditionally (inside runAutonomousBatch).
-    const nowMs = Date.now();
     const shouldLogActivity =
-      ENV_LOG_INTERVAL_MS === 0 || nowMs - lastActivityLogMs >= ENV_LOG_INTERVAL_MS;
+      cfg.logIntervalMs === 0 || nowMs - lastActivityLogMs >= cfg.logIntervalMs;
     if (shouldLogActivity) {
       lastActivityLogMs = nowMs;
     }
@@ -193,7 +161,12 @@ async function main() {
     iteration++;
 
     try {
-      const result = await runAutonomousBatch({ batchSize, shouldLogActivity });
+      const result = await runAutonomousBatch({
+        batchSize: cfg.batchSize,
+        shouldLogActivity,
+        storageMode: cfg.storageMode,
+        keepRecentResults: cfg.keepRecentResults,
+      });
       consecutiveErrors = 0;
       totalProcessed += result.numbersProcessed;
 
@@ -228,9 +201,11 @@ async function main() {
     }
 
     // Wait before next batch (wakes immediately on SIGINT)
-    if (!shouldStop && delayMs > 0) {
-      await sleep(delayMs);
+    const effectiveDelay = cfg.batchDelayMs;
+    if (!shouldStop && effectiveDelay > 0) {
+      await sleep(effectiveDelay);
     }
+
   }
 
   // ── Shutdown summary ──────────────────────────────────────────────────────

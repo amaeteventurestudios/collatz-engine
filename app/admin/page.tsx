@@ -1,9 +1,17 @@
 import Link from "next/link";
-import { getEngineAdminState, getRecentActivityLogs, getThroughputHistory } from "@/lib/admin/metrics";
+import { getEngineAdminState, getRecentActivityLogs, getThroughputHistory, getDbRuntimeConfig } from "@/lib/admin/metrics";
 import { getStorageMonitor, formatBytes } from "@/lib/admin/storage";
 import { getR2Status } from "@/lib/admin/r2";
-import { getRuntimeConfig, MODE_PRESETS, secondsSince, formatDuration, heartbeatStatus } from "@/lib/admin/engine";
-import { logoutAction } from "./actions";
+import { MODE_PRESETS, secondsSince, formatDuration, heartbeatStatus } from "@/lib/admin/engine";
+import {
+  logoutAction,
+  pauseEngineFormAction,
+  resumeEngineFormAction,
+  applyRecoveryModeFormAction,
+  applySafeModeFormAction,
+  applyNormalModeFormAction,
+  runCleanupFormAction,
+} from "./actions";
 import type { StorageStatus, TableSizeRow } from "@/lib/admin/types";
 
 export const dynamic = "force-dynamic";
@@ -225,19 +233,30 @@ function HealthDot({ ok, label }: { ok: boolean | null; label: string }) {
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default async function AdminPage() {
-  const [engineResult, storageData, r2Data, throughputData, activityData] = await Promise.all([
-    getEngineAdminState(),
-    getStorageMonitor(),
-    getR2Status(),
-    getThroughputHistory(40),
-    getRecentActivityLogs(15),
-  ]);
+  const [engineResult, storageData, r2Data, throughputData, activityData, dbConfigResult] =
+    await Promise.all([
+      getEngineAdminState(),
+      getStorageMonitor(),
+      getR2Status(),
+      getThroughputHistory(40),
+      getRecentActivityLogs(15),
+      getDbRuntimeConfig(),
+    ]);
 
   const engine = engineResult.data;
-  const runtime = getRuntimeConfig();
+  // Use live DB config when available, fall back to env-derived config
+  const runtime = dbConfigResult.data ?? {
+    mode: "recovery", batchSize: 25, batchDelayMs: 10000, logIntervalMs: 60000,
+    storageMode: "free-tier", keepRecentResults: 1000, activityLogRetentionRows: 250,
+    rangeSummaryInterval: 100000, milestoneInterval: 1000000,
+    autoThrottleEnabled: true, pauseOnCriticalStorage: true,
+  };
+  const runtimeConfigExists = dbConfigResult.exists;
   const hbAge = secondsSince(engine?.lastHeartbeat);
   const hbStatus = heartbeatStatus(hbAge);
   const runtimeSecs = engine?.startedAt ? secondsSince(engine.startedAt) : null;
+  const isPaused = engine?.status === "paused";
+  const isRunning = engine?.status === "running";
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 space-y-10">
@@ -301,12 +320,28 @@ export default async function AdminPage() {
 
           <div className="mt-5 flex flex-wrap gap-2 border-t border-slate-800 pt-4">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-600 self-center mr-2">Controls:</span>
-            <DisabledButton label="Pause Engine" phase="Phase 2" />
-            <DisabledButton label="Resume Engine" phase="Phase 2" />
+            <form action={pauseEngineFormAction}>
+              <button
+                type="submit"
+                disabled={isPaused}
+                className="rounded-lg border border-yellow-800 px-3 py-1.5 text-[11px] font-medium text-yellow-400 hover:bg-yellow-950 disabled:cursor-not-allowed disabled:opacity-40 transition-colors"
+              >
+                Pause Engine
+              </button>
+            </form>
+            <form action={resumeEngineFormAction}>
+              <button
+                type="submit"
+                disabled={isRunning}
+                className="rounded-lg border border-teal-800 px-3 py-1.5 text-[11px] font-medium text-teal-400 hover:bg-teal-950 disabled:cursor-not-allowed disabled:opacity-40 transition-colors"
+              >
+                Resume Engine
+              </button>
+            </form>
             <span className="rounded-lg border border-slate-800 px-3 py-1.5 text-[11px] text-slate-700">
               Restart Worker — manual/local worker required
             </span>
-            <DisabledButton label="Stop Engine" phase="Phase 2" />
+            <DisabledButton label="Stop Engine" phase="Phase 3" />
           </div>
         </Card>
       </section>
@@ -547,11 +582,31 @@ export default async function AdminPage() {
                     <span className="text-slate-300 tabular-nums">{preset.logIntervalMs}</span>
                   </div>
                 </div>
-                <DisabledButton label={`Apply ${name}`} phase="Phase 2" />
+                {runtimeConfigExists ? (
+                  <form action={name === "recovery" ? applyRecoveryModeFormAction : name === "safe" ? applySafeModeFormAction : applyNormalModeFormAction}>
+                    <button
+                      type="submit"
+                      disabled={isCurrent}
+                      className="mt-2 w-full rounded-lg border border-teal-800 px-3 py-1.5 text-[11px] font-medium text-teal-400 hover:bg-teal-950 disabled:cursor-not-allowed disabled:opacity-40 transition-colors"
+                    >
+                      {isCurrent ? `${name} active` : `Apply ${name}`}
+                    </button>
+                  </form>
+                ) : (
+                  <DisabledButton label={`Apply ${name} (run migration first)`} phase="needs SQL" />
+                )}
               </Card>
             );
           })}
         </div>
+
+        {!runtimeConfigExists && (
+          <div className="mt-3 rounded-xl border border-yellow-900/50 bg-yellow-950/30 px-4 py-3">
+            <p className="text-[11px] text-yellow-400">
+              Runtime config table not found. Run <span className="font-mono">supabase/phase-2a-storage-guardrails.sql</span> in the Supabase SQL Editor to enable live mode switching.
+            </p>
+          </div>
+        )}
 
         {/* Current config table */}
         <Card className="mt-4">
@@ -599,11 +654,18 @@ export default async function AdminPage() {
             ))}
           </div>
           <div className="flex flex-wrap gap-2 border-t border-slate-800 pt-4">
-            <DisabledButton label="Run Cleanup" phase="Phase 2/3" />
-            <DisabledButton label="Run Archive Export" phase="Phase 2/3" />
-            <DisabledButton label="Run Maintenance" phase="Phase 2/3" />
-            <span className="text-[10px] text-slate-700 self-center ml-1">
-              Destructive actions disabled in Phase 1
+            <form action={runCleanupFormAction}>
+              <button
+                type="submit"
+                className="rounded-lg border border-orange-800 px-3 py-1.5 text-[11px] font-medium text-orange-400 hover:bg-orange-950 transition-colors"
+              >
+                Run Cleanup
+              </button>
+            </form>
+            <DisabledButton label="Run Archive Export" phase="Phase 3" />
+            <DisabledButton label="Run Maintenance" phase="Phase 3" />
+            <span className="text-[10px] text-slate-600 self-center ml-1">
+              Cleanup trims results to {runtime.keepRecentResults.toLocaleString()} rows · logs to {runtime.activityLogRetentionRows.toLocaleString()} rows
             </span>
           </div>
         </Card>
