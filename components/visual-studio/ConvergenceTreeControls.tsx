@@ -81,11 +81,11 @@ export function ConvergenceTreeControls({
           ))}
         </div>
         <p className="mt-3 text-xs text-slate-500">
-          Building from {renderedPathCount.toLocaleString("en-US")} recent trajectories
+          Number of trajectories included: {renderedPathCount.toLocaleString("en-US")}
         </p>
         {(performanceCapNote || capped) && (
           <p className="mt-2 text-[11px] leading-relaxed text-amber-300/80">
-            {performanceCapNote ?? "Graph capped for performance."}
+            {performanceCapNote ?? "Tree simplified for readability."}
           </p>
         )}
       </VisualMetricCard>
@@ -115,7 +115,7 @@ export function ConvergenceTreeControls({
           ) : (
             <Play className="h-3.5 w-3.5" aria-hidden />
           )}
-          {liveUpdates ? "Pause Live" : "Resume Live"}
+          {liveUpdates ? "Pause Updates" : "Resume Updates"}
         </button>
       </VisualMetricCard>
 
@@ -126,6 +126,13 @@ export function ConvergenceTreeControls({
             label="Hierarchical Radial"
             onClick={() => onLayoutModeChange("radial")}
           />
+          <button
+            type="button"
+            disabled
+            className="cursor-not-allowed rounded-md border border-slate-800 bg-slate-950/50 px-3 py-2 text-xs font-semibold text-slate-600"
+          >
+            Force Directed
+          </button>
         </div>
       </VisualMetricCard>
 
@@ -205,9 +212,12 @@ export function ConvergenceTreeControls({
         action={<Info className="h-4 w-4 text-slate-500" aria-hidden />}
       >
         <p className="text-xs leading-relaxed text-slate-400">
-          This view maps computed Collatz transitions as a bounded 3D convergence
-          tree. Each node is a Collatz value. Directed edges connect n -&gt; next(n).
-          Many upstream paths converge as values merge toward 1.
+          The Convergence Tree is built from real Collatz trajectories, but the
+          result is visually striking because repeated numerical behavior creates
+          natural-looking structure. As many computed paths merge into shared
+          downstream routes, the visualization begins to resemble a luminous tree,
+          coral system, or root network. Its beauty comes from real mathematical
+          behavior, not decorative invention.
         </p>
         <div className="mt-3 flex flex-wrap gap-2 text-[10px] text-slate-500">
           <span className="inline-flex items-center gap-1">

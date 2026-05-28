@@ -267,6 +267,7 @@ export function VisualStudioPage() {
                       nodes={convergenceGraph.nodes.length}
                       edges={convergenceGraph.edges.length}
                       capped={convergenceGraph.capped}
+                      latestStartingNumber={convergenceGraph.latestStartingNumber}
                     />
                   ) : null
                 }
@@ -361,28 +362,44 @@ function TreeSceneHUD({
   nodes,
   edges,
   capped,
+  latestStartingNumber,
 }: {
   trajectories: number;
   nodes: number;
   edges: number;
   capped: boolean;
+  latestStartingNumber: number | null;
 }) {
   return (
-    <div className="absolute left-4 top-4 z-20 rounded-lg border border-cyan-300/15 bg-slate-950/72 p-3 shadow-2xl shadow-black/30 backdrop-blur">
-      <p className="font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-cyan-200">
-        Computed Convergence Structure
-      </p>
-      <div className="mt-2 grid grid-cols-3 gap-2 text-xs tabular-nums text-slate-300">
-        <span>{trajectories.toLocaleString("en-US")} paths</span>
-        <span>{nodes.toLocaleString("en-US")} nodes</span>
-        <span>{edges.toLocaleString("en-US")} edges</span>
-      </div>
-      {capped && (
-        <p className="mt-2 text-[11px] text-amber-300/80">
-          Graph capped for performance.
+    <>
+      <div className="absolute left-4 top-4 z-20 rounded-lg border border-cyan-300/15 bg-slate-950/72 p-3 shadow-2xl shadow-black/30 backdrop-blur">
+        <p className="font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-cyan-200">
+          Computed Convergence Structure
         </p>
+        <div className="mt-2 grid grid-cols-3 gap-2 text-xs tabular-nums text-slate-300">
+          <span>{trajectories.toLocaleString("en-US")} paths</span>
+          <span>{nodes.toLocaleString("en-US")} nodes</span>
+          <span>{edges.toLocaleString("en-US")} edges</span>
+        </div>
+        {capped && (
+          <p className="mt-2 text-[11px] text-amber-300/80">
+            Tree simplified for readability.
+          </p>
+        )}
+      </div>
+      {latestStartingNumber && (
+        <div className="absolute right-4 top-20 z-20 hidden w-36 rounded-lg border border-slate-700/80 bg-slate-950/72 p-3 shadow-2xl shadow-black/30 backdrop-blur sm:block">
+          <div className="h-px w-12 bg-amber-300" />
+          <p className="mt-2 font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-slate-300">
+            Latest Path
+          </p>
+          <p className="mt-2 text-[11px] text-slate-500">Starting number</p>
+          <p className="font-mono text-sm font-bold text-amber-300">
+            {latestStartingNumber.toLocaleString("en-US")}
+          </p>
+        </div>
       )}
-    </div>
+    </>
   );
 }
 

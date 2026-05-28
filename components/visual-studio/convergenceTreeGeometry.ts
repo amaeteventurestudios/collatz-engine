@@ -59,6 +59,8 @@ interface NodeDraft {
   visitCount: number;
   incomingCount: number;
   childrenCount: number;
+  laneTotal: number;
+  laneWeight: number;
   outgoingValue: bigint | null;
   approxDepth: number;
   firstSeenOrder: number;
@@ -77,11 +79,11 @@ interface EdgeDraft {
   isRecord: boolean;
 }
 
-const MAX_RENDERED_NODES = 2_500;
-const MAX_RENDERED_EDGES = 4_000;
-const SCENE_HEIGHT = 18;
-const FAN_WIDTH = 36;
-const FAN_DEPTH = 12;
+const MAX_RENDERED_NODES = 1_100;
+const MAX_RENDERED_EDGES = 1_550;
+const SCENE_HEIGHT = 17.5;
+const FAN_WIDTH = 34;
+const FAN_DEPTH = 9;
 
 export function buildConvergenceGraph({
   trajectories,
@@ -101,6 +103,8 @@ export function buildConvergenceGraph({
 
   trajectories.forEach((trajectory, trajectoryIndex) => {
     const sequence = sequenceForTrajectory(trajectory);
+    const maxTrajectoryDepth = Math.max(1, sequence.length - 1);
+    const lane = laneForTrajectory(trajectoryIndex, trajectories.length);
     const isLatest = trajectoryIndex === 0;
     const isSelected = trajectory.id === selectedPathId;
     const isRecord = highlightRecords && trajectory.isRecord;
@@ -108,6 +112,9 @@ export function buildConvergenceGraph({
     sequence.forEach((value, sequenceIndex) => {
       const id = value.toString();
       const nextValue = sequence[sequenceIndex + 1] ?? null;
+      const depthToRoot = Math.max(0, sequence.length - sequenceIndex - 1);
+      const trajectoryDepthRatio = depthToRoot / maxTrajectoryDepth;
+      const laneWeight = 0.16 + Math.pow(trajectoryDepthRatio, 1.35) * 1.85;
       const draft =
         nodeDrafts.get(id) ??
         ({
@@ -115,8 +122,10 @@ export function buildConvergenceGraph({
           visitCount: 0,
           incomingCount: 0,
           childrenCount: 0,
+          laneTotal: 0,
+          laneWeight: 0,
           outgoingValue: nextValue,
-          approxDepth: Math.max(0, sequence.length - sequenceIndex - 1),
+          approxDepth: depthToRoot,
           firstSeenOrder: seenOrder++,
           isLatest: false,
           isSelected: false,
@@ -124,10 +133,12 @@ export function buildConvergenceGraph({
         } satisfies NodeDraft);
 
       draft.visitCount += 1;
+      draft.laneTotal += lane * laneWeight;
+      draft.laneWeight += laneWeight;
       draft.outgoingValue = draft.outgoingValue ?? nextValue;
       draft.approxDepth = Math.min(
         draft.approxDepth,
-        Math.max(0, sequence.length - sequenceIndex - 1),
+        depthToRoot,
       );
       draft.isLatest ||= isLatest;
       draft.isSelected ||= isSelected;
@@ -258,6 +269,18 @@ function sequenceForTrajectory(trajectory: VisualTrajectory): bigint[] {
   return trajectory.values.map((point) => point.value);
 }
 
+function laneForTrajectory(index: number, total: number): number {
+  if (index === 0) return 0.92;
+  if (total <= 2) return -0.62;
+
+  const ratio = (index - 1) / Math.max(1, total - 2);
+  if (ratio < 0.58) {
+    return -0.94 + (ratio / 0.58) * 0.84;
+  }
+
+  return -0.08 + ((ratio - 0.58) / 0.42) * 0.7;
+}
+
 function capNodeIds(ids: string[], drafts: Map<string, NodeDraft>): string[] {
   return ids
     .sort((left, right) => {
@@ -331,20 +354,28 @@ function buildHierarchicalPositions({
       const siblings = childIdsByParentId.get(parentId) ?? group;
       const siblingIndex = Math.max(0, siblings.indexOf(id));
       const siblingCenter = (siblings.length - 1) / 2;
-      const siblingOffset = (siblingIndex - siblingCenter) * Math.min(1.4, 0.34 + depth * 0.03);
-      const branchSide = stableSigned(`${id}:x`);
+      const siblingOffset = (siblingIndex - siblingCenter) * Math.min(0.95, 0.2 + depth * 0.018);
+      const averagedLane =
+        draft.laneWeight > 0 ? draft.laneTotal / draft.laneWeight : stableSigned(`${id}:x`);
       const densityRatio = Math.log1p(draft.visitCount) / Math.log1p(maxVisitCount);
-      const centerPull = 1 - densityRatio * 0.72;
-      const globalFan = branchSide * FAN_WIDTH * levelFan * centerPull * 0.5;
+      const centerPull = 1 - densityRatio * 0.82;
+      const globalFan = averagedLane * FAN_WIDTH * levelFan * centerPull * 0.5;
       const valueLift = log10BigInt(draft.value + 1n) / Math.max(maxLogValue, 1);
-      const inheritedX = parent.x * (0.9 - densityRatio * 0.22);
-      const x = clamp(inheritedX + globalFan * 0.42 + siblingOffset, -FAN_WIDTH / 2, FAN_WIDTH / 2);
-      const y = Math.max(0.18, depthRatio * SCENE_HEIGHT + valueLift * 2.8);
+      const inheritedX = parent.x * (0.82 - densityRatio * 0.18);
+      const latestPull =
+        draft.isLatest && !draft.isRecord
+          ? Math.min(0.86, Math.pow(depthRatio, 0.72) * (1 - densityRatio * 0.52))
+          : 0;
+      const naturalX = inheritedX + globalFan * 0.54 + siblingOffset;
+      const latestX = 4.2 + Math.pow(depthRatio, 0.7) * 12.8;
+      const x = clamp(naturalX * (1 - latestPull) + latestX * latestPull, -FAN_WIDTH / 2, FAN_WIDTH / 2);
+      const y = Math.max(0.18, Math.pow(depthRatio, 0.88) * SCENE_HEIGHT + valueLift * 1.6);
       const z =
-        parent.z * 0.6 +
-        stableSigned(`${id}:z`) * FAN_DEPTH * levelFan * (0.24 + centerPull * 0.42) +
-        valueLift * 2.2 -
-        2.4;
+        parent.z * 0.46 +
+        averagedLane * FAN_DEPTH * levelFan * 0.22 +
+        stableSigned(`${id}:z`) * FAN_DEPTH * levelFan * 0.18 +
+        valueLift * 1.05 -
+        2.6;
 
       positions.set(id, new Vector3(x, y, clamp(z, -FAN_DEPTH, FAN_DEPTH)));
     });
@@ -404,17 +435,18 @@ function scoreNode(draft: NodeDraft): number {
     draft.visitCount * 120 +
     draft.incomingCount * 35 +
     draft.childrenCount * 30 +
-    (draft.isLatest ? 28_000 : 0) +
+    (draft.isLatest ? 45_000 : 0) +
     (draft.isSelected ? 30_000 : 0) +
     (draft.isRecord ? 22_000 : 0) -
-    draft.firstSeenOrder * 0.02
+    draft.approxDepth * 4 -
+    draft.firstSeenOrder * 0.03
   );
 }
 
 function scoreEdge(edge: EdgeDraft): number {
   return (
     edge.traversalCount * 160 +
-    (edge.isLatest ? 28_000 : 0) +
+    (edge.isLatest ? 45_000 : 0) +
     (edge.isSelected ? 30_000 : 0) +
     (edge.isRecord ? 22_000 : 0) -
     edge.firstSeenOrder * 0.02

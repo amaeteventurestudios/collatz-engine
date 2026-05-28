@@ -145,7 +145,7 @@ export function ConvergenceTreePanel({
 
           {graph.capped && (
             <p className="border-t border-slate-800/80 pt-4 text-xs leading-relaxed text-amber-300/80">
-              Graph capped for performance.
+              Tree simplified for readability.
             </p>
           )}
         </div>
