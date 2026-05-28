@@ -13,6 +13,7 @@ import type {
 interface UseVisualStudioDataOptions {
   visiblePathCount: number;
   liveUpdates: boolean;
+  includeFullValues?: boolean;
 }
 
 interface RawEngineState {
@@ -121,6 +122,7 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
 export function useVisualStudioData({
   visiblePathCount,
   liveUpdates,
+  includeFullValues = false,
 }: UseVisualStudioDataOptions): VisualStudioDataResult {
   const [trajectories, setTrajectories] = useState<VisualTrajectory[]>([]);
   const [engineRaw, setEngineRaw] = useState<RawEngineState | null>(null);
@@ -183,7 +185,7 @@ export function useVisualStudioData({
       };
 
       const nextTrajectories = rows
-        .map((row) => deriveVisualTrajectory(row, recordContext))
+        .map((row) => deriveVisualTrajectory(row, recordContext, { includeFullValues }))
         .filter((trajectory): trajectory is VisualTrajectory => trajectory !== null);
 
       setTrajectories(nextTrajectories);
@@ -202,7 +204,7 @@ export function useVisualStudioData({
     } finally {
       if (requestIdRef.current === requestId) setLoading(false);
     }
-  }, [fetchLimit]);
+  }, [fetchLimit, includeFullValues]);
 
   useEffect(() => {
     const initialPollId = window.setTimeout(fetchData, 0);

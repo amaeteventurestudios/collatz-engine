@@ -12,7 +12,6 @@ const tabs: VisualStudioTab[] = [
   {
     id: "convergence-tree",
     label: "Convergence Tree",
-    status: "Coming soon",
     Icon: Network,
   },
   {

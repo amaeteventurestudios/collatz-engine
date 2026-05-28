@@ -17,6 +17,10 @@ export interface VisualRecordContext {
   highestPeak?: number | null;
 }
 
+export interface VisualTrajectoryOptions {
+  includeFullValues?: boolean;
+}
+
 const MAX_DERIVED_STEPS = 5_000;
 const MAX_POINTS_PER_TRAJECTORY = 180;
 
@@ -71,6 +75,7 @@ function recordLabelFor(
 export function deriveVisualTrajectory(
   row: CollatzVisualSourceRow,
   context: VisualRecordContext,
+  options: VisualTrajectoryOptions = {},
 ): VisualTrajectory | null {
   if (!Number.isSafeInteger(row.n) || row.n < 1) return null;
 
@@ -92,6 +97,7 @@ export function deriveVisualTrajectory(
     start: row.n,
     startLabel: row.n.toLocaleString("en-US"),
     values: downsampleSequence(computed.full_sequence),
+    fullValues: options.includeFullValues ? computed.full_sequence : undefined,
     steps: expectedSteps || computed.steps_to_1,
     peak,
     peakLabel: formatLargeNumber(peak),

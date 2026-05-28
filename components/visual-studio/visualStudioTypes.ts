@@ -10,6 +10,8 @@ export type ScaleMode = "log" | "linear";
 
 export type VisualPathTone = "latest" | "recent" | "older" | "record";
 
+export type ConvergenceLayoutMode = "rooted" | "peaks" | "density";
+
 export type VisualStudioDataSource = "connected" | "unconfigured" | "error";
 
 export interface VisualStudioTab {
@@ -29,6 +31,7 @@ export interface VisualTrajectory {
   start: number;
   startLabel: string;
   values: VisualTrajectoryPoint[];
+  fullValues?: bigint[];
   steps: number;
   peak: bigint;
   peakLabel: string;

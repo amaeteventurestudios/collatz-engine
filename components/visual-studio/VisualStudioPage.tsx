@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, Radio, ShieldCheck } from "lucide-react";
+import { ConvergenceTreeControls } from "./ConvergenceTreeControls";
+import { ConvergenceTreePanel } from "./ConvergenceTreePanel";
 import { LegendPanel } from "./LegendPanel";
 import { RangeControls } from "./RangeControls";
 import { SceneHUD } from "./SceneHUD";
@@ -12,9 +14,12 @@ import { ThreeSceneShell } from "./ThreeSceneShell";
 import { VisualStudioTabs } from "./VisualStudioTabs";
 import { useVisualStudioData } from "./useVisualStudioData";
 import { ComingSoonMode } from "./modes/ComingSoonMode";
+import { ConvergenceTree3D } from "./modes/ConvergenceTree3D";
 import { LiveSequenceStack3D } from "./modes/LiveSequenceStack3D";
+import { buildConvergenceGraph } from "./convergenceTreeGeometry";
 import type {
   CameraCommand,
+  ConvergenceLayoutMode,
   ScaleMode,
   VisualStudioDataSource,
   VisualStudioEngineSnapshot,
@@ -23,24 +28,32 @@ import type {
 } from "./visualStudioTypes";
 
 const DEFAULT_VISIBLE_PATHS = 100;
+const DEFAULT_TREE_PATHS = 50;
 const MOBILE_PATH_CAP = 250;
 
 export function VisualStudioPage() {
   const [activeTab, setActiveTab] =
     useState<VisualStudioTabId>("live-sequence-stack");
   const [visiblePathCount, setVisiblePathCount] = useState(DEFAULT_VISIBLE_PATHS);
+  const [treePathCount, setTreePathCount] = useState(DEFAULT_TREE_PATHS);
   const [liveUpdates, setLiveUpdates] = useState(true);
   const [scaleMode, setScaleMode] = useState<ScaleMode>("log");
+  const [treeLayoutMode, setTreeLayoutMode] =
+    useState<ConvergenceLayoutMode>("rooted");
   const [highlightRecords, setHighlightRecords] = useState(true);
   const [selectedPathId, setSelectedPathId] = useState<string | null>(null);
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [hoveredPath, setHoveredPath] = useState<VisualTrajectory | null>(null);
   const [resetSignal, setResetSignal] = useState(0);
   const [cameraCommand, setCameraCommand] = useState<CameraCommand | null>(null);
 
-  const effectiveVisiblePathCount = useEffectivePathCount(visiblePathCount);
+  const isConvergenceTree = activeTab === "convergence-tree";
+  const requestedPathCount = isConvergenceTree ? treePathCount : visiblePathCount;
+  const effectiveVisiblePathCount = useEffectivePathCount(requestedPathCount);
   const data = useVisualStudioData({
     visiblePathCount: effectiveVisiblePathCount,
     liveUpdates,
+    includeFullValues: isConvergenceTree,
   });
 
   const visibleTrajectories = useMemo(
@@ -56,8 +69,29 @@ export function VisualStudioPage() {
     );
   }, [selectedPathId, visibleTrajectories]);
 
+  const convergenceGraph = useMemo(() => {
+    if (!isConvergenceTree || visibleTrajectories.length === 0) return null;
+    return buildConvergenceGraph({
+      trajectories: visibleTrajectories,
+      selectedPathId: selectedTrajectory?.id ?? null,
+      highlightRecords,
+      layoutMode: treeLayoutMode,
+    });
+  }, [
+    highlightRecords,
+    isConvergenceTree,
+    selectedTrajectory?.id,
+    treeLayoutMode,
+    visibleTrajectories,
+  ]);
+
+  const selectedNode = useMemo(() => {
+    if (!convergenceGraph || !selectedNodeId) return null;
+    return convergenceGraph.nodes.find((node) => node.id === selectedNodeId) ?? null;
+  }, [convergenceGraph, selectedNodeId]);
+
   const performanceCapNote =
-    effectiveVisiblePathCount < visiblePathCount
+    effectiveVisiblePathCount < requestedPathCount
       ? `Mobile rendering is capped at ${effectiveVisiblePathCount.toLocaleString("en-US")} paths for responsiveness.`
       : null;
 
@@ -163,6 +197,67 @@ export function VisualStudioPage() {
               }}
             />
           </>
+        ) : activeTab === "convergence-tree" ? (
+          <>
+            <div className="grid gap-3 xl:grid-cols-[minmax(0,4fr)_minmax(280px,1fr)]">
+              <ThreeSceneShell
+                title="Convergence Tree 3D"
+                subtitle="Computed paths merge into shared downstream structure."
+                loading={data.loading}
+                empty={!data.loading && !data.error && !hasRenderableData}
+                error={data.error}
+                onRetry={data.retry}
+                resetSignal={resetSignal}
+                cameraCommand={cameraCommand}
+                onCameraCommand={setCameraCommand}
+                hud={
+                  convergenceGraph ? (
+                    <TreeSceneHUD
+                      trajectories={convergenceGraph.trajectoriesIncluded}
+                      nodes={convergenceGraph.nodes.length}
+                      edges={convergenceGraph.edges.length}
+                      capped={convergenceGraph.capped}
+                    />
+                  ) : null
+                }
+                legend={<TreeLegend showRecord={showRecordLegend} />}
+              >
+                {hasRenderableData && convergenceGraph && (
+                  <ConvergenceTree3D
+                    graph={convergenceGraph}
+                    selectedNodeId={selectedNodeId}
+                    onSelectNode={setSelectedNodeId}
+                  />
+                )}
+              </ThreeSceneShell>
+
+              <ConvergenceTreePanel
+                graph={convergenceGraph}
+                selectedNode={selectedNode}
+                hasRecordData={data.hasRecordData}
+              />
+            </div>
+
+            <ConvergenceTreeControls
+              treePathCount={treePathCount}
+              renderedPathCount={visibleTrajectories.length}
+              requestedPathCount={treePathCount}
+              liveUpdates={liveUpdates}
+              layoutMode={treeLayoutMode}
+              hasRecordData={data.hasRecordData}
+              highlightRecords={highlightRecords}
+              capped={Boolean(convergenceGraph?.capped)}
+              performanceCapNote={performanceCapNote}
+              onTreePathCountChange={setTreePathCount}
+              onLiveUpdatesChange={setLiveUpdates}
+              onLayoutModeChange={setTreeLayoutMode}
+              onHighlightRecordsChange={setHighlightRecords}
+              onResetCamera={() => {
+                setResetSignal((value) => value + 1);
+                setCameraCommand({ action: "reset", key: Date.now() });
+              }}
+            />
+          </>
         ) : (
           <ComingSoonMode tabId={activeTab} />
         )}
@@ -202,13 +297,66 @@ function useEffectivePathCount(requested: number): number {
   return isCompact ? Math.min(requested, MOBILE_PATH_CAP) : requested;
 }
 
+function TreeSceneHUD({
+  trajectories,
+  nodes,
+  edges,
+  capped,
+}: {
+  trajectories: number;
+  nodes: number;
+  edges: number;
+  capped: boolean;
+}) {
+  return (
+    <div className="absolute left-4 top-4 z-20 rounded-lg border border-cyan-300/15 bg-slate-950/72 p-3 shadow-2xl shadow-black/30 backdrop-blur">
+      <p className="font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-cyan-200">
+        Computed Convergence Structure
+      </p>
+      <div className="mt-2 grid grid-cols-3 gap-2 text-xs tabular-nums text-slate-300">
+        <span>{trajectories.toLocaleString("en-US")} paths</span>
+        <span>{nodes.toLocaleString("en-US")} nodes</span>
+        <span>{edges.toLocaleString("en-US")} edges</span>
+      </div>
+      {capped && (
+        <p className="mt-2 text-[11px] text-amber-300/80">
+          Graph capped for performance.
+        </p>
+      )}
+    </div>
+  );
+}
+
+function TreeLegend({ showRecord }: { showRecord: boolean }) {
+  const items = [
+    { label: "Root 1", color: "bg-slate-50" },
+    { label: "Latest path", color: "bg-amber-300" },
+    { label: "Merge density", color: "bg-cyan-300" },
+    { label: "Older branches", color: "bg-violet-400" },
+    ...(showRecord ? [{ label: "Record path", color: "bg-orange-400" }] : []),
+  ];
+
+  return (
+    <div className="absolute bottom-4 left-4 z-20 rounded-lg border border-slate-700/70 bg-slate-950/72 p-3 shadow-2xl shadow-black/30 backdrop-blur">
+      <div className="flex flex-wrap gap-x-4 gap-y-2 text-[11px] text-slate-400">
+        {items.map((item) => (
+          <span key={item.label} className="inline-flex items-center gap-2">
+            <span className={`h-2 w-2 rounded-full ${item.color}`} />
+            {item.label}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function OrbitLogo() {
   const dots = Array.from({ length: 18 }, (_, index) => {
     const angle = (index / 18) * Math.PI * 2;
     const radius = index % 3 === 0 ? 21 : index % 3 === 1 ? 15 : 9;
     return {
-      left: 24 + Math.cos(angle) * radius,
-      top: 24 + Math.sin(angle) * radius,
+      left: Number((24 + Math.cos(angle) * radius).toFixed(5)),
+      top: Number((24 + Math.sin(angle) * radius).toFixed(5)),
       size: index % 4 === 0 ? 3 : 2,
     };
   });
@@ -223,10 +371,10 @@ function OrbitLogo() {
           key={index}
           className="absolute rounded-full bg-slate-100 shadow-[0_0_10px_rgba(125,211,252,0.8)]"
           style={{
-            height: dot.size,
-            width: dot.size,
-            left: dot.left,
-            top: dot.top,
+            height: `${dot.size}px`,
+            width: `${dot.size}px`,
+            left: `${dot.left}px`,
+            top: `${dot.top}px`,
           }}
         />
       ))}

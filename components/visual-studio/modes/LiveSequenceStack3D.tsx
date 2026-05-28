@@ -7,7 +7,6 @@ import { buildTrajectoryGeometry } from "../collatzGeometry";
 import {
   opacityForTone,
   VISUAL_STUDIO_COLORS,
-  VISUAL_STUDIO_GLOW,
 } from "../collatzColorMaps";
 import type { ScaleMode, VisualTrajectory } from "../visualStudioTypes";
 
@@ -108,7 +107,7 @@ export function LiveSequenceStack3D({
                 <mesh position={lastPoint}>
                   <sphereGeometry args={[selected ? 0.42 : 0.34, 24, 24]} />
                   <meshBasicMaterial
-                    color={VISUAL_STUDIO_GLOW[path.tone]}
+                    color={color}
                     transparent
                     opacity={0.16}
                     side={DoubleSide}
