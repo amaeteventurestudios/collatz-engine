@@ -9,7 +9,11 @@ import {
   Float32BufferAttribute,
   LineBasicMaterial,
 } from "three";
-import type { ConvergenceGraph, ConvergenceNode } from "../convergenceTreeGeometry";
+import type {
+  ConvergenceBranchDot,
+  ConvergenceGraph,
+  ConvergenceNode,
+} from "../convergenceTreeGeometry";
 import type { VisualPathTone } from "../visualStudioTypes";
 
 export interface ConvergenceTreeVisualLayers {
@@ -42,9 +46,17 @@ export function ConvergenceTree3D({
   onHoverNode,
 }: ConvergenceTree3DProps) {
   const pointGroups = useMemo(() => buildPointGroups(graph.nodes), [graph.nodes]);
+  const branchDotGroups = useMemo(
+    () => buildBranchDotGroups(graph.branchDots),
+    [graph.branchDots],
+  );
   const edgeGroups = useMemo(
     () => buildEdgeGroups(graph, selectedNodeId, visualLayers),
     [graph, selectedNodeId, visualLayers],
+  );
+  const nodeLookup = useMemo(
+    () => new Map(graph.nodes.map((node) => [node.id, node])),
+    [graph.nodes],
   );
   const accentNodes = useMemo(
     () =>
@@ -97,7 +109,39 @@ export function ConvergenceTree3D({
               key={group.key}
               geometry={group.geometry}
               onClick={(event) => handlePointEvent(event, group.nodes, onSelectNode)}
+              onPointerOver={(event) => handlePointHover(event, group.nodes, onHoverNode)}
               onPointerMove={(event) => handlePointHover(event, group.nodes, onHoverNode)}
+              onPointerOut={() => onHoverNode(null)}
+            >
+              <pointsMaterial
+                color={group.color}
+                size={group.size}
+                transparent
+                opacity={group.opacity}
+                depthWrite={false}
+                sizeAttenuation
+                blending={AdditiveBlending}
+              />
+            </points>
+          );
+        })}
+
+        {branchDotGroups.map((group) => {
+          if (!visualLayers.latest && group.tone === "latest") return null;
+          if (!visualLayers.older && group.tone === "older") return null;
+          if (!visualLayers.density && group.tone === "recent") return null;
+
+          return (
+            <points
+              key={group.key}
+              geometry={group.geometry}
+              onClick={(event) => handleBranchDotClick(event, group.dots, onSelectNode)}
+              onPointerOver={(event) =>
+                handleBranchDotHover(event, group.dots, nodeLookup, onHoverNode)
+              }
+              onPointerMove={(event) =>
+                handleBranchDotHover(event, group.dots, nodeLookup, onHoverNode)
+              }
               onPointerOut={() => onHoverNode(null)}
             >
               <pointsMaterial
@@ -200,6 +244,34 @@ function buildPointGroups(nodes: ConvergenceNode[]) {
   });
 }
 
+function buildBranchDotGroups(dots: ConvergenceBranchDot[]) {
+  return (["older", "recent", "record", "latest"] as VisualPathTone[]).flatMap((tone) => {
+    const matching = dots.filter((dot) => dot.tone === tone);
+    if (matching.length === 0) return [];
+
+    const geometry = new BufferGeometry();
+    const positions = new Float32Array(matching.length * 3);
+    matching.forEach((dot, index) => {
+      positions[index * 3] = dot.position.x;
+      positions[index * 3 + 1] = dot.position.y;
+      positions[index * 3 + 2] = dot.position.z;
+    });
+    geometry.setAttribute("position", new Float32BufferAttribute(positions, 3));
+
+    return [
+      {
+        key: `branch-${tone}`,
+        tone,
+        dots: matching,
+        geometry,
+        color: NODE_COLORS[tone],
+        opacity: tone === "older" ? 0.88 : 0.95,
+        size: tone === "latest" ? 0.24 : tone === "recent" ? 0.18 : 0.15,
+      },
+    ];
+  });
+}
+
 function buildEdgeGroups(
   graph: ConvergenceGraph,
   selectedNodeId: string | null,
@@ -215,36 +287,47 @@ function buildEdgeGroups(
     }
   >();
 
-  function addSegment(key: string, color: string, opacity: number, priority: number, points: [Vector3Like, Vector3Like]) {
+  function addPolyline(
+    key: string,
+    color: string,
+    opacity: number,
+    priority: number,
+    points: Vector3Like[],
+  ) {
     const bucket = buckets.get(key) ?? { color, opacity, positions: [], priority };
-    bucket.positions.push(
-      points[0].x,
-      points[0].y,
-      points[0].z,
-      points[1].x,
-      points[1].y,
-      points[1].z,
-    );
+    for (let index = 0; index < points.length - 1; index++) {
+      bucket.positions.push(
+        points[index].x,
+        points[index].y,
+        points[index].z,
+        points[index + 1].x,
+        points[index + 1].y,
+        points[index + 1].z,
+      );
+    }
     buckets.set(key, bucket);
   }
 
-  graph.edges.forEach((edge) => {
-    if (!visualLayers.latest && edge.isLatest) return;
-    if (!visualLayers.older && edge.tone === "older") return;
-    if (!visualLayers.density && edge.tone === "recent" && !edge.isLatest) return;
+  graph.branchGuides.forEach((guide) => {
+    if (!visualLayers.latest && guide.isLatest) return;
+    if (!visualLayers.older && guide.tone === "older") return;
+    if (!visualLayers.density && guide.tone === "recent" && !guide.isLatest) return;
 
-    const selected = edge.fromId === selectedNodeId || edge.toId === selectedNodeId;
-    const denseRatio = edge.traversalCount / Math.max(graph.maxVisitCount, 1);
-    const dense = edge.traversalCount > 1;
+    const selected = Boolean(
+      selectedNodeId &&
+        graph.branchDots.some((dot) => dot.nodeId === selectedNodeId && dot.tone === guide.tone),
+    );
+    const denseRatio = guide.density / Math.max(graph.maxVisitCount, 1);
+    const dense = guide.density > 1;
     const key = selected
       ? "selected"
-      : edge.isLatest
+      : guide.isLatest
         ? "latest"
-        : edge.isRecord
+        : guide.isRecord
           ? "record"
           : dense
             ? "density"
-            : "older";
+            : guide.tone;
 
     const color =
       key === "selected"
@@ -267,15 +350,15 @@ function buildEdgeGroups(
               ? 0.8
               : 0.42;
 
-    addSegment(key, color, opacity, selected ? 5 : edge.isLatest ? 4 : dense ? 3 : 1, edge.points);
+    addPolyline(key, color, opacity, selected ? 5 : guide.isLatest ? 4 : dense ? 3 : 1, guide.points);
 
-    if (selected || edge.isLatest || denseRatio > 0.18) {
-      addSegment(
+    if (selected || guide.isLatest || denseRatio > 0.18) {
+      addPolyline(
         `${key}-glow`,
         color,
-        selected ? 0.18 : edge.isLatest ? 0.14 : 0.08,
+        selected ? 0.18 : guide.isLatest ? 0.14 : 0.08,
         selected ? 6 : 2,
-        edge.points,
+        guide.points,
       );
     }
   });
@@ -297,6 +380,53 @@ function buildEdgeGroups(
       });
       return { key, geometry, material };
     });
+}
+
+function handleBranchDotClick(
+  event: ThreeEvent<MouseEvent>,
+  dots: ConvergenceBranchDot[],
+  onSelectNode: (nodeId: string) => void,
+) {
+  event.stopPropagation();
+  const index = event.index;
+  if (typeof index !== "number") return;
+  const dot = dots[index];
+  if (dot) onSelectNode(dot.nodeId);
+}
+
+function handleBranchDotHover(
+  event: ThreeEvent<PointerEvent>,
+  dots: ConvergenceBranchDot[],
+  nodeLookup: Map<string, ConvergenceNode>,
+  onHoverNode: (node: ConvergenceNode | null) => void,
+) {
+  event.stopPropagation();
+  const index = event.index;
+  if (typeof index !== "number") return;
+  const dot = dots[index];
+  if (!dot) return;
+  onHoverNode(nodeLookup.get(dot.nodeId) ?? branchDotAsNode(dot));
+}
+
+function branchDotAsNode(dot: ConvergenceBranchDot): ConvergenceNode {
+  return {
+    id: dot.nodeId,
+    valueLabel: dot.valueLabel,
+    position: dot.position,
+    visitCount: dot.visitCount,
+    incomingCount: dot.upstreamPathCount,
+    upstreamPathCount: dot.upstreamPathCount,
+    childrenCount: dot.childrenCount,
+    outgoingLabel: "Not available",
+    approxDepth: dot.approxDepth,
+    depthRatio: 0,
+    isRoot: false,
+    isLatest: dot.isLatest,
+    isSelected: false,
+    isRecord: dot.isRecord,
+    tone: dot.tone,
+    nodeType: dot.nodeType,
+  };
 }
 
 interface Vector3Like {

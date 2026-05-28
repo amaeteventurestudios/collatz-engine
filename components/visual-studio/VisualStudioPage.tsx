@@ -21,6 +21,7 @@ import {
 import { LiveSequenceStack3D } from "./modes/LiveSequenceStack3D";
 import {
   buildConvergenceGraph,
+  type ConvergenceBranchDot,
   type ConvergenceGraph,
   type ConvergenceNode,
 } from "./convergenceTreeGeometry";
@@ -121,7 +122,15 @@ export function VisualStudioPage() {
 
   const selectedNode = useMemo(() => {
     if (!convergenceGraph || !selectedNodeId) return null;
-    return convergenceGraph.nodes.find((node) => node.id === selectedNodeId) ?? null;
+    const aggregateNode = convergenceGraph.nodes.find(
+      (node) => node.id === selectedNodeId,
+    );
+    if (aggregateNode) return aggregateNode;
+
+    const visualNode = convergenceGraph.branchDots.find(
+      (node) => node.nodeId === selectedNodeId,
+    );
+    return visualNode ? branchDotToNode(visualNode) : null;
   }, [convergenceGraph, selectedNodeId]);
 
   const performanceCapNote =
@@ -476,6 +485,27 @@ function TooltipMetric({
       </span>
     </div>
   );
+}
+
+function branchDotToNode(dot: ConvergenceBranchDot): ConvergenceNode {
+  return {
+    id: dot.nodeId,
+    valueLabel: dot.valueLabel,
+    position: dot.position,
+    visitCount: dot.visitCount,
+    incomingCount: dot.upstreamPathCount,
+    upstreamPathCount: dot.upstreamPathCount,
+    childrenCount: dot.childrenCount,
+    outgoingLabel: "Not available",
+    approxDepth: dot.approxDepth,
+    depthRatio: 0,
+    isRoot: false,
+    isLatest: dot.isLatest,
+    isSelected: false,
+    isRecord: dot.isRecord,
+    tone: dot.tone,
+    nodeType: dot.nodeType,
+  };
 }
 
 function OrbitLogo() {

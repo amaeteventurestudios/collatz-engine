@@ -32,7 +32,7 @@ export interface ConvergenceEdge {
   id: string;
   fromId: string;
   toId: string;
-  points: [Vector3, Vector3];
+  points: Vector3[];
   traversalCount: number;
   isLatest: boolean;
   isSelected: boolean;
@@ -43,6 +43,8 @@ export interface ConvergenceEdge {
 export interface ConvergenceGraph {
   nodes: ConvergenceNode[];
   edges: ConvergenceEdge[];
+  branchGuides: ConvergenceBranchGuide[];
+  branchDots: ConvergenceBranchDot[];
   trajectoriesIncluded: number;
   latestStartingNumber: number | null;
   rootNode: ConvergenceNode | null;
@@ -54,6 +56,30 @@ export interface ConvergenceGraph {
   maxDepth: number;
 }
 
+export interface ConvergenceBranchGuide {
+  id: string;
+  points: Vector3[];
+  tone: VisualPathTone;
+  isLatest: boolean;
+  isRecord: boolean;
+  density: number;
+}
+
+export interface ConvergenceBranchDot {
+  id: string;
+  nodeId: string;
+  valueLabel: string;
+  position: Vector3;
+  tone: VisualPathTone;
+  isLatest: boolean;
+  isRecord: boolean;
+  nodeType: ConvergenceNode["nodeType"];
+  visitCount: number;
+  approxDepth: number;
+  upstreamPathCount: number;
+  childrenCount: number;
+}
+
 interface NodeDraft {
   value: bigint;
   visitCount: number;
@@ -61,12 +87,17 @@ interface NodeDraft {
   childrenCount: number;
   laneTotal: number;
   laneWeight: number;
+  xTotal: number;
+  yTotal: number;
+  zTotal: number;
+  positionWeight: number;
   outgoingValue: bigint | null;
   approxDepth: number;
   firstSeenOrder: number;
   isLatest: boolean;
   isSelected: boolean;
   isRecord: boolean;
+  isBranchSample: boolean;
 }
 
 interface EdgeDraft {
@@ -79,11 +110,11 @@ interface EdgeDraft {
   isRecord: boolean;
 }
 
-const MAX_RENDERED_NODES = 1_100;
-const MAX_RENDERED_EDGES = 1_550;
-const SCENE_HEIGHT = 17.5;
-const FAN_WIDTH = 34;
-const FAN_DEPTH = 9;
+const MAX_RENDERED_NODES = 1_700;
+const MAX_RENDERED_EDGES = 2_200;
+const SCENE_HEIGHT = 17.6;
+const FAN_WIDTH = 35.5;
+const FAN_DEPTH = 8.4;
 
 export function buildConvergenceGraph({
   trajectories,
@@ -105,9 +136,11 @@ export function buildConvergenceGraph({
     const sequence = sequenceForTrajectory(trajectory);
     const maxTrajectoryDepth = Math.max(1, sequence.length - 1);
     const lane = laneForTrajectory(trajectoryIndex, trajectories.length);
+    const trajectoryCurve = stableSigned(`${trajectory.id}:curve`) * 0.16;
     const isLatest = trajectoryIndex === 0;
     const isSelected = trajectory.id === selectedPathId;
     const isRecord = highlightRecords && trajectory.isRecord;
+    const sampleInterval = Math.max(2, Math.floor(sequence.length / 26));
 
     sequence.forEach((value, sequenceIndex) => {
       const id = value.toString();
@@ -115,6 +148,13 @@ export function buildConvergenceGraph({
       const depthToRoot = Math.max(0, sequence.length - sequenceIndex - 1);
       const trajectoryDepthRatio = depthToRoot / maxTrajectoryDepth;
       const laneWeight = 0.16 + Math.pow(trajectoryDepthRatio, 1.35) * 1.85;
+      const visualPosition = visualPositionForOccurrence({
+        depthRatio: trajectoryDepthRatio,
+        lane,
+        trajectoryCurve,
+        isLatest,
+        value,
+      });
       const draft =
         nodeDrafts.get(id) ??
         ({
@@ -124,17 +164,26 @@ export function buildConvergenceGraph({
           childrenCount: 0,
           laneTotal: 0,
           laneWeight: 0,
+          xTotal: 0,
+          yTotal: 0,
+          zTotal: 0,
+          positionWeight: 0,
           outgoingValue: nextValue,
           approxDepth: depthToRoot,
           firstSeenOrder: seenOrder++,
           isLatest: false,
           isSelected: false,
           isRecord: false,
+          isBranchSample: false,
         } satisfies NodeDraft);
 
       draft.visitCount += 1;
       draft.laneTotal += lane * laneWeight;
       draft.laneWeight += laneWeight;
+      draft.xTotal += visualPosition.x * laneWeight;
+      draft.yTotal += visualPosition.y * laneWeight;
+      draft.zTotal += visualPosition.z * laneWeight;
+      draft.positionWeight += laneWeight;
       draft.outgoingValue = draft.outgoingValue ?? nextValue;
       draft.approxDepth = Math.min(
         draft.approxDepth,
@@ -143,6 +192,11 @@ export function buildConvergenceGraph({
       draft.isLatest ||= isLatest;
       draft.isSelected ||= isSelected;
       draft.isRecord ||= isRecord;
+      draft.isBranchSample ||=
+        isLatest ||
+        trajectoryDepthRatio > 0.42 ||
+        sequenceIndex % sampleInterval === 0 ||
+        sequenceIndex === sequence.length - 1;
       nodeDrafts.set(id, draft);
 
       if (nextValue == null) return;
@@ -180,10 +234,6 @@ export function buildConvergenceGraph({
   const allNodeIds = Array.from(nodeDrafts.keys());
   const selectedNodeIds = capNodeIds(allNodeIds, nodeDrafts);
   const selectedNodeIdSet = new Set(selectedNodeIds);
-  const maxLogValue = Math.max(
-    1,
-    ...selectedNodeIds.map((id) => log10BigInt((nodeDrafts.get(id)?.value ?? 1n) + 1n)),
-  );
   const maxDepth = Math.max(
     1,
     ...selectedNodeIds.map((id) => nodeDrafts.get(id)?.approxDepth ?? 0),
@@ -195,9 +245,7 @@ export function buildConvergenceGraph({
   const layoutPositions = buildHierarchicalPositions({
     selectedNodeIds,
     nodeDrafts,
-    edgeDrafts,
     maxDepth,
-    maxLogValue,
     maxVisitCount,
   });
 
@@ -212,6 +260,13 @@ export function buildConvergenceGraph({
     );
   });
   const nodeById = new Map(nodes.map((node) => [node.id, node]));
+  const visualBranches = buildVisualBranches({
+    trajectories,
+    nodeDrafts,
+    nodeById,
+    maxVisitCount,
+    highlightRecords,
+  });
 
   const selectedEdges = Array.from(edgeDrafts.entries())
     .filter(([, edge]) => selectedNodeIdSet.has(edge.from) && selectedNodeIdSet.has(edge.to))
@@ -227,7 +282,7 @@ export function buildConvergenceGraph({
         id,
         fromId: edge.from,
         toId: edge.to,
-        points: [from.position, to.position] as [Vector3, Vector3],
+        points: curvedEdgePoints(from.position, to.position, edge),
         traversalCount: edge.traversalCount,
         isLatest: edge.isLatest,
         isSelected: edge.isSelected,
@@ -246,6 +301,8 @@ export function buildConvergenceGraph({
   return {
     nodes,
     edges,
+    branchGuides: visualBranches.guides,
+    branchDots: visualBranches.dots,
     trajectoriesIncluded: trajectories.length,
     latestStartingNumber: trajectories[0]?.start ?? null,
     rootNode: nodeById.get("1") ?? null,
@@ -274,11 +331,46 @@ function laneForTrajectory(index: number, total: number): number {
   if (total <= 2) return -0.62;
 
   const ratio = (index - 1) / Math.max(1, total - 2);
-  if (ratio < 0.58) {
-    return -0.94 + (ratio / 0.58) * 0.84;
+  if (ratio < 0.64) {
+    return -0.98 + (ratio / 0.64) * 0.9;
   }
 
-  return -0.08 + ((ratio - 0.58) / 0.42) * 0.7;
+  return -0.12 + ((ratio - 0.64) / 0.36) * 0.58;
+}
+
+function visualPositionForOccurrence({
+  depthRatio,
+  lane,
+  trajectoryCurve,
+  isLatest,
+  value,
+}: {
+  depthRatio: number;
+  lane: number;
+  trajectoryCurve: number;
+  isLatest: boolean;
+  value: bigint;
+}): Vector3 {
+  const growth = Math.pow(depthRatio, 0.74);
+  const canopy = Math.sin(Math.min(1, depthRatio) * Math.PI) * 0.36;
+  const logLift = log10BigInt(value + 1n) * 0.13;
+  const branchBend = trajectoryCurve * Math.sin(depthRatio * Math.PI * 1.35);
+  const latestRight = isLatest ? 0.22 + Math.pow(depthRatio, 0.7) * 0.76 : 0;
+  const laneWithLatest = isLatest ? Math.max(lane, latestRight) : lane + branchBend;
+  const x = laneWithLatest * FAN_WIDTH * growth * 0.5;
+  const y = Math.max(0, Math.pow(depthRatio, 0.78) * SCENE_HEIGHT + logLift);
+  const z =
+    -2.8 +
+    (laneWithLatest * 0.28 + stableSigned(`${value.toString()}:z`) * 0.16) *
+      FAN_DEPTH *
+      Math.pow(depthRatio, 0.85) +
+    canopy * 2.2;
+
+  return new Vector3(
+    clamp(x, -FAN_WIDTH / 2, FAN_WIDTH / 2),
+    y,
+    clamp(z, -FAN_DEPTH, FAN_DEPTH),
+  );
 }
 
 function capNodeIds(ids: string[], drafts: Map<string, NodeDraft>): string[] {
@@ -295,106 +387,237 @@ function capNodeIds(ids: string[], drafts: Map<string, NodeDraft>): string[] {
 function buildHierarchicalPositions({
   selectedNodeIds,
   nodeDrafts,
-  edgeDrafts,
   maxDepth,
-  maxLogValue,
   maxVisitCount,
 }: {
   selectedNodeIds: string[];
   nodeDrafts: Map<string, NodeDraft>;
-  edgeDrafts: Map<string, EdgeDraft>;
   maxDepth: number;
-  maxLogValue: number;
   maxVisitCount: number;
 }): Map<string, Vector3> {
-  const selectedNodeIdSet = new Set(selectedNodeIds);
-  const childIdsByParentId = new Map<string, string[]>();
-
-  edgeDrafts.forEach((edge) => {
-    if (!selectedNodeIdSet.has(edge.from) || !selectedNodeIdSet.has(edge.to)) return;
-    const children = childIdsByParentId.get(edge.to) ?? [];
-    children.push(edge.from);
-    childIdsByParentId.set(edge.to, children);
-  });
-
-  childIdsByParentId.forEach((children) => {
-    children.sort((left, right) => {
-      const leftDraft = nodeDrafts.get(left);
-      const rightDraft = nodeDrafts.get(right);
-      if (!leftDraft || !rightDraft) return left.localeCompare(right);
-      const densityDelta = rightDraft.visitCount - leftDraft.visitCount;
-      if (densityDelta !== 0) return densityDelta;
-      return stableSigned(`${left}:sort`) - stableSigned(`${right}:sort`);
-    });
-  });
-
-  const depthGroups = new Map<number, string[]>();
+  const positions = new Map<string, Vector3>([["1", new Vector3(0, 0, 0)]]);
   selectedNodeIds.forEach((id) => {
+    if (id === "1") return;
     const draft = nodeDrafts.get(id);
     if (!draft) return;
-    const group = depthGroups.get(draft.approxDepth) ?? [];
-    group.push(id);
-    depthGroups.set(draft.approxDepth, group);
-  });
+    const depthRatio = draft.approxDepth / Math.max(maxDepth, 1);
+    const densityRatio = Math.log1p(draft.visitCount) / Math.log1p(maxVisitCount);
+    const centerPull = Math.min(0.9, densityRatio * 0.82);
+    const base =
+      draft.positionWeight > 0
+        ? new Vector3(
+            draft.xTotal / draft.positionWeight,
+            draft.yTotal / draft.positionWeight,
+            draft.zTotal / draft.positionWeight,
+          )
+        : visualPositionForOccurrence({
+            depthRatio,
+            lane: stableSigned(`${id}:fallback`),
+            trajectoryCurve: 0,
+            isLatest: draft.isLatest,
+            value: draft.value,
+          });
+    const trunk = new Vector3(
+      stableSigned(`${id}:trunk`) * 0.7 * Math.pow(depthRatio, 0.6),
+      Math.pow(depthRatio, 0.82) * SCENE_HEIGHT,
+      -2.8 + Math.sin(depthRatio * Math.PI) * 1.35,
+    );
+    const latestOuterPull =
+      draft.isLatest && draft.visitCount <= 2 ? Math.min(0.72, Math.pow(depthRatio, 0.7)) : 0;
+    const latestOuter = new Vector3(
+      4.8 + Math.pow(depthRatio, 0.68) * 11.8,
+      Math.pow(depthRatio, 0.78) * SCENE_HEIGHT + 1.2,
+      -1.8 + Math.pow(depthRatio, 0.8) * 3.8,
+    );
+    const merged = base.lerp(trunk, centerPull).lerp(latestOuter, latestOuterPull);
 
-  const positions = new Map<string, Vector3>([["1", new Vector3(0, 0, 0)]]);
-  const sortedDepths = Array.from(depthGroups.keys()).sort((left, right) => left - right);
-
-  sortedDepths.forEach((depth) => {
-    if (depth === 0) return;
-    const group = depthGroups.get(depth) ?? [];
-    const depthRatio = depth / Math.max(maxDepth, 1);
-    const levelFan = Math.pow(depthRatio, 0.78);
-
-    group.forEach((id) => {
-      const draft = nodeDrafts.get(id);
-      if (!draft) return;
-      const parentId = draft.outgoingValue?.toString() ?? "1";
-      const parent = positions.get(parentId) ?? new Vector3(0, 0, 0);
-      const siblings = childIdsByParentId.get(parentId) ?? group;
-      const siblingIndex = Math.max(0, siblings.indexOf(id));
-      const siblingCenter = (siblings.length - 1) / 2;
-      const siblingOffset = (siblingIndex - siblingCenter) * Math.min(0.95, 0.2 + depth * 0.018);
-      const averagedLane =
-        draft.laneWeight > 0 ? draft.laneTotal / draft.laneWeight : stableSigned(`${id}:x`);
-      const densityRatio = Math.log1p(draft.visitCount) / Math.log1p(maxVisitCount);
-      const centerPull = 1 - densityRatio * 0.82;
-      const globalFan = averagedLane * FAN_WIDTH * levelFan * centerPull * 0.5;
-      const valueLift = log10BigInt(draft.value + 1n) / Math.max(maxLogValue, 1);
-      const inheritedX = parent.x * (0.82 - densityRatio * 0.18);
-      const latestPull =
-        draft.isLatest && !draft.isRecord
-          ? Math.min(0.86, Math.pow(depthRatio, 0.72) * (1 - densityRatio * 0.52))
-          : 0;
-      const naturalX = inheritedX + globalFan * 0.54 + siblingOffset;
-      const latestX = 4.2 + Math.pow(depthRatio, 0.7) * 12.8;
-      const x = clamp(naturalX * (1 - latestPull) + latestX * latestPull, -FAN_WIDTH / 2, FAN_WIDTH / 2);
-      const y = Math.max(0.18, Math.pow(depthRatio, 0.88) * SCENE_HEIGHT + valueLift * 1.6);
-      const z =
-        parent.z * 0.46 +
-        averagedLane * FAN_DEPTH * levelFan * 0.22 +
-        stableSigned(`${id}:z`) * FAN_DEPTH * levelFan * 0.18 +
-        valueLift * 1.05 -
-        2.6;
-
-      positions.set(id, new Vector3(x, y, clamp(z, -FAN_DEPTH, FAN_DEPTH)));
-    });
-
-    group.forEach((id, index) => {
-      if (positions.has(id)) return;
-      const rowRatio = group.length > 1 ? index / (group.length - 1) : 0.5;
-      positions.set(
-        id,
-        new Vector3(
-          (rowRatio - 0.5) * FAN_WIDTH,
-          depthRatio * SCENE_HEIGHT,
-          stableSigned(`${id}:fallback`) * FAN_DEPTH * levelFan,
-        ),
-      );
-    });
+    positions.set(
+      id,
+      new Vector3(
+        clamp(merged.x, -FAN_WIDTH / 2, FAN_WIDTH / 2),
+        merged.y,
+        clamp(merged.z, -FAN_DEPTH, FAN_DEPTH),
+      ),
+    );
   });
 
   return positions;
+}
+
+function buildVisualBranches({
+  trajectories,
+  nodeDrafts,
+  nodeById,
+  maxVisitCount,
+  highlightRecords,
+}: {
+  trajectories: VisualTrajectory[];
+  nodeDrafts: Map<string, NodeDraft>;
+  nodeById: Map<string, ConvergenceNode>;
+  maxVisitCount: number;
+  highlightRecords: boolean;
+}): { guides: ConvergenceBranchGuide[]; dots: ConvergenceBranchDot[] } {
+  const guides: ConvergenceBranchGuide[] = [];
+  const dots: ConvergenceBranchDot[] = [];
+  const maxDots = 1_100;
+  let dotCount = 0;
+
+  trajectories.forEach((trajectory, trajectoryIndex) => {
+    const sequence = sequenceForTrajectory(trajectory);
+    if (sequence.length < 2) return;
+
+    const isLatest = trajectoryIndex === 0;
+    const isRecord = highlightRecords && trajectory.isRecord;
+    const lane = laneForTrajectory(trajectoryIndex, trajectories.length);
+    const trajectoryCurve = stableSigned(`${trajectory.id}:curve`) * 0.16;
+    const maxTrajectoryDepth = Math.max(1, sequence.length - 1);
+    const sampleEvery = isLatest
+      ? Math.max(1, Math.floor(sequence.length / 44))
+      : Math.max(1, Math.floor(sequence.length / 30));
+    const points: Vector3[] = [];
+    const sampled: {
+      nodeId: string;
+      value: bigint;
+      position: Vector3;
+      depth: number;
+    }[] = [];
+
+    for (let sequenceIndex = sequence.length - 1; sequenceIndex >= 0; sequenceIndex--) {
+      const depthToRoot = Math.max(0, sequence.length - sequenceIndex - 1);
+      const include =
+        sequenceIndex === sequence.length - 1 ||
+        sequenceIndex === 0 ||
+        depthToRoot < 14 ||
+        sequenceIndex % sampleEvery === 0;
+      if (!include) continue;
+
+      const value = sequence[sequenceIndex];
+      const nodeId = value.toString();
+      const draft = nodeDrafts.get(nodeId);
+      const densityRatio = draft ? Math.log1p(draft.visitCount) / Math.log1p(maxVisitCount) : 0;
+      const occurrence = visualPositionForOccurrence({
+        depthRatio: depthToRoot / maxTrajectoryDepth,
+        lane,
+        trajectoryCurve,
+        isLatest,
+        value,
+      });
+      const trunk = new Vector3(
+        stableSigned(`${nodeId}:trunk`) * 0.55 * Math.pow(depthToRoot / maxTrajectoryDepth, 0.6),
+        Math.pow(depthToRoot / maxTrajectoryDepth, 0.82) * SCENE_HEIGHT,
+        -2.8 + Math.sin((depthToRoot / maxTrajectoryDepth) * Math.PI) * 1.35,
+      );
+      const point = occurrence.lerp(trunk, Math.min(0.74, densityRatio * 0.78));
+
+      points.push(point);
+      sampled.push({ nodeId, value, position: point, depth: depthToRoot });
+    }
+
+    if (points.length < 2) return;
+
+    const tone: VisualPathTone = isLatest ? "latest" : isRecord ? "record" : trajectoryIndex < 18 ? "older" : "recent";
+    guides.push({
+      id: `guide-${trajectory.id}`,
+      points: smoothGuide(points, isLatest),
+      tone,
+      isLatest,
+      isRecord,
+      density: Math.max(
+        1,
+        ...sampled.map((sample) => nodeDrafts.get(sample.nodeId)?.visitCount ?? 1),
+      ),
+    });
+
+    sampled.forEach((sample, sampleIndex) => {
+      if (dotCount >= maxDots) return;
+      const draft = nodeDrafts.get(sample.nodeId);
+      const selectedNode = nodeById.get(sample.nodeId);
+      const keepDot =
+        isLatest ||
+        sampleIndex % 2 === 0 ||
+        (draft?.visitCount ?? 0) > 1 ||
+        sample.depth < 14;
+      if (!keepDot) return;
+
+      dots.push({
+        id: `dot-${trajectory.id}-${sample.nodeId}-${sampleIndex}`,
+        nodeId: sample.nodeId,
+        valueLabel: formatLargeNumber(sample.value),
+        position: sample.position,
+        tone,
+        isLatest,
+        isRecord,
+        nodeType: selectedNode?.nodeType ?? nodeTypeFor(draft ?? fallbackDraft(sample.value), false),
+        visitCount: draft?.visitCount ?? 1,
+        approxDepth: selectedNode?.approxDepth ?? sample.depth,
+        upstreamPathCount: selectedNode?.upstreamPathCount ?? draft?.visitCount ?? 1,
+        childrenCount: selectedNode?.childrenCount ?? draft?.childrenCount ?? 0,
+      });
+      dotCount += 1;
+    });
+  });
+
+  return { guides, dots };
+}
+
+function smoothGuide(points: Vector3[], isLatest: boolean): Vector3[] {
+  const smoothed: Vector3[] = [];
+  for (let index = 0; index < points.length - 1; index++) {
+    const from = points[index];
+    const to = points[index + 1];
+    const steps = isLatest ? 4 : 3;
+    for (let step = 0; step < steps; step++) {
+      const t = step / steps;
+      const eased = t * t * (3 - 2 * t);
+      const point = new Vector3().lerpVectors(from, to, eased);
+      point.y += Math.sin(Math.PI * t) * 0.08;
+      smoothed.push(point);
+    }
+  }
+  smoothed.push(points[points.length - 1]);
+  return smoothed;
+}
+
+function fallbackDraft(value: bigint): NodeDraft {
+  return {
+    value,
+    visitCount: 1,
+    incomingCount: 0,
+    childrenCount: 0,
+    laneTotal: 0,
+    laneWeight: 0,
+    xTotal: 0,
+    yTotal: 0,
+    zTotal: 0,
+    positionWeight: 0,
+    outgoingValue: null,
+    approxDepth: 0,
+    firstSeenOrder: 0,
+    isLatest: false,
+    isSelected: false,
+    isRecord: false,
+    isBranchSample: false,
+  };
+}
+
+function curvedEdgePoints(from: Vector3, to: Vector3, edge: EdgeDraft): Vector3[] {
+  const steps = edge.isLatest || edge.traversalCount > 1 ? 8 : 5;
+  const points: Vector3[] = [];
+  const arc = Math.min(2.8, 0.45 + Math.abs(to.x - from.x) * 0.08 + Math.abs(to.y - from.y) * 0.05);
+  const side = stableSigned(`${edge.from}->${edge.to}:curve`) * 0.22;
+
+  for (let index = 0; index <= steps; index++) {
+    const t = index / steps;
+    const eased = t * t * (3 - 2 * t);
+    const point = new Vector3().lerpVectors(from, to, eased);
+    const lift = Math.sin(Math.PI * t) * arc;
+    point.y += lift * 0.12;
+    point.x += side * Math.sin(Math.PI * t);
+    point.z += Math.sin(Math.PI * t) * 0.16;
+    points.push(point);
+  }
+
+  return points;
 }
 
 function nodeFromDraft(
@@ -437,8 +660,9 @@ function scoreNode(draft: NodeDraft): number {
     draft.childrenCount * 30 +
     (draft.isLatest ? 45_000 : 0) +
     (draft.isSelected ? 30_000 : 0) +
-    (draft.isRecord ? 22_000 : 0) -
-    draft.approxDepth * 4 -
+    (draft.isRecord ? 22_000 : 0) +
+    (draft.isBranchSample ? 15_000 : 0) +
+    draft.approxDepth * 2 -
     draft.firstSeenOrder * 0.03
   );
 }
