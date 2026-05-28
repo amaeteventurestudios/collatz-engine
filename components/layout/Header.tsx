@@ -8,6 +8,7 @@ import { Sun, Moon, Menu, X } from "lucide-react";
 const navLinks = [
   { href: "/", label: "Dashboard" },
   { href: "/#visualizer", label: "Visualizer" },
+  { href: "/visual-studio", label: "Visual Studio" },
   { href: "/#records", label: "Records" },
   { href: "/observatory", label: "Observatory" },
   { href: "/#about", label: "About" },
