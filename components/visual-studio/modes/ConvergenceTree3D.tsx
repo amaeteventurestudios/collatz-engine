@@ -80,7 +80,7 @@ export function ConvergenceTree3D({
       <pointLight position={[0, 5, 2]} intensity={52} color="#67e8f9" />
       <pointLight position={[-18, 16, -4]} intensity={22} color="#a855f7" />
       <pointLight position={[18, 18, 4]} intensity={24} color="#f8c44f" />
-      <pointLight position={[0, -0.9, -5]} intensity={38} color="#a5f3fc" distance={12} decay={2} />
+      <pointLight position={[0, -0.9, 0]} intensity={38} color="#a5f3fc" distance={14} decay={2} />
       <Stars
         radius={62}
         depth={36}
@@ -93,7 +93,7 @@ export function ConvergenceTree3D({
 
       <ConvergenceGrid />
 
-      <group position={[0, -0.9, -5]}>
+      <group position={[0, -0.9, 0]}>
         {edgeGroups.map((group) => (
           <lineSegments key={group.key} geometry={group.geometry}>
             <primitive object={group.material} attach="material" />
@@ -461,24 +461,20 @@ function handlePointHover(
 
 function ConvergenceGrid() {
   const lines = useMemo(() => {
+    // Grid spans ±19 in X, ±14 in Z, centered at world origin
     const grid: { key: string; points: [number, number, number][]; major: boolean }[] = [];
-    for (let index = 0; index <= 18; index++) {
-      const offset = -24 + index * 3;
+    for (let index = 0; index <= 20; index++) {
+      const xOff = -19 + index * 1.9;  // -19 to +19
+      const zOff = -14 + index * 1.4;  // -14 to +14
       grid.push({
-        key: `x-${index}`,
-        points: [
-          [-24, -0.08, offset - 5],
-          [24, -0.08, offset - 5],
-        ],
-        major: index % 3 === 0,
+        key: `xline-${index}`,
+        points: [[-21, -0.08, zOff], [21, -0.08, zOff]],
+        major: index % 5 === 0,
       });
       grid.push({
-        key: `z-${index}`,
-        points: [
-          [offset, -0.08, -29],
-          [offset, -0.08, 19],
-        ],
-        major: index % 3 === 0,
+        key: `zline-${index}`,
+        points: [[xOff, -0.08, -15], [xOff, -0.08, 15]],
+        major: index % 5 === 0,
       });
     }
     return grid;
@@ -497,21 +493,17 @@ function ConvergenceGrid() {
           depthWrite={false}
         />
       ))}
+      {/* Vertical trunk guide line rising from root */}
       <Line
-        points={[
-          [0, -0.04, -5],
-          [0, 18, -5],
-        ]}
+        points={[[0, -0.04, 0], [0, 18, 0]]}
         color="#67e8f9"
         lineWidth={1.2}
         transparent
         opacity={0.36}
       />
+      {/* Root base crosshair */}
       <Line
-        points={[
-          [-1.2, -0.03, -5],
-          [1.2, -0.03, -5],
-        ]}
+        points={[[-1.2, -0.03, 0], [1.2, -0.03, 0]]}
         color="#e0faff"
         lineWidth={2.2}
         transparent

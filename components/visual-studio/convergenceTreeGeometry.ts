@@ -2,7 +2,6 @@
 
 import { Vector3 } from "three";
 import { formatLargeNumber } from "@/lib/collatz/format";
-import { log10BigInt } from "./collatzGeometry";
 import type {
   ConvergenceLayoutMode,
   VisualPathTone,
@@ -113,8 +112,8 @@ interface EdgeDraft {
 const MAX_RENDERED_NODES = 1_700;
 const MAX_RENDERED_EDGES = 2_200;
 const SCENE_HEIGHT = 17.6;
-const FAN_WIDTH = 35.5;
-const FAN_DEPTH = 8.4;
+const FAN_WIDTH = 36;
+const FAN_DEPTH_Z = 11;  // genuine volumetric Z spread for a real 3D tree
 
 export function buildConvergenceGraph({
   trajectories,
@@ -135,8 +134,9 @@ export function buildConvergenceGraph({
   trajectories.forEach((trajectory, trajectoryIndex) => {
     const sequence = sequenceForTrajectory(trajectory);
     const maxTrajectoryDepth = Math.max(1, sequence.length - 1);
-    const lane = laneForTrajectory(trajectoryIndex, trajectories.length);
-    const trajectoryCurve = stableSigned(`${trajectory.id}:curve`) * 0.16;
+    const xLane = xLaneForTrajectory(trajectoryIndex, trajectories.length);
+    const zLane = zLaneForTrajectory(trajectoryIndex, trajectories.length);
+    const trajectoryCurve = stableSigned(`${trajectory.id}:curve`) * 0.14;
     const isLatest = trajectoryIndex === 0;
     const isSelected = trajectory.id === selectedPathId;
     const isRecord = highlightRecords && trajectory.isRecord;
@@ -150,7 +150,8 @@ export function buildConvergenceGraph({
       const laneWeight = 0.16 + Math.pow(trajectoryDepthRatio, 1.35) * 1.85;
       const visualPosition = visualPositionForOccurrence({
         depthRatio: trajectoryDepthRatio,
-        lane,
+        xLane,
+        zLane,
         trajectoryCurve,
         isLatest,
         value,
@@ -178,17 +179,14 @@ export function buildConvergenceGraph({
         } satisfies NodeDraft);
 
       draft.visitCount += 1;
-      draft.laneTotal += lane * laneWeight;
+      draft.laneTotal += xLane * laneWeight;
       draft.laneWeight += laneWeight;
       draft.xTotal += visualPosition.x * laneWeight;
       draft.yTotal += visualPosition.y * laneWeight;
       draft.zTotal += visualPosition.z * laneWeight;
       draft.positionWeight += laneWeight;
       draft.outgoingValue = draft.outgoingValue ?? nextValue;
-      draft.approxDepth = Math.min(
-        draft.approxDepth,
-        depthToRoot,
-      );
+      draft.approxDepth = Math.min(draft.approxDepth, depthToRoot);
       draft.isLatest ||= isLatest;
       draft.isSelected ||= isSelected;
       draft.isRecord ||= isRecord;
@@ -322,47 +320,72 @@ function sequenceForTrajectory(trajectory: VisualTrajectory): bigint[] {
   if (trajectory.fullValues && trajectory.fullValues.length > 0) {
     return trajectory.fullValues;
   }
-
   return trajectory.values.map((point) => point.value);
 }
 
-function laneForTrajectory(index: number, total: number): number {
-  if (index === 0) return 0.82;          // latest: right side
+// X lane: symmetric alternating left/right spread
+function xLaneForTrajectory(index: number, total: number): number {
+  if (index === 0) return 0.82;         // latest: right side
   if (total <= 1) return 0;
-  const pos = index - 1;                 // 0-indexed among non-latest
+  const pos = index - 1;               // 0-indexed among non-latest
   const half = Math.ceil((total - 1) / 2);
-  const side = pos % 2 === 0 ? -1 : 1;  // alternate: L, R, L, R...
+  const side = pos % 2 === 0 ? -1 : 1; // alternate: L, R, L, R...
   const rank = Math.floor(pos / 2);
   const spread = half <= 1 ? 0.18 : 0.18 + (rank / (half - 1)) * 0.82;
   return side * spread;
 }
 
+// Z lane: genuine depth spread for volumetric 3D canopy
+// Trajectories get different depth positions so the tree has real 3D form.
+function zLaneForTrajectory(index: number, total: number): number {
+  if (index === 0) return 0.12;         // latest: slightly front-facing
+  if (total <= 1) return 0;
+  const pos = index - 1;
+  const half = Math.ceil((total - 1) / 2);
+  const rank = Math.floor(pos / 2);
+  // Outer trajectories (higher rank) get more Z spread
+  const maxSpread = half <= 1 ? 0.55 : 0.22 + (rank / Math.max(1, half - 1)) * 0.78;
+  // Stable pseudo-random Z position using trajectory index as seed
+  return stableSigned(`zL:${index}`) * maxSpread;
+}
+
+// True 3D position: X = lateral spread, Y = height, Z = genuine depth
 function visualPositionForOccurrence({
   depthRatio,
-  lane,
+  xLane,
+  zLane,
   trajectoryCurve,
   isLatest,
   value,
 }: {
   depthRatio: number;
-  lane: number;
+  xLane: number;
+  zLane: number;
   trajectoryCurve: number;
   isLatest: boolean;
   value: bigint;
 }): Vector3 {
-  void log10BigInt; // kept for potential future use
-  const growth = Math.pow(depthRatio, 0.74);
-  const branchBend = trajectoryCurve * Math.sin(depthRatio * Math.PI * 1.35);
-  const latestRight = isLatest ? 0.22 + Math.pow(depthRatio, 0.7) * 0.76 : 0;
-  const laneWithLatest = isLatest ? Math.max(lane, latestRight) : lane + branchBend;
-  const x = laneWithLatest * FAN_WIDTH * growth * 0.5;
-  const y = Math.max(0, Math.pow(depthRatio, 0.78) * SCENE_HEIGHT);
-  const z = -2.4 + laneWithLatest * FAN_DEPTH * 0.22 * growth * 0.4 + stableSigned(`${value.toString()}:z`) * 0.25;
+  const growth = Math.pow(depthRatio, 0.72);
+
+  // X: lateral spread — mirrors the reference image's left/right canopy
+  const xBend = trajectoryCurve * Math.sin(depthRatio * Math.PI * 1.2);
+  const xBulge = Math.sin(depthRatio * Math.PI) * 0.14 * Math.sign(xLane || 0.01);
+  const effectiveX = isLatest
+    ? Math.max(xLane, 0.22 + Math.pow(depthRatio, 0.68) * 0.60)
+    : xLane + xBend + xBulge;
+  const x = effectiveX * FAN_WIDTH * 0.5 * growth;
+
+  // Y: height rising from root
+  const y = Math.pow(depthRatio, 0.78) * SCENE_HEIGHT;
+
+  // Z: real volumetric depth — makes the tree 3D, not a flat fan
+  const zJitter = stableSigned(`${value.toString()}:zj`) * 0.65 * growth;
+  const z = zLane * FAN_DEPTH_Z * growth + zJitter;
 
   return new Vector3(
     clamp(x, -FAN_WIDTH / 2, FAN_WIDTH / 2),
     y,
-    clamp(z, -FAN_DEPTH * 0.55, FAN_DEPTH * 0.45),
+    clamp(z, -FAN_DEPTH_Z, FAN_DEPTH_Z),
   );
 }
 
@@ -395,7 +418,10 @@ function buildHierarchicalPositions({
     if (!draft) return;
     const depthRatio = draft.approxDepth / Math.max(maxDepth, 1);
     const densityRatio = Math.log1p(draft.visitCount) / Math.log1p(maxVisitCount);
+
+    // Highly-visited nodes (trunk/merge) pull very strongly toward center
     const centerPull = Math.min(0.96, densityRatio * 1.18);
+
     const base =
       draft.positionWeight > 0
         ? new Vector3(
@@ -405,23 +431,29 @@ function buildHierarchicalPositions({
           )
         : visualPositionForOccurrence({
             depthRatio,
-            lane: stableSigned(`${id}:fallback`),
+            xLane: stableSigned(`${id}:fallback:x`),
+            zLane: stableSigned(`${id}:fallback:z`) * 0.7,
             trajectoryCurve: 0,
             isLatest: draft.isLatest,
             value: draft.value,
           });
+
+    // Trunk: tight central column at x≈0, z≈0 for high-density nodes
     const trunk = new Vector3(
       stableSigned(`${id}:trunk`) * 0.18 * Math.pow(depthRatio, 0.5),
       Math.pow(depthRatio, 0.82) * SCENE_HEIGHT,
-      -2.4 + stableSigned(`${id}:trunkZ`) * 0.28 + Math.sin(depthRatio * Math.PI) * 0.8,
+      stableSigned(`${id}:trunkZ`) * 0.45,
     );
+
+    // Latest path: pull toward right/front of canopy so it reads like the image
     const latestOuterPull =
       draft.isLatest && draft.visitCount <= 2 ? Math.min(0.72, Math.pow(depthRatio, 0.7)) : 0;
     const latestOuter = new Vector3(
       4.8 + Math.pow(depthRatio, 0.68) * 11.8,
       Math.pow(depthRatio, 0.78) * SCENE_HEIGHT + 1.2,
-      -1.8 + Math.pow(depthRatio, 0.8) * 3.8,
+      2.0 + Math.pow(depthRatio, 0.80) * 3.8, // positive Z = toward camera, front-facing
     );
+
     const merged = base.lerp(trunk, centerPull).lerp(latestOuter, latestOuterPull);
 
     positions.set(
@@ -429,7 +461,7 @@ function buildHierarchicalPositions({
       new Vector3(
         clamp(merged.x, -FAN_WIDTH / 2, FAN_WIDTH / 2),
         merged.y,
-        clamp(merged.z, -FAN_DEPTH, FAN_DEPTH),
+        clamp(merged.z, -FAN_DEPTH_Z, FAN_DEPTH_Z),
       ),
     );
   });
@@ -461,8 +493,9 @@ function buildVisualBranches({
 
     const isLatest = trajectoryIndex === 0;
     const isRecord = highlightRecords && trajectory.isRecord;
-    const lane = laneForTrajectory(trajectoryIndex, trajectories.length);
-    const trajectoryCurve = stableSigned(`${trajectory.id}:curve`) * 0.16;
+    const xLane = xLaneForTrajectory(trajectoryIndex, trajectories.length);
+    const zLane = zLaneForTrajectory(trajectoryIndex, trajectories.length);
+    const trajectoryCurve = stableSigned(`${trajectory.id}:curve`) * 0.14;
     const maxTrajectoryDepth = Math.max(1, sequence.length - 1);
     const sampleEvery = isLatest
       ? Math.max(1, Math.floor(sequence.length / 56))
@@ -488,30 +521,41 @@ function buildVisualBranches({
       const nodeId = value.toString();
       const draft = nodeDrafts.get(nodeId);
       const densityRatio = draft ? Math.log1p(draft.visitCount) / Math.log1p(maxVisitCount) : 0;
+      const tr = depthToRoot / maxTrajectoryDepth;
+
       const occurrence = visualPositionForOccurrence({
-        depthRatio: depthToRoot / maxTrajectoryDepth,
-        lane,
+        depthRatio: tr,
+        xLane,
+        zLane,
         trajectoryCurve,
         isLatest,
         value,
       });
-      const trunk = new Vector3(
-        stableSigned(`${nodeId}:trunk`) * 0.55 * Math.pow(depthToRoot / maxTrajectoryDepth, 0.6),
-        Math.pow(depthToRoot / maxTrajectoryDepth, 0.82) * SCENE_HEIGHT,
-        -2.8 + Math.sin((depthToRoot / maxTrajectoryDepth) * Math.PI) * 1.35,
-      );
-      const point = occurrence.lerp(trunk, Math.min(0.74, densityRatio * 0.78));
 
+      // Trunk position: tight at center in X and Z for high-density nodes
+      const trunk = new Vector3(
+        stableSigned(`${nodeId}:trunk`) * 0.18 * Math.pow(tr, 0.5),
+        Math.pow(tr, 0.82) * SCENE_HEIGHT,
+        stableSigned(`${nodeId}:trunkZ`) * 0.45,
+      );
+
+      const point = occurrence.lerp(trunk, Math.min(0.74, densityRatio * 0.78));
       points.push(point);
       sampled.push({ nodeId, value, position: point, depth: depthToRoot });
     }
 
     if (points.length < 2) return;
 
-    const maxSampledVisits = Math.max(1, ...sampled.map(s => nodeDrafts.get(s.nodeId)?.visitCount ?? 1));
+    // Tone based on density: high-traffic paths = cyan trunk, sparse = purple outer branches
+    const maxSampledVisits = Math.max(
+      1,
+      ...sampled.map((s) => nodeDrafts.get(s.nodeId)?.visitCount ?? 1),
+    );
     const densityCutoff = Math.max(3, Math.ceil(trajectories.length * 0.06));
     const isSharedBranch = maxSampledVisits >= densityCutoff;
-    const tone: VisualPathTone = isLatest ? "latest" : isRecord ? "record" : isSharedBranch ? "recent" : "older";
+    const tone: VisualPathTone =
+      isLatest ? "latest" : isRecord ? "record" : isSharedBranch ? "recent" : "older";
+
     guides.push({
       id: `guide-${trajectory.id}`,
       points: smoothGuide(points, isLatest),
@@ -556,17 +600,29 @@ function buildVisualBranches({
   return { guides, dots };
 }
 
+// Smooth guide with real 3D curve arcs — branches bow outward from trunk in XZ
 function smoothGuide(points: Vector3[], isLatest: boolean): Vector3[] {
   const smoothed: Vector3[] = [];
   for (let index = 0; index < points.length - 1; index++) {
     const from = points[index];
     const to = points[index + 1];
-    const steps = isLatest ? 4 : 3;
+    const steps = isLatest ? 5 : 4;
+
+    const midX = (from.x + to.x) * 0.5;
+    const midZ = (from.z + to.z) * 0.5;
+    const radialDist = Math.sqrt(midX * midX + midZ * midZ);
+    const bowMag = radialDist * 0.07;
+
     for (let step = 0; step < steps; step++) {
       const t = step / steps;
       const eased = t * t * (3 - 2 * t);
       const point = new Vector3().lerpVectors(from, to, eased);
-      point.y += Math.sin(Math.PI * t) * 0.08;
+      const bell = Math.sin(Math.PI * t);
+      point.y += bell * 0.12;
+      if (radialDist > 0.1) {
+        point.x += (midX / radialDist) * bowMag * bell;
+        point.z += (midZ / radialDist) * bowMag * bell * 0.6;
+      }
       smoothed.push(point);
     }
   }
@@ -596,20 +652,22 @@ function fallbackDraft(value: bigint): NodeDraft {
   };
 }
 
+// Curved edges with real 3D bowing in both X and Z
 function curvedEdgePoints(from: Vector3, to: Vector3, edge: EdgeDraft): Vector3[] {
   const steps = edge.isLatest || edge.traversalCount > 1 ? 8 : 5;
   const points: Vector3[] = [];
   const arc = Math.min(2.8, 0.45 + Math.abs(to.x - from.x) * 0.08 + Math.abs(to.y - from.y) * 0.05);
-  const side = stableSigned(`${edge.from}->${edge.to}:curve`) * 0.22;
+  const xBow = stableSigned(`${edge.from}->${edge.to}:curve`) * 0.22;
+  const zBow = stableSigned(`${edge.from}->${edge.to}:zcurve`) * 0.48;
 
   for (let index = 0; index <= steps; index++) {
     const t = index / steps;
     const eased = t * t * (3 - 2 * t);
     const point = new Vector3().lerpVectors(from, to, eased);
-    const lift = Math.sin(Math.PI * t) * arc;
-    point.y += lift * 0.12;
-    point.x += side * Math.sin(Math.PI * t);
-    point.z += Math.sin(Math.PI * t) * 0.16;
+    const bell = Math.sin(Math.PI * t);
+    point.y += bell * arc * 0.12;
+    point.x += xBow * bell;
+    point.z += zBow * bell;
     points.push(point);
   }
 
@@ -702,7 +760,6 @@ function stableSigned(value: string): number {
     hash ^= value.charCodeAt(index);
     hash = Math.imul(hash, 16777619);
   }
-
   return ((hash >>> 0) / 4294967295) * 2 - 1;
 }
 
