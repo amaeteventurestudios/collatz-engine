@@ -11,9 +11,23 @@ import {
 export interface AutonomousRunnerOptions {
   batchSize?: number;
   maxSteps?: number;
+  /**
+   * When false, batch_started and batch_completed activity log entries are
+   * suppressed for this invocation. batch_failed is always written.
+   *
+   * Set to false in the continuous worker to avoid an O(batch_rate) stream
+   * of activity log inserts; instead the worker logs on a wall-clock interval.
+   * Default: true (single-run scripts always log).
+   */
+  shouldLogActivity?: boolean;
 }
 
-const DEFAULT_BATCH_SIZE = 100;
+// Default batch size: read from env so operators can tune without code changes.
+// Fallback of 5 000 is a safe balance between throughput and crash-recovery
+// window (at most 5 000 numbers are re-processed on an unclean restart).
+const _envBatch = parseInt(process.env.COLLATZ_RESULT_BATCH_SIZE ?? "5000", 10);
+const DEFAULT_BATCH_SIZE =
+  Number.isFinite(_envBatch) && _envBatch >= 1 ? _envBatch : 5000;
 
 /**
  * Runs one persistent autonomous batch.
@@ -48,6 +62,7 @@ export async function runAutonomousBatch(
 }> {
   const batchSize = options.batchSize ?? DEFAULT_BATCH_SIZE;
   const maxSteps = options.maxSteps;
+  const logActivity = options.shouldLogActivity !== false;
 
   const state = await getEngineState();
 
@@ -58,16 +73,18 @@ export async function runAutonomousBatch(
   const batchStart = Number(state.last_checked_number) + 1;
   const batchEnd = batchStart + batchSize - 1;
 
-  // ── Log: batch_started ────────────────────────────────────────────────────
-  await insertActivityLog({
-    event_type: "batch_started",
-    message: `Batch started: n = ${batchStart.toLocaleString("en-US")} – ${batchEnd.toLocaleString("en-US")}`,
-    batch_start: batchStart,
-    batch_end: batchEnd,
-    numbers_processed: batchSize,
-  }).catch((err: unknown) => {
-    console.warn("[Collatz Engine] batch_started log failed (non-fatal):", err);
-  });
+  // ── Log: batch_started (suppressed when shouldLogActivity=false) ─────────
+  if (logActivity) {
+    await insertActivityLog({
+      event_type: "batch_started",
+      message: `Batch started: n = ${batchStart.toLocaleString("en-US")} – ${batchEnd.toLocaleString("en-US")}`,
+      batch_start: batchStart,
+      batch_end: batchEnd,
+      numbers_processed: batchSize,
+    }).catch((err: unknown) => {
+      console.warn("[Collatz Engine] batch_started log failed (non-fatal):", err);
+    });
+  }
 
   const wallStart = Date.now();
 
@@ -147,22 +164,24 @@ export async function runAutonomousBatch(
       last_error: null,
     });
 
-    // ── Log: batch_completed ──────────────────────────────────────────────────
-    await insertActivityLog({
-      event_type: "batch_completed",
-      message: `Batch completed: ${rows.length.toLocaleString("en-US")} numbers in ${durationMs}ms (${numbersPerSecond.toFixed(1)}/sec)`,
-      batch_start: batchStart,
-      batch_end: batchEnd,
-      numbers_processed: rows.length,
-      duration_ms: durationMs,
-      numbers_per_second: numbersPerSecond,
-      metadata: {
-        highest_peak_in_batch: highestPeak,
-        longest_steps_in_batch: longestSteps,
-      },
-    }).catch((err: unknown) => {
-      console.warn("[Collatz Engine] batch_completed log failed (non-fatal):", err);
-    });
+    // ── Log: batch_completed (suppressed when shouldLogActivity=false) ───────
+    if (logActivity) {
+      await insertActivityLog({
+        event_type: "batch_completed",
+        message: `Batch completed: ${rows.length.toLocaleString("en-US")} numbers in ${durationMs}ms (${numbersPerSecond.toFixed(1)}/sec)`,
+        batch_start: batchStart,
+        batch_end: batchEnd,
+        numbers_processed: rows.length,
+        duration_ms: durationMs,
+        numbers_per_second: numbersPerSecond,
+        metadata: {
+          highest_peak_in_batch: highestPeak,
+          longest_steps_in_batch: longestSteps,
+        },
+      }).catch((err: unknown) => {
+        console.warn("[Collatz Engine] batch_completed log failed (non-fatal):", err);
+      });
+    }
 
     return {
       batchStart,

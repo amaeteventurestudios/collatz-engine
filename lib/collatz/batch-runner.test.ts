@@ -239,3 +239,56 @@ describe("runBatch — batch 1–1,000", () => {
     expect(r.residue_class_summary.length).toBeGreaterThan(0);
   });
 });
+
+// ── IO hardening: large batch correctness ─────────────────────────────────
+// Verifies that the new default batch size (5 000) still produces correct
+// results and does not store full trajectory sequences.
+
+describe("IO hardening — 5 000-number batch (new default size)", () => {
+  const r = runBatch({ batch_start: 1, batch_end: 5000 });
+
+  it("processes all 5 000 numbers", () => {
+    expect(r.numbers_tested).toBe(5000);
+    expect(r.stopped_reason).toBe("completed");
+    expect(r.errors_count).toBe(0);
+  });
+
+  it("record detection still correct at scale (n=3711 holds longest-path in 1–5000)", () => {
+    // n=3711 has 237 steps — longest in 1–5000
+    expect(r.max_steps_number).toBe(3711);
+    expect(r.max_steps).toBe(237);
+  });
+
+  it("trajectory_samples contains only records and near-escape candidates", () => {
+    for (const s of r.trajectory_samples) {
+      expect(["record_breaker", "near_escape"]).toContain(s.reason);
+    }
+  });
+
+  it("trajectory_samples does not exceed sample_limit (default 50)", () => {
+    expect(r.trajectory_samples.length).toBeLessThanOrEqual(50);
+  });
+
+  it("no full sequence arrays stored in batch output (summary-only storage)", () => {
+    // The batch summary must NOT include raw sequences — full trajectories are
+    // only derived on-demand. Verify none of the declared output fields hold arrays
+    // that look like Collatz sequences.
+    expect((r as unknown as Record<string, unknown>)["sequences"]).toBeUndefined();
+    expect((r as unknown as Record<string, unknown>)["full_sequences"]).toBeUndefined();
+    // trajectory_samples store scalar statistics only, not arrays of steps
+    for (const s of r.trajectory_samples) {
+      expect(Array.isArray((s as unknown as Record<string, unknown>)["sequence"])).toBe(false);
+    }
+  });
+});
+
+// ── IO hardening: sample_limit gating ────────────────────────────────────
+// Full trajectory/detail is only stored for records, near-escapes, and samples.
+
+describe("IO hardening — sample_limit=0 produces no trajectory detail", () => {
+  it("zero sample_limit: no trajectory_samples written for a large batch", () => {
+    const r = runBatch({ batch_start: 1, batch_end: 5000, sample_limit: 0 });
+    expect(r.trajectory_samples).toHaveLength(0);
+    expect(r.numbers_tested).toBe(5000);
+  });
+});

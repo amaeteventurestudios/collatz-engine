@@ -6,7 +6,11 @@ async function main() {
   const { runAutonomousBatch } = await import("../lib/collatz/autonomous-runner");
 
   const args = process.argv.slice(2);
-  const batchSize = parseInt(args[0] ?? "100", 10);
+  // CLI arg → env var → hard default (5 000)
+  const envDefault = parseInt(process.env.COLLATZ_RESULT_BATCH_SIZE ?? "5000", 10);
+  const defaultBatchSize =
+    Number.isFinite(envDefault) && envDefault >= 1 ? envDefault : 5000;
+  const batchSize = parseInt(args[0] ?? "", 10) || defaultBatchSize;
 
   if (!Number.isInteger(batchSize) || batchSize < 1) {
     console.error("Usage: npm run collatz:auto -- <batchSize>");

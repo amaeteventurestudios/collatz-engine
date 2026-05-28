@@ -5,10 +5,22 @@
  * or the process receives SIGINT / SIGTERM (Ctrl+C).
  *
  * Usage:
- *   npm run collatz:worker                    # batchSize=100, delay=1000ms
- *   npm run collatz:worker -- 200             # batchSize=200, delay=1000ms
- *   npm run collatz:worker -- 200 500         # batchSize=200, delay=500ms
- *   npm run collatz:worker -- 100 0           # no delay between batches
+ *   npm run collatz:worker                    # uses env-var defaults
+ *   npm run collatz:worker -- 5000            # batchSize=5000, default delay
+ *   npm run collatz:worker -- 5000 500        # batchSize=5000, delay=500ms
+ *   npm run collatz:worker -- 5000 0          # no delay between batches
+ *
+ * Environment variables (all optional — CLI args take precedence):
+ *   COLLATZ_RESULT_BATCH_SIZE   Numbers per batch. Default: 5000.
+ *                               Larger = fewer DB round-trips per number,
+ *                               lower Disk IO overhead. Max crash-recovery
+ *                               window = one batch worth of numbers.
+ *   COLLATZ_LOG_INTERVAL_MS     Minimum wall-clock ms between activity log
+ *                               writes. Default: 30000 (30 s). Set to 0 to
+ *                               log every batch (not recommended in prod).
+ *   COLLATZ_BATCH_DELAY_MS      Default inter-batch delay when not supplied
+ *                               via CLI. Default: 0 (run as fast as safely
+ *                               possible — state is still written every batch).
  */
 
 import { loadEnvConfig } from "@next/env";
@@ -16,7 +28,20 @@ import { loadEnvConfig } from "@next/env";
 // Must run before any Supabase / store imports so env vars are present.
 loadEnvConfig(process.cwd());
 
-// ── Interruptible sleep ──────────────────────────────────────────────────────
+// ── Env-var config ────────────────────────────────────────────────────────────
+
+function envInt(key: string, fallback: number): number {
+  const raw = process.env[key];
+  if (!raw) return fallback;
+  const parsed = parseInt(raw, 10);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
+}
+
+const ENV_BATCH_SIZE = envInt("COLLATZ_RESULT_BATCH_SIZE", 5_000);
+const ENV_LOG_INTERVAL_MS = envInt("COLLATZ_LOG_INTERVAL_MS", 30_000);
+const ENV_BATCH_DELAY_MS = envInt("COLLATZ_BATCH_DELAY_MS", 0);
+
+// ── Interruptible sleep ───────────────────────────────────────────────────────
 
 let wakeFromSleep: (() => void) | null = null;
 
@@ -31,14 +56,13 @@ function sleep(ms: number): Promise<void> {
   });
 }
 
-// ── Shutdown flag ────────────────────────────────────────────────────────────
+// ── Shutdown flag ─────────────────────────────────────────────────────────────
 
 let shouldStop = false;
 
 function handleSignal(signal: string) {
-  if (shouldStop) return; // Already handling
+  if (shouldStop) return;
   shouldStop = true;
-  // Wake from sleep immediately so the loop exits without waiting the full delay
   const wake = wakeFromSleep;
   wakeFromSleep = null;
   wake?.();
@@ -50,10 +74,10 @@ function handleSignal(signal: string) {
 process.on("SIGINT", () => handleSignal("SIGINT (Ctrl+C)"));
 process.on("SIGTERM", () => handleSignal("SIGTERM"));
 
-// ── Formatting helpers ───────────────────────────────────────────────────────
+// ── Formatting helpers ────────────────────────────────────────────────────────
 
-function pad(s: string, width: number, right = false): string {
-  return right ? s.padEnd(width) : s.padStart(width);
+function pad(s: string, width: number): string {
+  return s.padStart(width);
 }
 
 function fmtN(n: number): string {
@@ -75,22 +99,26 @@ function elapsed(startMs: number): string {
   return `${sec}s`;
 }
 
-// ── Main ─────────────────────────────────────────────────────────────────────
+// ── Main ──────────────────────────────────────────────────────────────────────
 
 async function main() {
   // Dynamic imports — env must be loaded first
   const { runAutonomousBatch } = await import("../lib/collatz/autonomous-runner");
   const { getEngineState } = await import("../lib/collatz/store");
 
-  // ── Parse & validate CLI args ──────────────────────────────────────────────
+  // ── Parse & validate CLI args ─────────────────────────────────────────────
   const args = process.argv.slice(2);
 
-  const batchSize = parseInt(args[0] ?? "100", 10);
-  const delayMs = parseInt(args[1] ?? "1000", 10);
+  // CLI arg overrides env var; env var overrides hard default
+  const rawBatch = parseInt(args[0] ?? "", 10);
+  const batchSize = Number.isFinite(rawBatch) && rawBatch > 0 ? rawBatch : ENV_BATCH_SIZE;
 
-  if (!Number.isInteger(batchSize) || batchSize < 1 || batchSize > 10_000) {
+  const rawDelay = parseInt(args[1] ?? "", 10);
+  const delayMs = Number.isFinite(rawDelay) && rawDelay >= 0 ? rawDelay : ENV_BATCH_DELAY_MS;
+
+  if (!Number.isInteger(batchSize) || batchSize < 1 || batchSize > 100_000) {
     console.error(
-      "Error: batchSize must be an integer between 1 and 10,000.\n" +
+      "Error: batchSize must be an integer between 1 and 100,000.\n" +
         "Usage: npm run collatz:worker -- [batchSize] [delayMs]",
     );
     process.exit(1);
@@ -104,26 +132,30 @@ async function main() {
     process.exit(1);
   }
 
-  // ── Banner ─────────────────────────────────────────────────────────────────
+  // ── Banner ────────────────────────────────────────────────────────────────
   console.log("\n┌──────────────────────────────────────────┐");
   console.log("│       Collatz Continuous Worker           │");
   console.log("└──────────────────────────────────────────┘");
-  console.log(`  Batch size   ${fmtN(batchSize)} numbers per batch`);
-  console.log(`  Delay        ${fmtN(delayMs)}ms between batches`);
-  console.log(`  State store  Supabase (id = "main")`);
-  console.log(`  Stop         Ctrl+C\n`);
+  console.log(`  Batch size    ${fmtN(batchSize)} numbers per batch`);
+  console.log(`  Delay         ${fmtN(delayMs)}ms between batches`);
+  console.log(`  Activity log  every ${fmtN(ENV_LOG_INTERVAL_MS)}ms (COLLATZ_LOG_INTERVAL_MS)`);
+  console.log(`  State store   Supabase (id = "main")`);
+  console.log(`  Stop          Ctrl+C\n`);
   console.log(
     `  ${"#".padStart(5)}  ${"start".padStart(12)} – ${"end".padEnd(12)}  ` +
       `${"count".padStart(6)}  ${"duration".padStart(10)}  ${"rate".padStart(10)}`,
   );
   console.log("  " + "─".repeat(70));
 
-  // ── Worker loop ────────────────────────────────────────────────────────────
+  // ── Worker loop ───────────────────────────────────────────────────────────
   let iteration = 0;
   let totalProcessed = 0;
   let consecutiveErrors = 0;
   const MAX_CONSECUTIVE_ERRORS = 5;
   const workerStart = Date.now();
+
+  // Wall-clock throttle: activity logs are written at most once per interval.
+  let lastActivityLogMs = 0;
 
   while (!shouldStop) {
     // Read latest engine state on every iteration (detects stop from admin)
@@ -141,17 +173,27 @@ async function main() {
     if (state.current_status !== "running") {
       process.stdout.write(
         `  [paused]   Engine status is "${state.current_status}" — ` +
-          `waiting ${fmtN(delayMs)}ms...\r`,
+          `waiting ${fmtN(delayMs > 0 ? delayMs : 2000)}ms...\r`,
       );
-      await sleep(delayMs);
+      await sleep(delayMs > 0 ? delayMs : 2000);
       continue;
+    }
+
+    // ── Activity log throttle ────────────────────────────────────────────────
+    // Write batch_started/batch_completed at most once per ENV_LOG_INTERVAL_MS.
+    // batch_failed is always written unconditionally (inside runAutonomousBatch).
+    const nowMs = Date.now();
+    const shouldLogActivity =
+      ENV_LOG_INTERVAL_MS === 0 || nowMs - lastActivityLogMs >= ENV_LOG_INTERVAL_MS;
+    if (shouldLogActivity) {
+      lastActivityLogMs = nowMs;
     }
 
     // ── Execute batch ────────────────────────────────────────────────────────
     iteration++;
 
     try {
-      const result = await runAutonomousBatch({ batchSize });
+      const result = await runAutonomousBatch({ batchSize, shouldLogActivity });
       consecutiveErrors = 0;
       totalProcessed += result.numbersProcessed;
 
@@ -191,7 +233,7 @@ async function main() {
     }
   }
 
-  // ── Shutdown summary ───────────────────────────────────────────────────────
+  // ── Shutdown summary ──────────────────────────────────────────────────────
   console.log("\n  " + "─".repeat(70));
   console.log(`\n[Collatz Worker] Stopped cleanly.`);
   console.log(`  Batches completed : ${fmtN(iteration)}`);
