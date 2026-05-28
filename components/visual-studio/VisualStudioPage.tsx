@@ -269,6 +269,8 @@ export function VisualStudioPage() {
                 resetSignal={resetSignal}
                 cameraCommand={cameraCommand}
                 onCameraCommand={setCameraCommand}
+                defaultCameraPosition={[14, 11, 40]}
+                defaultCameraTarget={[0, 7, -5]}
                 hud={
                   convergenceGraph ? (
                     <TreeSceneHUD

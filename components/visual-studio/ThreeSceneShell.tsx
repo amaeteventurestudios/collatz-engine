@@ -32,10 +32,10 @@ interface ThreeSceneShellProps {
   resetSignal: number;
   cameraCommand?: CameraCommand | null;
   onCameraCommand?: (command: CameraCommand) => void;
+  defaultCameraPosition?: [number, number, number];
+  defaultCameraTarget?: [number, number, number];
 }
 
-const DEFAULT_POSITION = new Vector3(26, 16, 31);
-const DEFAULT_TARGET = new Vector3(0, 5.5, 0);
 
 export function ThreeSceneShell({
   title,
@@ -52,10 +52,15 @@ export function ThreeSceneShell({
   resetSignal,
   cameraCommand = null,
   onCameraCommand,
+  defaultCameraPosition,
+  defaultCameraTarget,
 }: ThreeSceneShellProps) {
   const [localCameraCommand, setLocalCameraCommand] = useState<CameraCommand | null>(
     null,
   );
+
+  const camPosition = defaultCameraPosition ?? ([26, 16, 31] as [number, number, number]);
+  const camTarget = defaultCameraTarget ?? ([0, 5.5, 0] as [number, number, number]);
 
   function issueCameraCommand(action: CameraCommand["action"]) {
     const command = { action, key: Date.now() };
@@ -86,7 +91,7 @@ export function ThreeSceneShell({
           className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_32%,rgba(34,211,238,0.18),transparent_28%),radial-gradient(circle_at_72%_38%,rgba(124,58,237,0.14),transparent_28%),linear-gradient(180deg,rgba(2,6,23,0.1),rgba(2,6,23,0.98))]"
         />
         <Canvas
-          camera={{ position: DEFAULT_POSITION.toArray(), fov: 46, near: 0.1, far: 140 }}
+          camera={{ position: camPosition, fov: 46, near: 0.1, far: 140 }}
           dpr={[1, 1.7]}
           gl={{ antialias: true, alpha: true }}
         >
@@ -97,6 +102,8 @@ export function ThreeSceneShell({
             <SceneCameraControls
               resetSignal={resetSignal}
               cameraCommand={effectiveCameraCommand}
+              defaultPosition={camPosition}
+              defaultTarget={camTarget}
             />
           </Suspense>
         </Canvas>
@@ -214,24 +221,28 @@ function SceneStateOverlay({
 function SceneCameraControls({
   resetSignal,
   cameraCommand,
+  defaultPosition,
+  defaultTarget,
 }: {
   resetSignal: number;
   cameraCommand: CameraCommand | null;
+  defaultPosition: [number, number, number];
+  defaultTarget: [number, number, number];
 }) {
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
   const { camera } = useThree();
 
   useEffect(() => {
-    resetCamera(camera, controlsRef.current);
-  }, [camera, resetSignal]);
+    resetCamera(camera, controlsRef.current, defaultPosition, defaultTarget);
+  }, [camera, resetSignal, defaultPosition, defaultTarget]);
 
   useEffect(() => {
     if (!cameraCommand) return;
     const controls = controlsRef.current;
-    const target = controls?.target ?? DEFAULT_TARGET;
+    const target = controls?.target ?? new Vector3(...defaultTarget);
 
     if (cameraCommand.action === "reset") {
-      resetCamera(camera, controls);
+      resetCamera(camera, controls, defaultPosition, defaultTarget);
       return;
     }
 
@@ -246,7 +257,7 @@ function SceneCameraControls({
     const factor = cameraCommand.action === "zoom-in" ? 0.78 : 1.22;
     camera.position.copy(target.clone().add(direction.multiplyScalar(factor)));
     controls?.update();
-  }, [camera, cameraCommand]);
+  }, [camera, cameraCommand, defaultPosition, defaultTarget]);
 
   return (
     <OrbitControls
@@ -258,13 +269,18 @@ function SceneCameraControls({
       enableZoom
       maxDistance={76}
       minDistance={12}
-      target={DEFAULT_TARGET}
+      target={new Vector3(...defaultTarget)}
     />
   );
 }
 
-function resetCamera(camera: Camera, controls: OrbitControlsImpl | null) {
-  camera.position.copy(DEFAULT_POSITION);
-  controls?.target.copy(DEFAULT_TARGET);
+function resetCamera(
+  camera: Camera,
+  controls: OrbitControlsImpl | null,
+  position: [number, number, number],
+  target: [number, number, number],
+) {
+  camera.position.set(...position);
+  controls?.target.set(...target);
   controls?.update();
 }

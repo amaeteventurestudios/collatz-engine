@@ -80,6 +80,7 @@ export function ConvergenceTree3D({
       <pointLight position={[0, 5, 2]} intensity={52} color="#67e8f9" />
       <pointLight position={[-18, 16, -4]} intensity={22} color="#a855f7" />
       <pointLight position={[18, 18, 4]} intensity={24} color="#f8c44f" />
+      <pointLight position={[0, -0.9, -5]} intensity={38} color="#a5f3fc" distance={12} decay={2} />
       <Stars
         radius={62}
         depth={36}
@@ -188,11 +189,11 @@ export function ConvergenceTree3D({
                 <meshBasicMaterial color={color} transparent opacity={selected ? 1 : 0.92} />
               </mesh>
               <mesh>
-                <sphereGeometry args={[radius * (node.isRoot ? 6 : selected ? 4.2 : 3.4), 24, 24]} />
+                <sphereGeometry args={[radius * (node.isRoot ? 8 : selected ? 5.2 : 4.0), 24, 24]} />
                 <meshBasicMaterial
                   color={node.isRoot ? "#e0faff" : color}
                   transparent
-                  opacity={node.isRoot ? 0.2 : selected ? 0.18 : 0.1}
+                  opacity={node.isRoot ? 0.28 : selected ? 0.22 : 0.12}
                   depthWrite={false}
                   blending={AdditiveBlending}
                 />
@@ -237,8 +238,8 @@ function buildPointGroups(nodes: ConvergenceNode[]) {
         nodes: matching,
         geometry,
         color: NODE_COLORS[tone],
-        opacity: tone === "older" ? 0.78 : tone === "recent" ? 0.88 : 0.95,
-        size: tone === "older" ? 0.13 : tone === "recent" ? 0.17 : 0.2,
+        opacity: tone === "older" ? 0.82 : tone === "recent" ? 0.90 : 0.95,
+        size: tone === "older" ? 0.15 : tone === "recent" ? 0.20 : 0.24,
       },
     ];
   });
@@ -266,7 +267,7 @@ function buildBranchDotGroups(dots: ConvergenceBranchDot[]) {
         geometry,
         color: NODE_COLORS[tone],
         opacity: tone === "older" ? 0.88 : 0.95,
-        size: tone === "latest" ? 0.24 : tone === "recent" ? 0.18 : 0.15,
+        size: tone === "latest" ? 0.30 : tone === "recent" ? 0.22 : 0.17,
       },
     ];
   });
@@ -348,7 +349,7 @@ function buildEdgeGroups(
             ? Math.min(0.9, 0.5 + denseRatio * 0.85)
             : key === "record"
               ? 0.8
-              : 0.42;
+              : 0.52;
 
     addPolyline(key, color, opacity, selected ? 5 : guide.isLatest ? 4 : dense ? 3 : 1, guide.points);
 

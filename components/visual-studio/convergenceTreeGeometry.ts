@@ -327,15 +327,14 @@ function sequenceForTrajectory(trajectory: VisualTrajectory): bigint[] {
 }
 
 function laneForTrajectory(index: number, total: number): number {
-  if (index === 0) return 0.92;
-  if (total <= 2) return -0.62;
-
-  const ratio = (index - 1) / Math.max(1, total - 2);
-  if (ratio < 0.64) {
-    return -0.98 + (ratio / 0.64) * 0.9;
-  }
-
-  return -0.12 + ((ratio - 0.64) / 0.36) * 0.58;
+  if (index === 0) return 0.82;          // latest: right side
+  if (total <= 1) return 0;
+  const pos = index - 1;                 // 0-indexed among non-latest
+  const half = Math.ceil((total - 1) / 2);
+  const side = pos % 2 === 0 ? -1 : 1;  // alternate: L, R, L, R...
+  const rank = Math.floor(pos / 2);
+  const spread = half <= 1 ? 0.18 : 0.18 + (rank / (half - 1)) * 0.82;
+  return side * spread;
 }
 
 function visualPositionForOccurrence({
@@ -351,25 +350,19 @@ function visualPositionForOccurrence({
   isLatest: boolean;
   value: bigint;
 }): Vector3 {
+  void log10BigInt; // kept for potential future use
   const growth = Math.pow(depthRatio, 0.74);
-  const canopy = Math.sin(Math.min(1, depthRatio) * Math.PI) * 0.36;
-  const logLift = log10BigInt(value + 1n) * 0.13;
   const branchBend = trajectoryCurve * Math.sin(depthRatio * Math.PI * 1.35);
   const latestRight = isLatest ? 0.22 + Math.pow(depthRatio, 0.7) * 0.76 : 0;
   const laneWithLatest = isLatest ? Math.max(lane, latestRight) : lane + branchBend;
   const x = laneWithLatest * FAN_WIDTH * growth * 0.5;
-  const y = Math.max(0, Math.pow(depthRatio, 0.78) * SCENE_HEIGHT + logLift);
-  const z =
-    -2.8 +
-    (laneWithLatest * 0.28 + stableSigned(`${value.toString()}:z`) * 0.16) *
-      FAN_DEPTH *
-      Math.pow(depthRatio, 0.85) +
-    canopy * 2.2;
+  const y = Math.max(0, Math.pow(depthRatio, 0.78) * SCENE_HEIGHT);
+  const z = -2.4 + laneWithLatest * FAN_DEPTH * 0.22 * growth * 0.4 + stableSigned(`${value.toString()}:z`) * 0.25;
 
   return new Vector3(
     clamp(x, -FAN_WIDTH / 2, FAN_WIDTH / 2),
     y,
-    clamp(z, -FAN_DEPTH, FAN_DEPTH),
+    clamp(z, -FAN_DEPTH * 0.55, FAN_DEPTH * 0.45),
   );
 }
 
@@ -402,7 +395,7 @@ function buildHierarchicalPositions({
     if (!draft) return;
     const depthRatio = draft.approxDepth / Math.max(maxDepth, 1);
     const densityRatio = Math.log1p(draft.visitCount) / Math.log1p(maxVisitCount);
-    const centerPull = Math.min(0.9, densityRatio * 0.82);
+    const centerPull = Math.min(0.96, densityRatio * 1.18);
     const base =
       draft.positionWeight > 0
         ? new Vector3(
@@ -418,9 +411,9 @@ function buildHierarchicalPositions({
             value: draft.value,
           });
     const trunk = new Vector3(
-      stableSigned(`${id}:trunk`) * 0.7 * Math.pow(depthRatio, 0.6),
+      stableSigned(`${id}:trunk`) * 0.18 * Math.pow(depthRatio, 0.5),
       Math.pow(depthRatio, 0.82) * SCENE_HEIGHT,
-      -2.8 + Math.sin(depthRatio * Math.PI) * 1.35,
+      -2.4 + stableSigned(`${id}:trunkZ`) * 0.28 + Math.sin(depthRatio * Math.PI) * 0.8,
     );
     const latestOuterPull =
       draft.isLatest && draft.visitCount <= 2 ? Math.min(0.72, Math.pow(depthRatio, 0.7)) : 0;
@@ -459,7 +452,7 @@ function buildVisualBranches({
 }): { guides: ConvergenceBranchGuide[]; dots: ConvergenceBranchDot[] } {
   const guides: ConvergenceBranchGuide[] = [];
   const dots: ConvergenceBranchDot[] = [];
-  const maxDots = 1_100;
+  const maxDots = 1_400;
   let dotCount = 0;
 
   trajectories.forEach((trajectory, trajectoryIndex) => {
@@ -472,8 +465,8 @@ function buildVisualBranches({
     const trajectoryCurve = stableSigned(`${trajectory.id}:curve`) * 0.16;
     const maxTrajectoryDepth = Math.max(1, sequence.length - 1);
     const sampleEvery = isLatest
-      ? Math.max(1, Math.floor(sequence.length / 44))
-      : Math.max(1, Math.floor(sequence.length / 30));
+      ? Math.max(1, Math.floor(sequence.length / 56))
+      : Math.max(1, Math.floor(sequence.length / 38));
     const points: Vector3[] = [];
     const sampled: {
       nodeId: string;
@@ -515,7 +508,10 @@ function buildVisualBranches({
 
     if (points.length < 2) return;
 
-    const tone: VisualPathTone = isLatest ? "latest" : isRecord ? "record" : trajectoryIndex < 18 ? "older" : "recent";
+    const maxSampledVisits = Math.max(1, ...sampled.map(s => nodeDrafts.get(s.nodeId)?.visitCount ?? 1));
+    const densityCutoff = Math.max(3, Math.ceil(trajectories.length * 0.06));
+    const isSharedBranch = maxSampledVisits >= densityCutoff;
+    const tone: VisualPathTone = isLatest ? "latest" : isRecord ? "record" : isSharedBranch ? "recent" : "older";
     guides.push({
       id: `guide-${trajectory.id}`,
       points: smoothGuide(points, isLatest),
@@ -536,7 +532,7 @@ function buildVisualBranches({
         isLatest ||
         sampleIndex % 2 === 0 ||
         (draft?.visitCount ?? 0) > 1 ||
-        sample.depth < 14;
+        sample.depth < 20;
       if (!keepDot) return;
 
       dots.push({
