@@ -14,6 +14,7 @@
 
 import { useState } from "react";
 import { useAdminRealtimeMetrics } from "@/hooks/useAdminRealtimeMetrics";
+import { PanelHelp } from "@/components/ui/PanelHelp";
 import type {
   AdminMetricsApiResponse,
   WorkerLockState,
@@ -63,11 +64,11 @@ function formatBytes(bytes: number): string {
 
 // ── UI sub-components ────────────────────────────────────────────────────────
 
-function SectionHeading({ id, children }: { id?: string; children: React.ReactNode }) {
+function SectionHeading({ id, children, help }: { id?: string; children: React.ReactNode; help?: React.ReactNode }) {
   return (
     <h2 id={id} className="mb-4 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.1em] text-teal-500">
       <span className="h-px flex-1 bg-slate-800" />
-      {children}
+      <span className="flex shrink-0 items-center gap-1.5">{children}{help}</span>
       <span className="h-px flex-1 bg-slate-800" />
     </h2>
   );
@@ -301,7 +302,12 @@ export function AdminLiveMetrics({ initial }: Props) {
 
       {/* ── Section W: Operations Health (Watchdog) ──────────────────── */}
       <section>
-        <SectionHeading id="operations-health">Operations Health</SectionHeading>
+        <SectionHeading id="operations-health" help={
+          <PanelHelp title="Operations Health"
+            description="Summarizes the worker lock, worker progress, sequence pointer, storage state, and runtime config. Shows whether the engine looks safe to operate right now."
+            details="Safe = all checks nominal. Warning = one or more signals need attention. Critical = immediate action may be required."
+            operatorNote="This is operational health, not a mathematical proof." />
+        }>Operations Health</SectionHeading>
         <div className="space-y-3">
           <OverallStatusBanner watchdog={watchdog} />
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
@@ -316,7 +322,11 @@ export function AdminLiveMetrics({ initial }: Props) {
 
       {/* ── Section A: Engine Status ──────────────────────────────────── */}
       <section>
-        <SectionHeading id="engine-status">Engine Status</SectionHeading>
+        <SectionHeading id="engine-status" help={
+          <PanelHelp title="Engine Status"
+            description="Shows what number the engine is computing, how many numbers have been verified, processing speed, and whether it is running or paused."
+            source="collatz_engine_state table, live-polled every 5 seconds." />
+        }>Engine Status</SectionHeading>
         <Card>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
             {[
@@ -394,7 +404,12 @@ export function AdminLiveMetrics({ initial }: Props) {
 
       {/* ── Section A2: Worker Lock ───────────────────────────────────── */}
       <section>
-        <SectionHeading id="worker-lock">Worker Lock</SectionHeading>
+        <SectionHeading id="worker-lock" help={
+          <PanelHelp title="Worker Lock"
+            description="Shows which machine currently holds permission to process Collatz batches. Only one worker should hold the lock at a time."
+            details="The lock prevents duplicate workers from processing the same number range. It includes hostname, PID, heartbeat, and expiry."
+            operatorNote="Do not force-release a healthy lock. Only release if the worker is confirmed stopped." />
+        }>Worker Lock</SectionHeading>
         <Card>
           {!lockTableExists ? (
             <div className="rounded-xl border border-yellow-900/50 bg-yellow-950/30 px-4 py-3">
@@ -490,7 +505,11 @@ export function AdminLiveMetrics({ initial }: Props) {
 
       {/* ── Section B: Key Metrics ────────────────────────────────────── */}
       <section>
-        <SectionHeading id="key-metrics">Key Metrics</SectionHeading>
+        <SectionHeading id="key-metrics" help={
+          <PanelHelp title="Key Metrics"
+            description="All-time engine state and recent live measurements — numbers checked, throughput, heartbeat age, storage, and config."
+            source="collatz_engine_state table + storage estimates, live-polled." />
+        }>Key Metrics</SectionHeading>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {[
             { label: "Total Checked", value: fmtN(engine?.totalChecked) },
@@ -535,7 +554,11 @@ export function AdminLiveMetrics({ initial }: Props) {
 
       {/* ── Section C: Throughput Graph ───────────────────────────────── */}
       <section>
-        <SectionHeading id="throughput">Throughput Graph</SectionHeading>
+        <SectionHeading id="throughput" help={
+          <PanelHelp title="Throughput Graph"
+            description="Recent processing speed in numbers per second. Temporary dips are normal, especially in recovery mode."
+            source="collatz_activity_logs, numbers_per_second field, last 40 entries." />
+        }>Throughput Graph</SectionHeading>
         <Card className="!p-4">
           <div className="mb-3 flex items-center justify-between">
             <p className="text-xs font-semibold text-slate-300">Numbers / second over time</p>
@@ -555,7 +578,12 @@ export function AdminLiveMetrics({ initial }: Props) {
 
       {/* ── Section D: Activity Log ───────────────────────────────────── */}
       <section>
-        <SectionHeading id="activity-log">Activity Log</SectionHeading>
+        <SectionHeading id="activity-log" help={
+          <PanelHelp title="Activity Log"
+            description="Recent operational events from the engine, workers, and admin actions."
+            details="Some batch events are sampled to save storage. Missing log rows do not mean missing computation — the sequence pointer is the authoritative continuity check."
+            source="collatz_activity_logs table, last 15 entries." />
+        }>Activity Log</SectionHeading>
         <Card className="!p-0 overflow-hidden">
           {/* Filter bar */}
           <div className="flex flex-wrap items-center gap-2 border-b border-slate-800 px-4 py-3">

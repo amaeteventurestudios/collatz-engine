@@ -6,6 +6,10 @@ import { HelpCircle } from "lucide-react";
 type PanelHelpProps = {
   title: string;
   description: string;
+  details?: string;
+  source?: string;
+  warning?: string;
+  operatorNote?: string;
   align?: "left" | "right" | "center";
 };
 
@@ -15,7 +19,7 @@ const alignClasses: Record<NonNullable<PanelHelpProps["align"]>, string> = {
   center: "left-1/2 -translate-x-1/2",
 };
 
-export function PanelHelp({ title, description, align = "right" }: PanelHelpProps) {
+export function PanelHelp({ title, description, details, source, warning, operatorNote, align = "right" }: PanelHelpProps) {
   const [open, setOpen] = useState(false);
   const id = useId();
   const containerRef = useRef<HTMLSpanElement>(null);
@@ -79,6 +83,26 @@ export function PanelHelp({ title, description, align = "right" }: PanelHelpProp
         <span className="mt-1.5 block text-xs leading-relaxed text-slate-300">
           {description}
         </span>
+        {details && (
+          <span className="mt-2 block text-[11px] leading-relaxed text-slate-400">
+            {details}
+          </span>
+        )}
+        {source && (
+          <span className="mt-2 block text-[10px] text-slate-500">
+            <span className="font-semibold text-slate-500">Source:</span> {source}
+          </span>
+        )}
+        {warning && (
+          <span className="mt-2 block rounded border border-orange-500/30 bg-orange-950/30 px-2 py-1.5 text-[10px] leading-relaxed text-orange-300">
+            ⚠ {warning}
+          </span>
+        )}
+        {operatorNote && (
+          <span className="mt-2 block text-[10px] italic leading-relaxed text-slate-500">
+            Note: {operatorNote}
+          </span>
+        )}
       </span>
     </span>
   );

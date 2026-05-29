@@ -8,58 +8,32 @@ const sidebarSections = [
     items: [{ href: "/admin", label: "Overview" }],
   },
   {
-    label: "Monitoring",
+    label: "Operations",
     items: [
-      { href: "/admin/monitoring/database", label: "Database Monitor" },
-      { href: "/admin/monitoring/engine", label: "Engine Monitor" },
-      { href: "/admin/monitoring/storage", label: "Storage Trends" },
-      { href: "/admin/monitoring/r2", label: "Cloudflare R2" },
-      { href: "/admin/monitoring/health", label: "Health & Errors" },
-      { href: "/admin/monitoring/activity", label: "Activity Log" },
+      { href: "/admin/engine-control", label: "Engine Control" },
+      { href: "/admin/activity-log",   label: "Activity Log" },
+      { href: "/admin/integrity",      label: "Integrity Checks" },
+      { href: "/admin/records",        label: "Records" },
     ],
   },
   {
-    label: "Engine Control",
+    label: "Infrastructure",
     items: [
-      { href: "/admin/engine/control", label: "Engine Control" },
-      { href: "/admin/engine/config", label: "Runtime Config" },
-      { href: "/admin/engine/modes", label: "Worker Modes" },
-      { href: "/admin/engine/guardrails", label: "Guardrails" },
+      { href: "/admin/database-monitor", label: "Database Monitor" },
+      { href: "/admin/storage-archive",  label: "Storage & Archive" },
+      { href: "/admin/system-health",    label: "System Health" },
     ],
   },
   {
-    label: "Storage & Archive",
+    label: "Observatory",
     items: [
-      { href: "/admin/archive/export", label: "Archive / Export" },
-      { href: "/admin/archive/retention", label: "Retention / Cleanup" },
-      { href: "/admin/archive/manifests", label: "Archive Manifests" },
-      { href: "/admin/archive/summaries", label: "Range Summaries" },
-    ],
-  },
-  {
-    label: "Data Integrity",
-    items: [
-      { href: "/admin/integrity/checks", label: "Integrity Checks" },
-      { href: "/admin/integrity/records", label: "Records" },
-      { href: "/admin/integrity/milestones", label: "Milestones" },
-      { href: "/admin/integrity/missing", label: "Missing Ranges" },
-    ],
-  },
-  {
-    label: "AI Observatory",
-    items: [
-      { href: "/admin/ai/notes", label: "AI Notes" },
-      { href: "/admin/ai/drafts", label: "Drafts" },
-      { href: "/admin/ai/published", label: "Published Reports" },
+      { href: "/admin/ai-observatory", label: "AI Observatory" },
     ],
   },
   {
     label: "System",
     items: [
-      { href: "/admin/system/api", label: "API & Exports" },
-      { href: "/admin/system/env", label: "Environment" },
-      { href: "/admin/system/docs", label: "Documentation" },
-      { href: "/admin/system/settings", label: "Settings" },
+      { href: "/admin/system", label: "System" },
     ],
   },
 ];

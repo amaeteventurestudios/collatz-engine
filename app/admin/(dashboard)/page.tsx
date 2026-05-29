@@ -13,6 +13,7 @@ import {
 } from "../actions";
 import type { StorageStatus, TableSizeRow, AdminMetricsApiResponse } from "@/lib/admin/types";
 import { AdminLiveMetrics } from "@/components/admin/AdminLiveMetrics";
+import { PanelHelp } from "@/components/ui/PanelHelp";
 
 export const dynamic = "force-dynamic";
 
@@ -51,13 +52,29 @@ function n(v: number | null | undefined, fallback = "—"): string {
   return v.toLocaleString("en-US");
 }
 
-function SectionHeading({ id, children }: { id?: string; children: React.ReactNode }) {
+function SectionHeading({ id, children, help }: { id?: string; children: React.ReactNode; help?: React.ReactNode }) {
   return (
     <h2 id={id} className="mb-4 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.1em] text-teal-500">
       <span className="h-px flex-1 bg-slate-800" />
-      {children}
+      <span className="flex shrink-0 items-center gap-1.5">{children}{help}</span>
       <span className="h-px flex-1 bg-slate-800" />
     </h2>
+  );
+}
+
+function SectionActions({ links }: { links: { href: string; label: string }[] }) {
+  return (
+    <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-slate-800 pt-3">
+      {links.map((l) => (
+        <Link
+          key={l.href}
+          href={l.href}
+          className="rounded-lg border border-slate-700 px-3 py-1.5 text-[10px] font-medium text-slate-400 transition-colors hover:border-teal-700 hover:text-teal-400"
+        >
+          {l.label} →
+        </Link>
+      ))}
+    </div>
   );
 }
 
@@ -239,7 +256,12 @@ export default async function AdminPage() {
 
       {/* ── Section D: Database Storage Monitor ──────── */}
       <section>
-        <SectionHeading id="storage-monitor">Database Storage Monitor</SectionHeading>
+        <SectionHeading id="storage-monitor" help={
+          <PanelHelp title="Database Storage Monitor"
+            description="Tracks database size and table growth. Designed to warn before storage usage becomes dangerous."
+            details="The Supabase free tier is 2 GB. collatz_results and collatz_activity_logs drive most growth."
+            source="Row-count estimates × bytes-per-row constants." align="right" />
+        }>Database Storage Monitor</SectionHeading>
         <Card>
           <div className="flex flex-wrap items-center gap-8">
             <StorageGauge percent={storageData.percentUsed} status={storageData.status} />
@@ -298,12 +320,20 @@ export default async function AdminPage() {
             Supabase free tier: 2 GB limit. Estimates based on row counts × avg row size.
             Exact pg_statio metrics available after Phase 2 RPC setup.
           </p>
+          <SectionActions links={[
+            { href: "/admin/database-monitor", label: "Open Database Monitor" },
+            { href: "/admin/storage-archive",  label: "Open Storage & Archive" },
+          ]} />
         </Card>
       </section>
 
       {/* ── Section E: Table Size Estimates ──────────── */}
       <section>
-        <SectionHeading id="table-sizes">Table Size Estimates</SectionHeading>
+        <SectionHeading id="table-sizes" help={
+          <PanelHelp title="Table Size Estimates"
+            description="Estimated table sizes and row counts. Identifies which tables are growing fastest."
+            source="Row counts from Supabase × per-table bytes-per-row constants." align="right" />
+        }>Table Size Estimates</SectionHeading>
         <Card className="!p-0 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[600px]">
@@ -326,12 +356,19 @@ export default async function AdminPage() {
           <p className="border-t border-slate-800 px-4 py-2 text-[10px] text-slate-700">
             Fetched at {storageData.fetchedAt}
           </p>
+          <div className="px-4 pb-3">
+            <SectionActions links={[{ href: "/admin/database-monitor", label: "Open Database Monitor" }]} />
+          </div>
         </Card>
       </section>
 
       {/* ── Section F: Supabase Health ────────────────── */}
       <section>
-        <SectionHeading id="supabase-health">Supabase Health</SectionHeading>
+        <SectionHeading id="supabase-health" help={
+          <PanelHelp title="Supabase Health"
+            description="Shows whether the app can reach the database and whether required database services appear available."
+            source="Server-side connection test on page load." align="right" />
+        }>Supabase Health</SectionHeading>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Card>
             <p className="mb-3 text-xs font-semibold text-slate-300">Connection</p>
@@ -374,7 +411,11 @@ export default async function AdminPage() {
 
       {/* ── Section G: Cloudflare R2 ──────────────────── */}
       <section>
-        <SectionHeading id="r2">Cloudflare R2</SectionHeading>
+        <SectionHeading id="r2" help={
+          <PanelHelp title="Cloudflare R2"
+            description="R2 is used for long-term archive storage. This panel shows whether archive storage is configured and ready."
+            source="Environment variable checks (CLOUDFLARE_R2_*)." align="right" />
+        }>Cloudflare R2</SectionHeading>
         <Card>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
             {[
@@ -398,18 +439,24 @@ export default async function AdminPage() {
               </div>
             ))}
           </div>
-          <div className="mt-4 flex gap-2 border-t border-slate-800 pt-4">
+          <div className="mt-4 flex flex-wrap gap-2 border-t border-slate-800 pt-4">
             <DisabledButton label="Test R2 Connection" phase="Phase 2" />
             <span className="text-[10px] text-slate-700 self-center ml-2">
               Live bucket check available in Phase 2
             </span>
+            <SectionActions links={[{ href: "/admin/storage-archive", label: "Open Storage & Archive" }]} />
           </div>
         </Card>
       </section>
 
       {/* ── Section H: Runtime Config ─────────────────── */}
       <section>
-        <SectionHeading id="runtime-config">Engine Control / Runtime Config</SectionHeading>
+        <SectionHeading id="runtime-config" help={
+          <PanelHelp title="Engine Control / Runtime Config"
+            description="Controls batch size, delay, storage mode, and safety thresholds. Mode changes adjust how aggressively the worker runs."
+            warning="Mode changes are applied to the live engine. Use Recovery mode when storage pressure is high."
+            operatorNote="Do not change modes without a specific reason." align="right" />
+        }>Engine Control / Runtime Config</SectionHeading>
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           {/* Preset cards */}
           {(Object.entries(MODE_PRESETS) as [string, typeof MODE_PRESETS.safe][]).map(([name, preset]) => {
@@ -464,7 +511,7 @@ export default async function AdminPage() {
 
         {/* Current config table */}
         <Card className="mt-4">
-          <p className="mb-3 text-xs font-semibold text-slate-300">Current Runtime Config (from env)</p>
+          <p className="mb-3 text-xs font-semibold text-slate-300">Current Runtime Config</p>
           <div className="grid grid-cols-2 gap-x-8 gap-y-1.5 sm:grid-cols-3 text-[11px]">
             {[
               ["mode", runtime.mode],
@@ -485,12 +532,18 @@ export default async function AdminPage() {
               </div>
             ))}
           </div>
+          <SectionActions links={[{ href: "/admin/engine-control", label: "Open Engine Control" }]} />
         </Card>
       </section>
 
       {/* ── Section I: Archive / Retention ───────────── */}
       <section>
-        <SectionHeading id="archive">Archive / Retention</SectionHeading>
+        <SectionHeading id="archive" help={
+          <PanelHelp title="Archive / Retention"
+            description="Controls how many recent results are kept in Supabase. Cleanup trims rows beyond the retention window."
+            warning="Cleanup permanently removes rows beyond the retention window."
+            operatorNote="Confirm retention settings before running cleanup." align="right" />
+        }>Archive / Retention</SectionHeading>
         <Card>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 mb-5">
             {[
@@ -522,12 +575,17 @@ export default async function AdminPage() {
               Cleanup trims results to {runtime.keepRecentResults.toLocaleString()} rows · logs to {runtime.activityLogRetentionRows.toLocaleString()} rows
             </span>
           </div>
+          <SectionActions links={[{ href: "/admin/storage-archive", label: "Open Storage & Archive" }]} />
         </Card>
       </section>
 
       {/* ── Section J: Health / Errors ────────────────── */}
       <section>
-        <SectionHeading id="health-errors">Health / Errors</SectionHeading>
+        <SectionHeading id="health-errors" help={
+          <PanelHelp title="Health / Errors"
+            description="Summarizes recent failures, warnings, and system health signals. A clean state means no critical operational issues were detected."
+            source="Activity log event counts, heartbeat age, and storage state." align="right" />
+        }>Health / Errors</SectionHeading>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           {[
             { label: "DB Timeouts 24h", value: "—" },
@@ -553,11 +611,18 @@ export default async function AdminPage() {
         <p className="mt-3 text-[10px] text-slate-700">
           Live activity log and operations health available in the Engine Status section above.
         </p>
+        <div className="mt-3">
+          <SectionActions links={[{ href: "/admin/activity-log", label: "Open Activity Log" }]} />
+        </div>
       </section>
 
       {/* ── Section K: Data Integrity ─────────────────── */}
       <section>
-        <SectionHeading id="integrity">Data Integrity</SectionHeading>
+        <SectionHeading id="integrity" help={
+          <PanelHelp title="Data Integrity"
+            description="Separates live checks from full catalog verification. Live checks look at current operating state. Full verification scans more deeply."
+            source="Live: /api/collatz/integrity. Full: collatz_integrity_runs table." align="right" />
+        }>Data Integrity</SectionHeading>
         <Card>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 mb-5">
             {[
@@ -576,19 +641,20 @@ export default async function AdminPage() {
           </div>
           <div className="rounded-xl border border-slate-800 bg-slate-950/40 px-4 py-3">
             <p className="text-[11px] text-slate-500">
-              Full integrity checks available at{" "}
-              <Link href="/admin/integrity/checks" className="text-teal-500 hover:underline">
-                /admin/integrity/checks
-              </Link>
-              . Real-time integrity scan will be available in Phase 2.
+              Full integrity checks, sequence pointer details, and verification history available on the Integrity Checks page.
             </p>
           </div>
+          <SectionActions links={[{ href: "/admin/integrity", label: "Open Integrity Checks" }]} />
         </Card>
       </section>
 
       {/* ── Section L: System Health Footer ──────────── */}
       <section>
-        <SectionHeading id="system-health">System Health</SectionHeading>
+        <SectionHeading id="system-health" help={
+          <PanelHelp title="System Health"
+            description="Shows whether major system pieces are deployed, reachable, or configured. Does not expose secrets."
+            source="Server-side environment checks and database connection status." align="right" />
+        }>System Health</SectionHeading>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
           <HealthDot ok={engineResult.connected} label="Supabase Database" />
           <HealthDot ok={null} label="Supabase Storage" />
@@ -602,9 +668,12 @@ export default async function AdminPage() {
           <HealthDot ok={null} label="Cron Schedules" />
           <HealthDot ok={null} label="Archive Pipeline" />
         </div>
-        <p className="mt-4 text-center text-[10px] text-slate-700">
-          Phase 1 Admin Control Center — monitoring foundation. Engine controls, archive automation, and integrity scans arrive in Phase 2/3.
-        </p>
+        <div className="mt-4">
+          <SectionActions links={[
+            { href: "/admin/system-health", label: "Open System Health" },
+            { href: "/admin/system",        label: "Open System" },
+          ]} />
+        </div>
       </section>
 
     </div>
