@@ -154,6 +154,84 @@ export function extractRepairs(metadata: Record<string, unknown>): RepairedTrans
 }
 
 /**
+ * Infers the dominant batch size from a list of logged batches.
+ *
+ * Uses the statistical mode of (batch_end - batch_start + 1). Requires the
+ * mode to account for ≥ 50 % of entries to be considered reliable; returns
+ * null when the batch list is empty or the sizes are too mixed.
+ *
+ * The inferred size is used by the verifier to distinguish sampled-log gaps
+ * (forward gaps that are exact multiples of the batch size) from gaps that
+ * could indicate a real computation hole.
+ */
+export function inferBatchSize(batches: BatchLogEntry[]): number | null {
+  if (batches.length === 0) return null;
+
+  const counts = new Map<number, number>();
+  for (const b of batches) {
+    const size = b.batch_end - b.batch_start + 1;
+    if (size > 0) counts.set(size, (counts.get(size) ?? 0) + 1);
+  }
+
+  let modeSize = 0;
+  let modeCount = 0;
+  for (const [size, count] of counts) {
+    if (count > modeCount) {
+      modeSize = size;
+      modeCount = count;
+    }
+  }
+
+  // Require the mode to cover at least half the entries
+  if (modeCount < Math.ceil(batches.length / 2)) return null;
+  return modeSize > 0 ? modeSize : null;
+}
+
+/**
+ * Returns true when gapSize is a positive, exact multiple of batchSize.
+ *
+ * A forward gap of N × batchSize between two logged batches is fully
+ * explained by activity-log throttling: the worker processed those batches
+ * but did not log them because shouldLogActivity was false for those
+ * iterations. This is normal behaviour in recovery/safe mode with a
+ * log_interval_ms > batch_delay_ms.
+ *
+ * A non-multiple gap cannot be explained by uniform sampling and is
+ * therefore suspicious (possible real computation hole, worker reset, etc.).
+ *
+ * Note: the caller should pass the CURRENT runtime-config batch size as
+ * batchSize when available, rather than relying solely on the size inferred
+ * from recent log entries. Historical logs may reflect a different (larger)
+ * batch size from a prior worker run, causing the inferred size to diverge
+ * from the active batch size and producing false non-multiple classifications.
+ */
+export function isSampledGap(gapSize: number, batchSize: number | null): boolean {
+  if (gapSize <= 0) return false;
+  if (batchSize === null || batchSize <= 0) return false;
+  return gapSize % batchSize === 0;
+}
+
+/**
+ * Returns true when gapSize is a positive multiple of ANY size in the set.
+ *
+ * Use this when multiple batch sizes may be relevant (e.g., the runtime
+ * config says one size and historical logs reflect a different one). Accepting
+ * any size that cleanly divides the gap is the most permissive — and correct —
+ * policy: if the gap can be explained by uniform sampling at ANY known batch
+ * size, it is not a true computation gap.
+ */
+export function isSampledGapByAnyUnit(
+  gapSize: number,
+  units: Iterable<number>,
+): boolean {
+  if (gapSize <= 0) return false;
+  for (const unit of units) {
+    if (unit > 0 && gapSize % unit === 0) return true;
+  }
+  return false;
+}
+
+/**
  * Given a list of batch log entries sorted by batch_start, returns the
  * gap ranges (as [gapStart, gapEnd] pairs) that are not covered by any
  * batch. Only considers strict gaps (batchStart > prevEnd + 1).
