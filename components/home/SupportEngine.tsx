@@ -28,7 +28,7 @@ export function SupportEngine() {
   }
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-slate-50 p-6 dark:border-slate-800 dark:bg-slate-950">
+    <div className="rounded-lg border border-slate-200 bg-slate-50 p-6 text-center dark:border-slate-800 dark:bg-slate-950 sm:text-left">
       <Script
         id="ko-fi-widget"
         src="https://storage.ko-fi.com/cdn/widget/Widget_2.js"
@@ -36,7 +36,7 @@ export function SupportEngine() {
         onReady={renderWidget}
         onError={() => setWidgetReady(false)}
       />
-      <div className="mb-3 flex items-center gap-2">
+      <div className="mb-3 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
         <Heart className="h-4 w-4 text-sky-400" />
         <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
           Support the Engine
@@ -51,7 +51,7 @@ export function SupportEngine() {
         The Collatz Engine is a public autonomous mathematics exploration system. Contributions
         help support compute, hosting, data exports, and continued development.
       </p>
-      <div ref={widgetRef} className="min-h-10" aria-live="polite" />
+      <div ref={widgetRef} className="mx-auto min-h-10 sm:mx-0" aria-live="polite" />
       {!widgetReady && (
         <a
           href={`https://ko-fi.com/${KOFI_ID}`}

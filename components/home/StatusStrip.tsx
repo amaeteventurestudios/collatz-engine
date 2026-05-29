@@ -190,8 +190,8 @@ export function StatusStrip() {
   return (
     <section className="border-y border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900/60">
       {/* Live status header */}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-4 py-2.5 dark:border-slate-800 sm:px-6">
-        <div className="flex items-center gap-2.5">
+      <div className="flex flex-col items-center justify-between gap-2 border-b border-slate-200 px-4 py-2.5 text-center dark:border-slate-800 sm:flex-row sm:text-left sm:px-6">
+        <div className="flex flex-wrap items-center justify-center gap-2.5 sm:justify-start">
           <span className="live-dot" />
           <span className={`text-xs font-bold uppercase tracking-[0.08em] ${EVENT_COLORS.cyan.text}`}>
             Live

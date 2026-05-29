@@ -168,7 +168,7 @@ function Heatmap({
 }) {
   return (
     <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800">
-      <div className="border-b border-slate-200 bg-slate-50/60 px-3 py-1.5 dark:border-slate-800 dark:bg-slate-800/30">
+      <div className="border-b border-slate-200 bg-slate-50/60 px-3 py-1.5 text-center dark:border-slate-800 dark:bg-slate-800/30 sm:text-left">
         <p className="text-[9px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
           ↕ Rows = {yLabel} bands (high → low)
         </p>
@@ -199,11 +199,11 @@ function Heatmap({
         </div>
       </div>
       <div className="border-t border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-800 dark:bg-slate-800/40">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col items-center justify-between gap-2 text-center sm:flex-row sm:text-left">
           <span className="text-[9px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
             {xLabel}
           </span>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-end">
             {[
               { label: "Low density", cls: "bg-sky-500" },
               { label: "High density", cls: "bg-red-500" },
@@ -376,9 +376,9 @@ export function PatternViews() {
       <div className="mx-auto max-w-7xl">
         <div className="engine-card">
           {/* Header */}
-          <div className="mb-4 flex items-center justify-between gap-2">
-            <div>
-              <div className="flex items-center gap-2">
+          <div className="mb-4 flex flex-col items-center justify-between gap-3 text-center sm:flex-row sm:text-left">
+            <div className="max-w-2xl">
+              <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
                 <p className="section-heading">Heatmaps &amp; Pattern Views</p>
                 <PanelHelp
                   title="Heatmaps & Pattern Views"
@@ -393,32 +393,44 @@ export function PatternViews() {
             {results.length > 0 && (
               <button
                 onClick={() => setModalOpen(true)}
-                className="shrink-0 text-[11px] font-medium text-teal-600 hover:underline dark:text-teal-400"
+                className="shrink-0 rounded-lg border border-teal-500/30 px-3 py-1.5 text-[11px] font-medium text-teal-600 hover:bg-teal-500/10 dark:text-teal-400"
               >
                 View all ({results.length})
               </button>
             )}
           </div>
 
-          <p className="mb-4 rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2 text-xs leading-relaxed text-slate-500 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-400">
+          <p className="mb-4 rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2 text-center text-xs leading-relaxed text-slate-500 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-400 sm:text-left">
             {meta.helper}
           </p>
 
           {/* View tabs */}
-          <div className="-mx-5 mb-5 flex gap-1.5 overflow-x-auto px-5 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:pb-0">
-            {PATTERN_VIEWS.map((view) => (
-              <button
-                key={view}
-                onClick={() => setActiveView(view)}
-                className={`flex-shrink-0 rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
-                  activeView === view
-                    ? "bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-200"
-                    : "text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
-                }`}
+          <div className="mb-5">
+            <div className="relative -mx-5 sm:mx-0">
+              <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-6 bg-gradient-to-r from-white to-transparent dark:from-slate-900 sm:hidden" />
+              <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-6 bg-gradient-to-l from-white to-transparent dark:from-slate-900 sm:hidden" />
+              <div
+                aria-label="Swipe horizontally to see pattern view tabs"
+                className="no-scrollbar flex snap-x snap-mandatory gap-2 overflow-x-auto px-5 pb-1 sm:flex-wrap sm:justify-center sm:overflow-visible sm:px-0 sm:pb-0"
               >
-                {view}
-              </button>
-            ))}
+                {PATTERN_VIEWS.map((view) => (
+                  <button
+                    key={view}
+                    onClick={() => setActiveView(view)}
+                    className={`shrink-0 snap-start whitespace-nowrap rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
+                      activeView === view
+                        ? "bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-200"
+                        : "text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
+                    }`}
+                  >
+                    {view}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <p className="mt-1 text-center text-[10px] text-slate-500 sm:hidden" aria-hidden="true">
+              Swipe →
+            </p>
           </div>
 
           {/* Content */}

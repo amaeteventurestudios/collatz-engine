@@ -160,7 +160,7 @@ function LoadingSkeleton() {
   return (
     <section className="border-y border-slate-800 bg-slate-950">
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-6 flex flex-col items-center justify-between gap-3 text-center sm:flex-row sm:text-left">
           <SkeletonBar w="w-48" />
           <SkeletonBar w="w-24" />
         </div>
@@ -232,9 +232,9 @@ export function LiveEngineStatus() {
       <div className="mx-auto max-w-7xl px-4 py-0 sm:px-6">
 
         {/* ── Header ─────────────────────────────────────────────────────── */}
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800/70 py-4">
-          <div>
-            <div className="flex items-center gap-2">
+        <div className="flex flex-col items-center justify-between gap-3 border-b border-slate-800/70 py-4 text-center md:flex-row md:text-left">
+          <div className="max-w-2xl">
+            <div className="flex flex-wrap items-center justify-center gap-2 md:justify-start">
               <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.25em] text-slate-500">
                 Autonomous Collatz Explorer
               </p>
@@ -253,7 +253,7 @@ export function LiveEngineStatus() {
               Sequentially cataloging Collatz trajectories from 1 upward
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-center gap-2 md:justify-end">
             <HealthBadge status={healthStatus} />
             <Link
               href="/status"
@@ -267,7 +267,7 @@ export function LiveEngineStatus() {
         {/* ── Primary metrics ─────────────────────────────────────────────── */}
         <div className="grid grid-cols-1 gap-px border-b border-slate-800/70 sm:grid-cols-2">
           {/* Current n */}
-          <div className="py-6 sm:pr-8">
+          <div className="py-6 text-center sm:pr-8 md:text-left">
             <Label>Currently Analyzing</Label>
             <p className="mt-2 font-mono text-4xl font-bold tabular-nums tracking-tight text-slate-50 sm:text-5xl">
               n = {fmtN(currentN)}
@@ -278,7 +278,7 @@ export function LiveEngineStatus() {
           </div>
 
           {/* Catalog size */}
-          <div className="border-t border-slate-800/70 py-6 sm:border-l sm:border-t-0 sm:pl-8">
+          <div className="border-t border-slate-800/70 py-6 text-center sm:border-l sm:border-t-0 sm:pl-8 md:text-left">
             <Label>Catalog Size</Label>
             <p className="mt-2 font-mono text-4xl font-bold tabular-nums tracking-tight text-slate-50 sm:text-5xl">
               {fmtN(state.total_numbers_checked)}
@@ -291,7 +291,7 @@ export function LiveEngineStatus() {
 
         {/* ── Sequential Batch Processing ──────────────────────────────────── */}
         <div className="border-b border-slate-800/70 py-5">
-          <div className="mb-3 flex items-center gap-2">
+          <div className="mb-3 flex flex-wrap items-center justify-center gap-2 text-center md:justify-start md:text-left">
             <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">
               Sequential Batch Processing
             </p>
@@ -300,14 +300,14 @@ export function LiveEngineStatus() {
               description="The engine checks every integer in order, but saves completed results in batches for efficiency. This is why the dashboard updates in jumps instead of one number at a time."
               align="left"
             />
-            <span className="font-mono text-[9px] text-slate-700">
+            <span className="w-full font-mono text-[9px] text-slate-700 sm:w-auto">
               · integers processed in order from n=1 upward
             </span>
           </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             {/* Last verified batch */}
-            <div className="rounded border border-slate-800 bg-slate-900/60 px-4 py-3">
+            <div className="rounded border border-slate-800 bg-slate-900/60 px-4 py-3 text-center md:text-left">
               <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-600">
                 Last Verified Batch
               </p>
@@ -328,7 +328,7 @@ export function LiveEngineStatus() {
             </div>
 
             {/* Currently processing */}
-            <div className={`rounded border px-4 py-3 ${EVENT_COLORS.cyan.border} ${EVENT_COLORS.cyan.bg}`}>
+            <div className={`rounded border px-4 py-3 text-center md:text-left ${EVENT_COLORS.cyan.border} ${EVENT_COLORS.cyan.bg}`}>
               <p className={`font-mono text-[9px] font-semibold uppercase tracking-[0.15em] ${EVENT_COLORS.cyan.text}`}>
                 Currently Processing
               </p>
@@ -341,7 +341,7 @@ export function LiveEngineStatus() {
             </div>
 
             {/* Next queued */}
-            <div className="rounded border border-slate-800 bg-slate-900/40 px-4 py-3">
+            <div className="rounded border border-slate-800 bg-slate-900/40 px-4 py-3 text-center md:text-left">
               <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-600">
                 Next Queued
               </p>
@@ -357,7 +357,7 @@ export function LiveEngineStatus() {
 
         {/* ── Operational metrics ──────────────────────────────────────────── */}
         <div className="border-b border-slate-800/70 py-5">
-          <div className="grid grid-cols-2 gap-x-6 gap-y-5 sm:grid-cols-3 lg:grid-cols-5">
+          <div className="grid grid-cols-2 gap-x-6 gap-y-5 text-center sm:grid-cols-3 md:text-left lg:grid-cols-5">
             <div>
               <Label>Runtime</Label>
               <Value className="text-teal-400 text-sm">
@@ -419,9 +419,9 @@ export function LiveEngineStatus() {
         {/* ── Records ─────────────────────────────────────────────────────── */}
         <div className="border-b border-slate-800/70 py-5">
           <div className="grid grid-cols-1 gap-x-8 gap-y-5 sm:grid-cols-2">
-            <div>
+            <div className="text-center md:text-left">
               <Label>Longest Trajectory on Record</Label>
-              <div className="mt-2 flex items-baseline gap-3">
+              <div className="mt-2 flex flex-col items-center gap-1 sm:flex-row sm:items-baseline sm:justify-center md:justify-start md:gap-3">
                 <span className={`font-mono text-2xl font-bold tabular-nums ${EVENT_COLORS.violet.text}`}>
                   {fmtN(state.longest_steps)}
                 </span>
@@ -429,9 +429,9 @@ export function LiveEngineStatus() {
               </div>
             </div>
 
-            <div className="border-t border-slate-800/70 pt-5 sm:border-l sm:border-t-0 sm:pl-8 sm:pt-0">
+            <div className="border-t border-slate-800/70 pt-5 text-center sm:border-l sm:border-t-0 sm:pl-8 sm:pt-0 md:text-left">
               <Label>Highest Peak Value on Record</Label>
-              <div className="mt-2 flex items-baseline gap-3">
+              <div className="mt-2 flex flex-col items-center gap-1 sm:flex-row sm:items-baseline sm:justify-center md:justify-start md:gap-3">
                 <span
                   className={`font-mono text-2xl font-bold tabular-nums ${EVENT_COLORS.amber.text}`}
                   title={state.highest_peak != null ? formatLargeNumberTitle(state.highest_peak) : undefined}
@@ -446,15 +446,15 @@ export function LiveEngineStatus() {
 
         {/* ── Last run + error ─────────────────────────────────────────────── */}
         <div className="py-4">
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-            <div className="flex items-center gap-2.5">
+          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-center md:justify-start md:text-left">
+            <div className="flex flex-wrap items-center justify-center gap-2.5">
               <Label>Last Run</Label>
               <span className="font-mono text-[11px] text-slate-400">
                 {fmtDateTime(state.last_run_at)}
               </span>
             </div>
             {state.worker_heartbeat_at && (
-              <div className="flex items-center gap-2.5">
+              <div className="flex flex-wrap items-center justify-center gap-2.5">
                 <Label>Last Heartbeat</Label>
                 <span className="font-mono text-[11px] text-slate-500">
                   {fmtDateTime(state.worker_heartbeat_at)}
@@ -465,8 +465,8 @@ export function LiveEngineStatus() {
 
           {/* Error banner */}
           {state.last_error && (
-            <div className="mt-3 flex items-start gap-2.5 rounded border border-red-900/60 bg-red-950/40 px-3 py-2.5">
-              <span className="mt-px shrink-0 font-mono text-[10px] font-bold uppercase tracking-widest text-red-500">
+            <div className="mt-3 flex flex-col items-center gap-2.5 rounded border border-red-900/60 bg-red-950/40 px-3 py-2.5 text-center md:flex-row md:items-start md:text-left">
+              <span className="shrink-0 font-mono text-[10px] font-bold uppercase tracking-widest text-red-500 md:mt-px">
                 Error
               </span>
               <p className="font-mono text-[11px] leading-relaxed text-red-400">
@@ -476,7 +476,7 @@ export function LiveEngineStatus() {
           )}
 
           {/* Disclaimer */}
-          <p className="mt-3 font-mono text-[9px] leading-relaxed text-slate-700">
+          <p className="mt-3 text-center font-mono text-[9px] leading-relaxed text-slate-700 md:text-left">
             The engine processes integers sequentially in verified batches.
             Completed results are stored in the catalog and displayed here as a
             live computational record. This system does not claim to prove the

@@ -116,7 +116,7 @@ function CheckPill({ label, ok }: { label: string; ok: boolean | null }) {
         ? EVENT_COLORS.slate.chip
         : EVENT_COLORS.slate.chip;
   return (
-    <div className={`rounded border px-3 py-2 ${cls}`}>
+    <div className={`rounded border px-3 py-2 text-center ${cls}`}>
       <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.16em] opacity-80">
         {label}
       </p>
@@ -195,10 +195,10 @@ export function VerificationPanel() {
     <section id="verification" className="scroll-mt-20 px-4 pb-10 sm:pb-14">
       <div className="mx-auto max-w-7xl">
         <div className="rounded-lg border border-slate-800 bg-slate-950 px-5 py-5 shadow-sm sm:px-6">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="flex flex-col items-center gap-4 text-center lg:flex-row lg:items-start lg:justify-between lg:text-left">
             <div className="max-w-3xl">
-              <div className="mb-3 flex flex-wrap items-center gap-3">
-                <div className="flex items-center gap-2">
+              <div className="mb-3 flex flex-wrap items-center justify-center gap-3 lg:justify-start">
+                <div className="flex flex-wrap items-center justify-center gap-2">
                   <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">
                     System Integrity
                   </p>
@@ -232,7 +232,7 @@ export function VerificationPanel() {
               </p>
             </div>
 
-            <div className="flex flex-wrap gap-2 lg:max-w-sm lg:justify-end">
+            <div className="flex flex-wrap justify-center gap-2 lg:max-w-sm lg:justify-end">
               <Link
                 href="/docs/api"
                 className="rounded border border-teal-500/40 bg-teal-500/10 px-3 py-2 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-teal-300 transition-colors hover:bg-teal-500/15"
@@ -263,10 +263,10 @@ export function VerificationPanel() {
               >
                 Export CSV sample
               </a>
-              <p className="basis-full text-right text-[11px] leading-relaxed text-slate-500 lg:text-left">
+              <p className="basis-full text-center text-[11px] leading-relaxed text-slate-500 lg:text-right">
                 Limited export samples are capped for public access.
               </p>
-              <div className="basis-full lg:flex lg:justify-end">
+              <div className="basis-full flex justify-center lg:justify-end">
                 <PanelHelp
                   title="Export Samples"
                   description="Shows examples of the engine's recorded data in exportable formats for analysis, verification, and reuse."
@@ -277,8 +277,8 @@ export function VerificationPanel() {
           </div>
 
           <div className="mt-5 border-t border-slate-800 pt-5">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
+            <div className="flex flex-col items-center justify-between gap-3 text-center sm:flex-row sm:text-left">
+              <div className="max-w-2xl">
                 <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
                   Live Bounded Check
                 </p>
@@ -294,7 +294,7 @@ export function VerificationPanel() {
               </span>
             </div>
 
-            <div className="mt-4 grid gap-px overflow-hidden rounded border border-slate-800 bg-slate-800 sm:grid-cols-3">
+            <div className="mt-4 grid gap-px overflow-hidden rounded border border-slate-800 bg-slate-800 text-center sm:grid-cols-3">
               <div className="bg-slate-950 px-4 py-3">
                 <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.16em] text-slate-500">
                   Highest Verified n
@@ -337,8 +337,8 @@ export function VerificationPanel() {
           </div>
 
           <div className="mt-6 border-t border-slate-800 pt-5">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
+            <div className="flex flex-col items-center justify-between gap-3 text-center sm:flex-row sm:text-left">
+              <div className="max-w-2xl">
                 <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
                   Full Catalog Verification
                 </p>
@@ -356,7 +356,7 @@ export function VerificationPanel() {
             </div>
 
             {latestRun ? (
-              <div className="mt-4 grid gap-px overflow-hidden rounded border border-slate-800 bg-slate-800 sm:grid-cols-2 lg:grid-cols-5">
+              <div className="mt-4 grid gap-px overflow-hidden rounded border border-slate-800 bg-slate-800 text-center sm:grid-cols-2 lg:grid-cols-5">
                 <div className="bg-slate-950 px-4 py-3">
                   <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.16em] text-slate-500">
                     Last Checked
@@ -408,13 +408,13 @@ export function VerificationPanel() {
                 </div>
               </div>
             ) : (
-              <div className="mt-4 rounded border border-slate-800 bg-slate-900/40 px-4 py-3 text-sm text-slate-400">
+              <div className="mt-4 rounded border border-slate-800 bg-slate-900/40 px-4 py-3 text-center text-sm text-slate-400">
                 {latestMessage ?? latestError ?? "No full verification run recorded yet."}
               </div>
             )}
           </div>
 
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="mt-4 flex flex-col items-center justify-between gap-3 text-center sm:flex-row sm:text-left">
             <p className="text-[11px] text-slate-500">
               Live summary covers the most recent{" "}
               {liveSummary ? liveSummary.scopeSize.toLocaleString("en-US") : "Pending"} catalog entries.
@@ -429,7 +429,7 @@ export function VerificationPanel() {
           </div>
 
           {detailsOpen && checks && (
-            <div className="mt-4 grid gap-3 rounded border border-slate-800 bg-slate-900/40 p-4 text-xs text-slate-400 md:grid-cols-2">
+            <div className="mt-4 grid gap-3 rounded border border-slate-800 bg-slate-900/40 p-4 text-center text-xs text-slate-400 md:grid-cols-2 md:text-left">
               <p>Duplicate sample: {checks.duplicates.sample.length > 0 ? checks.duplicates.sample.join(", ") : "none"}</p>
               <p>
                 Missing range sample:{" "}

@@ -40,14 +40,14 @@ export function CalculatorInputPanel({
       <div className="grid grid-cols-1 gap-0 divide-y divide-slate-800 md:grid-cols-[1fr_auto] md:divide-x md:divide-y-0">
 
         {/* ── Left: input + calculate ─────────────────────────── */}
-        <div className="p-5 sm:p-6">
+        <div className="p-5 text-center sm:p-6 md:text-left">
           <label
             htmlFor="collatz-input"
             className="mb-2 block text-xs font-semibold uppercase tracking-[0.1em] text-slate-400"
           >
             Enter a positive integer
           </label>
-          <div className="flex gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row">
             <input
               id="collatz-input"
               ref={inputRef}
@@ -60,13 +60,13 @@ export function CalculatorInputPanel({
               placeholder="e.g. 27"
               aria-describedby={error ? "calc-error" : undefined}
               aria-invalid={!!error}
-              className="w-full min-w-0 rounded-xl border border-slate-700 bg-slate-800/80 px-4 py-3 font-mono text-xl font-semibold text-white placeholder-slate-600 transition-colors focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+              className="w-full min-w-0 rounded-xl border border-slate-700 bg-slate-800/80 px-4 py-3 text-center font-mono text-xl font-semibold text-white placeholder-slate-600 transition-colors focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500 sm:text-left"
             />
             <button
               onClick={onCalculate}
               disabled={isComputing}
               aria-label="Calculate Collatz sequence"
-              className="flex shrink-0 items-center gap-2 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-teal-500/25 transition-all hover:from-teal-400 hover:to-cyan-400 hover:shadow-teal-500/40 disabled:opacity-60 disabled:cursor-not-allowed active:scale-95"
+              className="flex w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-teal-500/25 transition-all hover:from-teal-400 hover:to-cyan-400 hover:shadow-teal-500/40 disabled:opacity-60 disabled:cursor-not-allowed active:scale-95 sm:w-auto"
             >
               <CalcIcon computing={isComputing} />
               Calculate
@@ -80,7 +80,7 @@ export function CalculatorInputPanel({
         </div>
 
         {/* ── Right: options ──────────────────────────────────── */}
-        <div className="p-5 sm:p-6">
+        <div className="p-5 text-center sm:p-6 md:text-left">
           <p className="mb-4 text-xs font-semibold uppercase tracking-[0.1em] text-slate-400">
             Options
           </p>
@@ -102,7 +102,7 @@ export function CalculatorInputPanel({
               onChange={onLogScaleChange}
             />
             {/* Max steps */}
-            <div className="flex items-start justify-between gap-4">
+            <div className="flex flex-col items-center justify-between gap-3 sm:flex-row sm:items-start sm:text-left">
               <div>
                 <label
                   htmlFor="max-steps"
@@ -120,7 +120,7 @@ export function CalculatorInputPanel({
                 step={1000}
                 value={maxSteps}
                 onChange={(e) => onMaxStepsChange(Math.max(100, Math.min(100000, Number(e.target.value))))}
-                className="w-24 rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-right text-xs font-mono text-slate-200 focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+                className="w-24 rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-center text-xs font-mono text-slate-200 focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500 sm:text-right"
               />
             </div>
           </div>
@@ -146,7 +146,7 @@ function ToggleRow({
   onChange: (v: boolean) => void;
 }) {
   return (
-    <div className="flex items-start justify-between gap-4">
+    <div className="flex flex-col items-center justify-between gap-3 text-center sm:flex-row sm:items-start sm:text-left">
       <div>
         <label htmlFor={id} className="block text-xs font-semibold text-slate-300 cursor-pointer">
           {label}

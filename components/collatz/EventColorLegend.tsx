@@ -70,7 +70,7 @@ export function EventColorLegend({
       aria-label="Color Legend, engine event color meanings"
       className={`rounded-xl border p-4 shadow-sm ${surfaceClass} ${className}`}
     >
-      <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+      <div className="flex flex-col items-center gap-1 text-center sm:flex-row sm:items-end sm:justify-between sm:text-left">
         <div>
           <p className="section-heading">Color Legend</p>
           {!compact && (
@@ -89,7 +89,7 @@ export function EventColorLegend({
               key={item.color}
               className={`rounded-lg border px-3 py-3 ${color.border} ${color.bg}`}
             >
-              <div className="flex items-center gap-2">
+              <div className="flex items-center justify-center gap-2 sm:justify-start">
                 <span
                   className={`h-2.5 w-2.5 shrink-0 rounded-full ${color.dot}`}
                   aria-hidden="true"

@@ -57,24 +57,24 @@ export function SequenceTable({ result }: Props) {
   return (
     <div className="flex-1 rounded-2xl border border-slate-800 bg-slate-900/80 overflow-hidden">
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 px-5 py-4">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-col items-center justify-between gap-3 border-b border-slate-800 px-5 py-4 text-center sm:flex-row sm:text-left">
+        <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
           <h2 className="text-sm font-semibold text-slate-200">Step-by-Step Sequence</h2>
           <span className="rounded-full bg-slate-700 px-2 py-0.5 text-[10px] font-semibold text-slate-300">
             {fmtNum(steps.length)} steps
           </span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-end">
           <button
             onClick={handleCopy}
-            className="flex items-center gap-1.5 rounded-lg border border-slate-700 px-3 py-1.5 text-[11px] font-medium text-slate-400 transition-colors hover:border-slate-600 hover:text-slate-200"
+            className="flex items-center justify-center gap-1.5 rounded-lg border border-slate-700 px-3 py-1.5 text-[11px] font-medium text-slate-400 transition-colors hover:border-slate-600 hover:text-slate-200"
           >
             <CopyIcon />
             {copied ? "Copied!" : "Copy"}
           </button>
           <button
             onClick={handleDownloadCSV}
-            className="flex items-center gap-1.5 rounded-lg border border-slate-700 px-3 py-1.5 text-[11px] font-medium text-slate-400 transition-colors hover:border-slate-600 hover:text-slate-200"
+            className="flex items-center justify-center gap-1.5 rounded-lg border border-slate-700 px-3 py-1.5 text-[11px] font-medium text-slate-400 transition-colors hover:border-slate-600 hover:text-slate-200"
           >
             <DownloadIcon />
             Download CSV
@@ -106,9 +106,9 @@ export function SequenceTable({ result }: Props) {
       </div>
 
       {/* Pagination */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-800 px-5 py-3">
+      <div className="flex flex-col items-center justify-between gap-3 border-t border-slate-800 px-5 py-3 text-center sm:flex-row sm:text-left">
         <Pagination page={page} totalPages={totalPages} onPage={goToPage} />
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-center gap-2">
           <span className="text-[10px] text-slate-500">Rows per page:</span>
           <select
             value={rowsPerPage}

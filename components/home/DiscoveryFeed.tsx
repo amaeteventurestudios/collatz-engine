@@ -241,7 +241,7 @@ function MetadataItem({
   value: string;
 }) {
   return (
-    <div className="flex min-w-0 items-center gap-2.5 border-slate-700/70 px-3 py-4 sm:border-r sm:px-4 sm:last:border-r-0">
+    <div className="flex min-w-0 flex-col items-center gap-2.5 border-slate-700/70 px-3 py-4 text-center sm:flex-row sm:border-r sm:px-4 sm:text-left sm:last:border-r-0">
       <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border sm:h-10 sm:w-10 ${EVENT_COLORS.slate.chip}`}>
         <Icon className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden="true" />
       </div>
@@ -273,7 +273,7 @@ function EngineStatusCard({
         className="pointer-events-none absolute inset-y-0 right-0 w-1/2 opacity-45 [mask-image:linear-gradient(to_left,black,transparent)] bg-[radial-gradient(circle_at_center,rgba(34,211,238,0.44)_1px,transparent_1.8px)] [background-size:16px_16px]"
         aria-hidden="true"
       />
-      <div className="relative flex items-center gap-4">
+        <div className="relative flex flex-col items-center gap-4 text-center sm:flex-row sm:text-left">
         <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-full border ${visual.markerClass}`}>
           <Satellite className="h-7 w-7" aria-hidden="true" />
         </div>
@@ -340,13 +340,13 @@ function TimelineCard({
   const fresh = isFresh(log.created_at, now);
 
   return (
-    <article className="relative pl-14 sm:pl-24">
+    <article className="relative pl-0 sm:pl-24">
       <div
         className={`absolute left-10 top-9 hidden h-px w-6 bg-gradient-to-r sm:left-16 sm:block sm:w-8 ${visual.railClass}`}
         aria-hidden="true"
       />
       <div
-        className={`absolute left-0 top-3 z-10 flex h-10 w-10 items-center justify-center rounded-full border sm:h-16 sm:w-16 ${visual.markerClass} ${
+        className={`relative z-10 mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full border sm:absolute sm:left-0 sm:top-3 sm:mx-0 sm:mb-0 sm:h-16 sm:w-16 ${visual.markerClass} ${
           fresh ? "motion-safe:animate-pulse" : ""
         }`}
         aria-hidden="true"
@@ -377,9 +377,9 @@ function TimelineCard({
           />
         )}
 
-        <div className="relative grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto_auto] lg:items-center">
+        <div className="relative grid gap-4 text-center lg:grid-cols-[minmax(0,1fr)_auto_auto] lg:items-center lg:text-left">
           <div className="min-w-0">
-            <div className="mb-2 flex flex-wrap items-center gap-2">
+            <div className="mb-2 flex flex-wrap items-center justify-center gap-2 lg:justify-start">
               <span
                 className={`engine-badge ${visual.badgeClass}`}
               >
@@ -404,14 +404,14 @@ function TimelineCard({
           </div>
 
           {chips.length > 0 && (
-            <div className="flex min-w-0 flex-wrap gap-2 lg:max-w-[34rem] lg:justify-end">
+            <div className="flex min-w-0 flex-wrap justify-center gap-2 lg:max-w-[34rem] lg:justify-end">
               {chips.map((chip) => (
                 <MetricChipView key={`${chip.text}-${chip.title ?? ""}`} chip={chip} visual={visual} />
               ))}
             </div>
           )}
 
-          <div className="flex shrink-0 flex-row items-center justify-between gap-4 border-t border-white/10 pt-3 lg:min-w-32 lg:flex-col lg:items-end lg:border-t-0 lg:pt-0">
+          <div className="flex shrink-0 flex-row items-center justify-center gap-4 border-t border-white/10 pt-3 lg:min-w-32 lg:flex-col lg:items-end lg:border-t-0 lg:pt-0">
             <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-cyan-100">
               {relativeTime(log.created_at, now)}
             </p>
@@ -434,8 +434,8 @@ function TimelineSkeleton() {
       />
       <div className="space-y-4">
         {Array.from({ length: 4 }).map((_, index) => (
-          <div key={index} className="relative pl-14 sm:pl-24">
-            <div className="absolute left-0 top-3 h-10 w-10 animate-pulse rounded-full border border-cyan-300/20 bg-cyan-300/10 sm:h-16 sm:w-16" />
+          <div key={index} className="relative pl-0 sm:pl-24">
+            <div className="relative mx-auto mb-3 h-10 w-10 animate-pulse rounded-full border border-cyan-300/20 bg-cyan-300/10 sm:absolute sm:left-0 sm:top-3 sm:mx-0 sm:mb-0 sm:h-16 sm:w-16" />
             <div className="rounded-2xl border border-cyan-300/10 bg-slate-900/60 p-5">
               <div className="h-5 w-32 animate-pulse rounded bg-slate-800" />
               <div className="mt-4 h-6 w-full max-w-lg animate-pulse rounded bg-slate-800" />
@@ -532,9 +532,9 @@ export function DiscoveryFeed() {
       />
 
       <div className="mx-auto max-w-7xl">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+        <div className="flex flex-col items-center gap-5 text-center lg:flex-row lg:items-start lg:justify-between lg:text-left">
           <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center justify-center gap-3 lg:justify-start">
               <h2 className="text-2xl font-bold tracking-tight text-slate-50 min-[420px]:text-3xl sm:text-4xl">
                 Discovery Feed
               </h2>
@@ -549,12 +549,12 @@ export function DiscoveryFeed() {
                 align="left"
               />
             </div>
-            <p className="mt-3 max-w-2xl text-base leading-relaxed text-slate-300">
+            <p className="mx-auto mt-3 max-w-2xl text-base leading-relaxed text-slate-300 lg:mx-0">
               Verified live events from the autonomous Collatz engine.
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3 lg:justify-end">
+          <div className="flex flex-wrap items-center justify-center gap-3 lg:justify-end">
             <span className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] shadow-2xl ${liveVisual.badgeClass} ${liveVisual.glowClass}`}>
               <span className={`h-2.5 w-2.5 rounded-full ${liveVisual.dotClass} shadow-[0_0_14px_rgba(34,211,238,0.8)] motion-safe:animate-pulse`} />
               Live Engine Stream
@@ -586,11 +586,11 @@ export function DiscoveryFeed() {
         ) : (
           <div className="relative mt-8">
             <div
-              className={`absolute bottom-7 left-5 top-7 w-px sm:left-8 ${liveVisual.lineClass}`}
+              className={`absolute bottom-7 left-5 top-7 hidden w-px sm:left-8 sm:block ${liveVisual.lineClass}`}
               aria-hidden="true"
             />
             <div
-              className={`absolute bottom-7 left-[17px] top-7 w-[7px] rounded-full blur-sm sm:left-[29px] ${liveVisual.subtleBackgroundClass}`}
+              className={`absolute bottom-7 left-[17px] top-7 hidden w-[7px] rounded-full blur-sm sm:left-[29px] sm:block ${liveVisual.subtleBackgroundClass}`}
               aria-hidden="true"
             />
             <div className="space-y-4">

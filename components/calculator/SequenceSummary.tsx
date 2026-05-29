@@ -10,7 +10,7 @@ interface Props {
 
 export function SequenceSummary({ result }: Props) {
   return (
-    <div className="flex w-full flex-col gap-4 lg:w-64 xl:w-72 shrink-0">
+    <div className="flex w-full shrink-0 flex-col gap-4 text-center lg:w-64 lg:text-left xl:w-72">
       {/* Card 1: Sequence Summary */}
       <SummaryCard title="Sequence Summary">
         <SummaryRow label="Start Number" value={fmtBig(result.startNumber)} accent />
@@ -24,12 +24,12 @@ export function SequenceSummary({ result }: Props) {
 
       {/* Card 2: Sequence End */}
       <div className="rounded-xl border border-slate-800 bg-slate-900/80 p-4">
-        <h3 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">
+        <h3 className="mb-3 flex items-center justify-center gap-2 text-xs font-semibold uppercase tracking-[0.08em] text-slate-400 lg:justify-start">
           <span className={`h-1.5 w-1.5 rounded-full ${result.reachedOne ? "bg-green-400" : "bg-amber-400"}`} />
           Sequence End
         </h3>
         {result.reachedOne ? (
-          <div className="flex items-start gap-2">
+          <div className="flex flex-col items-center gap-2 lg:flex-row lg:items-start">
             <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-green-500/15 text-green-400">
               <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth={2.5}>
                 <path d="M20 6L9 17l-5-5" />
@@ -43,7 +43,7 @@ export function SequenceSummary({ result }: Props) {
             </div>
           </div>
         ) : (
-          <div className="flex items-start gap-2">
+          <div className="flex flex-col items-center gap-2 lg:flex-row lg:items-start">
             <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-500/15 text-amber-400">
               <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth={2.5}>
                 <path d="M12 8v4" /><path d="M12 16h.01" />
@@ -85,7 +85,7 @@ export function SequenceSummary({ result }: Props) {
         </p>
         <Link
           href="/methodology"
-          className="mt-3 flex items-center gap-1 text-[11px] font-medium text-teal-400 hover:text-teal-300"
+          className="mt-3 flex items-center justify-center gap-1 text-[11px] font-medium text-teal-400 hover:text-teal-300 lg:justify-start"
         >
           Learn more →
         </Link>
@@ -109,9 +109,9 @@ function SummaryCard({ title, children }: { title: string; children: React.React
 
 function SummaryRow({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
   return (
-    <div className="flex items-baseline justify-between gap-2">
+    <div className="flex flex-col items-center justify-between gap-1 sm:flex-row sm:items-baseline">
       <dt className="shrink-0 text-[11px] text-slate-500">{label}</dt>
-      <dd className={`truncate text-right text-[11px] font-semibold tabular-nums ${accent ? "text-teal-400" : "text-slate-200"}`}>
+      <dd className={`max-w-full truncate text-center text-[11px] font-semibold tabular-nums sm:text-right ${accent ? "text-teal-400" : "text-slate-200"}`}>
         {value}
       </dd>
     </div>

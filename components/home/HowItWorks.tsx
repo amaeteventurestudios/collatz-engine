@@ -61,13 +61,13 @@ export function HowItWorks() {
           {steps.map((step) => (
             <div
               key={step.label}
-              className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950"
+              className="rounded-lg border border-slate-200 bg-white p-4 text-center dark:border-slate-800 dark:bg-slate-950 sm:text-left"
             >
-              <div className="mb-3 flex items-center justify-between gap-3">
+              <div className="mb-3 flex flex-col items-center justify-between gap-2 sm:flex-row sm:gap-3">
                 <span className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-teal-600 dark:text-teal-400">
                   {step.label}
                 </span>
-                <span className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
+                <span className="h-px w-full flex-1 bg-slate-200 dark:bg-slate-800" />
               </div>
               <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
                 {step.title}

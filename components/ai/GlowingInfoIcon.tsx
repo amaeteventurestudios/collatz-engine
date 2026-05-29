@@ -69,7 +69,7 @@ export function GlowingInfoIcon({ tooltip, align = "center", size = "sm" }: Glow
         id={id}
         role="tooltip"
         aria-hidden={!open}
-        className={`pointer-events-none absolute top-full z-50 mt-2 w-[min(18rem,calc(100vw-2rem))] rounded-lg border border-teal-400/20 bg-slate-950 px-3 py-2.5 text-left shadow-xl shadow-teal-950/40 transition-all duration-150 max-sm:fixed max-sm:left-4 max-sm:right-4 max-sm:top-20 max-sm:mt-0 max-sm:w-auto max-sm:translate-x-0 ${alignClasses[align]} ${open ? "visible opacity-100 translate-y-0" : "invisible opacity-0 -translate-y-1"}`}
+        className={`pointer-events-none absolute top-full z-50 mt-2 w-[min(18rem,calc(100vw-2rem))] rounded-lg border border-teal-400/20 bg-slate-950 px-3 py-2.5 text-left shadow-xl shadow-teal-950/40 transition-all duration-150 max-sm:fixed max-sm:left-4 max-sm:right-4 max-sm:top-20 max-sm:mt-0 max-sm:w-auto max-sm:translate-x-0 ${alignClasses[align]} ${open ? "visible translate-y-0 opacity-100" : "hidden"}`}
       >
         <span className="block text-xs leading-relaxed text-slate-300">{tooltip}</span>
       </span>

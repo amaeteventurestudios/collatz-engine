@@ -128,7 +128,7 @@ export function ContributeSection() {
 
         <div className="grid gap-5 lg:grid-cols-[0.85fr_1.15fr]">
           <div className="space-y-5">
-            <div className="rounded-lg border border-slate-200 bg-slate-50 p-6 dark:border-slate-800 dark:bg-slate-950">
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-6 text-center dark:border-slate-800 dark:bg-slate-950 sm:text-left">
               <p className="mb-3 font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
                 About This Project
               </p>
@@ -139,13 +139,13 @@ export function ContributeSection() {
               </p>
               <a
                 href="#about"
-                className="mt-4 inline-flex text-xs font-medium text-teal-600 transition-colors hover:text-teal-500 dark:text-teal-400 dark:hover:text-teal-300"
+                className="mt-4 inline-flex justify-center text-xs font-medium text-teal-600 transition-colors hover:text-teal-500 dark:text-teal-400 dark:hover:text-teal-300"
               >
                 Learn more about this project
               </a>
             </div>
 
-            <div className="rounded-lg border border-slate-200 bg-slate-50 p-6 dark:border-slate-800 dark:bg-slate-950">
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-6 text-center dark:border-slate-800 dark:bg-slate-950 sm:text-left">
               <p className="mb-4 font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
                 Quick Actions
               </p>
@@ -157,7 +157,7 @@ export function ContributeSection() {
                       {"href" in item ? (
                         <a
                           href={item.href}
-                          className="flex items-center gap-3 rounded-md border border-transparent px-3 py-3 text-sm text-slate-600 transition-colors hover:border-slate-300 hover:bg-white hover:text-teal-700 dark:text-slate-400 dark:hover:border-slate-700 dark:hover:bg-slate-900 dark:hover:text-teal-300"
+                          className="flex items-center justify-center gap-3 rounded-md border border-transparent px-3 py-3 text-sm text-slate-600 transition-colors hover:border-slate-300 hover:bg-white hover:text-teal-700 dark:text-slate-400 dark:hover:border-slate-700 dark:hover:bg-slate-900 dark:hover:text-teal-300 sm:justify-start"
                         >
                           <Icon className="h-4 w-4 text-slate-400" />
                           {item.label}
@@ -166,7 +166,7 @@ export function ContributeSection() {
                         <button
                           type="button"
                           onClick={() => focusForm(item.type)}
-                          className="flex w-full items-center gap-3 rounded-md border border-transparent px-3 py-3 text-left text-sm text-slate-600 transition-colors hover:border-slate-300 hover:bg-white hover:text-teal-700 dark:text-slate-400 dark:hover:border-slate-700 dark:hover:bg-slate-900 dark:hover:text-teal-300"
+                          className="flex w-full items-center justify-center gap-3 rounded-md border border-transparent px-3 py-3 text-center text-sm text-slate-600 transition-colors hover:border-slate-300 hover:bg-white hover:text-teal-700 dark:text-slate-400 dark:hover:border-slate-700 dark:hover:bg-slate-900 dark:hover:text-teal-300 sm:justify-start sm:text-left"
                         >
                           <Icon className="h-4 w-4 text-slate-400" />
                           {item.label}
@@ -182,7 +182,7 @@ export function ContributeSection() {
           </div>
 
           <div className="rounded-lg border border-teal-500/30 bg-slate-950 p-5 shadow-sm shadow-teal-950/20 sm:p-6">
-            <div className="mb-5 flex items-start gap-3">
+            <div className="mb-5 flex flex-col items-center gap-3 text-center sm:flex-row sm:items-start sm:text-left">
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-teal-500/40 bg-teal-500/10">
                 <MessageSquare className="h-4 w-4 text-teal-300" />
               </div>
@@ -305,7 +305,7 @@ export function ContributeSection() {
                 </p>
               )}
 
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-col items-center gap-3 text-center sm:flex-row sm:items-center sm:justify-between sm:text-left">
                 <p className="text-xs leading-relaxed text-slate-500">
                   Submissions are used to improve the public computational record and dashboard.
                 </p>

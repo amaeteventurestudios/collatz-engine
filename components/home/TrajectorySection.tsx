@@ -43,9 +43,9 @@ export function TrajectorySection() {
       {/* ── Display mode selector ─────────────────────────────────────────── */}
       <div className="px-4 pb-2 pt-2">
         <div className="mx-auto max-w-7xl">
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-900/60">
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="mr-2 font-mono text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+          <div className="flex flex-col items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-center dark:border-slate-800 dark:bg-slate-900/60 md:flex-row md:text-left">
+            <div className="flex flex-wrap items-center justify-center gap-1.5 md:justify-start">
+              <span className="w-full font-mono text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500 sm:w-auto sm:mr-2">
                 Display Mode
               </span>
               {MODE_BUTTONS.map(({ mode: m, label: l, hint }) => (
@@ -64,7 +64,7 @@ export function TrajectorySection() {
               ))}
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center justify-center gap-2 md:justify-end">
               {loading && (
                 <span className="font-mono text-[10px] text-slate-400 dark:text-slate-500">
                   Loading...

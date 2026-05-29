@@ -156,9 +156,9 @@ export function CollatzCalculatorPage() {
           {EDU_CARDS.map((card) => (
             <div
               key={card.title}
-              className="rounded-xl border border-slate-800 bg-slate-900/80 p-5 transition-colors hover:border-slate-700"
+              className="rounded-xl border border-slate-800 bg-slate-900/80 p-5 text-center transition-colors hover:border-slate-700 sm:text-left"
             >
-              <div className={`mb-3 flex h-9 w-9 items-center justify-center rounded-xl ring-1 ${card.bg} ${card.ring}`}>
+              <div className={`mx-auto mb-3 flex h-9 w-9 items-center justify-center rounded-xl ring-1 sm:mx-0 ${card.bg} ${card.ring}`}>
                 <span className={card.color}>{card.icon}</span>
               </div>
               <p className="text-sm font-semibold text-slate-200">{card.title}</p>

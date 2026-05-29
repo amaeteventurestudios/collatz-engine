@@ -91,9 +91,9 @@ export function LiveDescentProfile({ result, loading }: Props) {
       <div className="mx-auto max-w-7xl">
         <div className="engine-card">
           {/* Header */}
-          <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <div className="flex items-center gap-2">
+          <div className="mb-5 flex flex-col items-center gap-3 text-center sm:flex-row sm:items-start sm:justify-between sm:text-left">
+            <div className="max-w-2xl">
+              <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
                 <p className="section-heading">Live Descent Profile</p>
                 <PanelHelp
                   title="Live Descent Profile"
@@ -106,18 +106,18 @@ export function LiveDescentProfile({ result, loading }: Props) {
               </p>
             </div>
             {loading && (
-              <span className="self-start rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-400 dark:bg-slate-800 dark:text-slate-500">
+              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-400 dark:bg-slate-800 dark:text-slate-500 sm:self-start">
                 Updating...
               </span>
             )}
           </div>
 
           {/* Metric chips */}
-          <div className="mb-4 flex flex-wrap gap-2">
+          <div className="mb-4 flex flex-wrap justify-center gap-2 sm:justify-start">
             {chips.map((c) => (
               <div
                 key={c.label}
-                className="rounded-xl bg-slate-100 px-3 py-2 dark:bg-slate-800/60"
+                className="rounded-xl bg-slate-100 px-3 py-2 text-center dark:bg-slate-800/60 sm:text-left"
                 title={c.title || undefined}
               >
                 <p className="text-[9px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
@@ -290,14 +290,14 @@ export function LiveDescentProfile({ result, loading }: Props) {
           )}
 
           {/* Legend */}
-          <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 border-t border-slate-200 pt-4 dark:border-slate-800">
+          <div className="mt-4 flex flex-wrap justify-center gap-x-5 gap-y-2 border-t border-slate-200 pt-4 dark:border-slate-800 sm:justify-start">
             {[
               { color: "bg-teal-400", label: "Start value reference" },
               { color: "bg-yellow-400", label: "Peak value" },
               { color: "bg-orange-400", label: "First descent below start" },
               { color: "bg-green-400", label: "Convergence to 1" },
             ].map((item) => (
-              <div key={item.label} className="flex items-center gap-2">
+              <div key={item.label} className="flex items-center justify-center gap-2 sm:justify-start">
                 <span className={`h-2.5 w-2.5 flex-shrink-0 rounded-sm ${item.color}`} />
                 <span className="text-xs text-slate-500 dark:text-slate-400">
                   {item.label}

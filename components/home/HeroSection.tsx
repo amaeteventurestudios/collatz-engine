@@ -21,11 +21,11 @@ export function HeroSection() {
       <div className="absolute bottom-0 inset-x-0 h-24 bg-gradient-to-b from-transparent to-[#020617]" />
 
       {/* ── Hero content ─────────────────────────────────────────────── */}
-      <div className="relative z-10 mx-auto flex min-h-[720px] max-w-7xl items-center px-6 py-16 md:py-0">
-        <div className="max-w-[520px] w-full md:w-[45%]">
+      <div className="relative z-10 mx-auto flex min-h-[720px] max-w-7xl items-center justify-center px-5 py-16 md:justify-start md:px-6 md:py-0">
+        <div className="mx-auto w-full max-w-[560px] text-center md:mx-0 md:w-[45%] md:max-w-[520px] md:text-left">
 
           {/* Eyebrow */}
-          <div className="mb-5 flex items-center gap-2.5">
+          <div className="mb-5 flex items-center justify-center gap-2.5 md:justify-start">
             <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 text-teal-400" fill="none" stroke="currentColor" strokeWidth={2}>
               <circle cx="12" cy="12" r="10" />
               <path d="M12 8v4l3 3" />
@@ -56,36 +56,36 @@ export function HeroSection() {
           </p>
 
           {/* Status row */}
-          <div className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-medium text-slate-400">
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-2 text-xs font-medium text-slate-400 md:justify-start md:gap-x-4">
             <span className="flex items-center gap-1.5">
               <span className="live-dot" />
               <span className="text-green-400">Engine Online</span>
             </span>
-            <span className="text-slate-600">|</span>
+            <span className="hidden text-slate-600 sm:inline">|</span>
             <span>All Systems Operational</span>
-            <span className="text-slate-600">|</span>
+            <span className="hidden text-slate-600 sm:inline">|</span>
             <span>Data Is Live</span>
           </div>
 
           {/* CTAs */}
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+          <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center md:justify-start">
             <Link
               href="/#visualizer"
-              className="inline-flex h-11 items-center justify-center rounded-xl bg-teal-500 px-7 text-sm font-semibold text-white shadow-lg shadow-teal-500/20 transition-colors hover:bg-teal-400"
+              className="inline-flex h-11 w-full max-w-xs items-center justify-center rounded-xl bg-teal-500 px-7 text-sm font-semibold text-white shadow-lg shadow-teal-500/20 transition-colors hover:bg-teal-400 sm:w-auto"
             >
               Explore the Data →
             </Link>
             <Link
               href="/#about"
-              className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-700 bg-slate-900/60 px-7 text-sm font-semibold text-slate-200 backdrop-blur-sm transition-colors hover:border-slate-500 hover:bg-slate-800/60"
+              className="inline-flex h-11 w-full max-w-xs items-center justify-center rounded-xl border border-slate-700 bg-slate-900/60 px-7 text-sm font-semibold text-slate-200 backdrop-blur-sm transition-colors hover:border-slate-500 hover:bg-slate-800/60 sm:w-auto"
             >
               How the Engine Works →
             </Link>
           </div>
 
           {/* Disclaimer card */}
-          <div className="mt-8 flex items-start gap-2.5 rounded-xl border border-slate-800 bg-slate-900/50 px-4 py-3 backdrop-blur-sm">
-            <svg viewBox="0 0 24 24" className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" fill="none" stroke="currentColor" strokeWidth={2}>
+          <div className="mt-8 flex flex-col items-center gap-2.5 rounded-xl border border-slate-800 bg-slate-900/50 px-4 py-3 text-center backdrop-blur-sm md:flex-row md:items-start md:text-left">
+            <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-slate-500 md:mt-0.5" fill="none" stroke="currentColor" strokeWidth={2}>
               <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
             </svg>
             <p className="text-xs leading-relaxed text-slate-500">

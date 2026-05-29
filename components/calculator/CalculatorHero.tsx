@@ -37,9 +37,9 @@ export function CalculatorHero() {
       </div>
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#020617]" />
 
-      <div className="relative z-10 mx-auto max-w-7xl px-6">
+      <div className="relative z-10 mx-auto max-w-7xl px-5 text-center sm:px-6 md:text-left">
         {/* Eyebrow */}
-        <div className="mb-4 flex items-center gap-2">
+        <div className="mb-4 flex items-center justify-center gap-2 md:justify-start">
           <span className="inline-flex items-center gap-1.5 rounded-full border border-teal-500/30 bg-teal-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.15em] text-teal-400">
             <span className="live-dot" />
             Real-time computation
@@ -55,13 +55,13 @@ export function CalculatorHero() {
         </h1>
 
         {/* Subheading */}
-        <p className="mt-3 max-w-xl text-sm leading-relaxed text-slate-400 sm:text-base">
+        <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-slate-400 sm:text-base md:mx-0">
           Explore the famous 3n&nbsp;+&nbsp;1 problem. Enter any positive integer and
           visualize its trajectory.
         </p>
 
         {/* Feature chips */}
-        <div className="mt-5 flex flex-wrap gap-2 pb-6">
+        <div className="mt-5 flex flex-wrap justify-center gap-2 pb-6 md:justify-start">
           {FEATURE_CHIPS.map((chip) => (
             <span
               key={chip.label}

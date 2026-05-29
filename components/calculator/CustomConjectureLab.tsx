@@ -65,7 +65,7 @@ export function CustomConjectureLab({ currentInput }: Props) {
   return (
     <section className="rounded-2xl border border-slate-800 bg-slate-900/80 p-5 sm:p-6">
       {/* Header */}
-      <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+      <div className="mb-5 flex flex-col items-center justify-between gap-3 text-center sm:flex-row sm:items-start sm:text-left">
         <div>
           <h2 className="text-sm font-semibold text-slate-200">Custom Conjecture Lab</h2>
           <p className="mt-1 text-xs text-slate-500">
@@ -74,7 +74,7 @@ export function CustomConjectureLab({ currentInput }: Props) {
         </div>
         <button
           onClick={handleReset}
-          className="flex items-center gap-1.5 rounded-lg border border-slate-700 px-3 py-1.5 text-[11px] font-medium text-slate-400 transition-colors hover:border-slate-600 hover:text-slate-200"
+          className="flex items-center justify-center gap-1.5 rounded-lg border border-slate-700 px-3 py-1.5 text-[11px] font-medium text-slate-400 transition-colors hover:border-slate-600 hover:text-slate-200"
         >
           <ResetIcon />
           Reset to default
@@ -82,8 +82,8 @@ export function CustomConjectureLab({ currentInput }: Props) {
       </div>
 
       {/* Warning */}
-      <div className="mb-5 flex items-start gap-2.5 rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3">
-        <svg viewBox="0 0 24 24" className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" fill="none" stroke="currentColor" strokeWidth={2}>
+      <div className="mb-5 flex flex-col items-center gap-2.5 rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3 text-center sm:flex-row sm:items-start sm:text-left">
+        <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-amber-400 sm:mt-0.5" fill="none" stroke="currentColor" strokeWidth={2}>
           <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
           <line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
         </svg>
@@ -97,10 +97,10 @@ export function CustomConjectureLab({ currentInput }: Props) {
       <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_auto_auto]">
         {/* Even rule */}
         <div>
-          <label className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-500">
+          <label className="mb-1.5 block text-center text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-500 sm:text-left">
             If n is even:
           </label>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-center gap-2 sm:justify-start">
             <span className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-slate-300">
               Divide by
             </span>
@@ -117,10 +117,10 @@ export function CustomConjectureLab({ currentInput }: Props) {
 
         {/* Odd rule */}
         <div>
-          <label className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-500">
+          <label className="mb-1.5 block text-center text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-500 sm:text-left">
             If n is odd:
           </label>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
             <span className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-slate-300">
               Multiply by
             </span>
@@ -146,10 +146,10 @@ export function CustomConjectureLab({ currentInput }: Props) {
 
         {/* Stop after */}
         <div>
-          <label htmlFor="lab-stop-after" className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-500">
+          <label htmlFor="lab-stop-after" className="mb-1.5 block text-center text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-500 sm:text-left">
             Stop after
           </label>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-center gap-2 sm:justify-start">
             <input
               id="lab-stop-after"
               type="number"
@@ -165,11 +165,11 @@ export function CustomConjectureLab({ currentInput }: Props) {
         </div>
 
         {/* Run button */}
-        <div className="flex items-end">
+        <div className="flex items-end justify-center lg:justify-start">
           <button
             onClick={handleRun}
             disabled={isRunning}
-            className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-teal-500/20 transition-all hover:from-teal-400 hover:to-cyan-400 disabled:opacity-60"
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-teal-500/20 transition-all hover:from-teal-400 hover:to-cyan-400 disabled:opacity-60 sm:w-auto"
           >
             <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2}>
               <polygon points="5 3 19 12 5 21 5 3" />
@@ -181,10 +181,10 @@ export function CustomConjectureLab({ currentInput }: Props) {
 
       {/* Presets */}
       <div className="mt-5">
-        <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-500">
+        <p className="mb-2 text-center text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-500 sm:text-left">
           Presets
         </p>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap justify-center gap-2 sm:justify-start">
           {(["classic", "syracuse", "knuth", "custom"] as const).map((p) => (
             <button
               key={p}
@@ -219,7 +219,7 @@ export function CustomConjectureLab({ currentInput }: Props) {
 function LabResult({ result }: { result: CustomCalcResult }) {
   return (
     <div className="mt-5 rounded-xl border border-slate-700 bg-slate-800/60 p-4">
-      <div className="grid grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-center sm:grid-cols-4">
         <LabStat label="Steps" value={fmtNum(result.steps)} />
         <LabStat label="Peak" value={fmtBig(result.peak)} />
         <LabStat label="Final Value" value={fmtBig(result.finalValue)} />
@@ -230,7 +230,7 @@ function LabResult({ result }: { result: CustomCalcResult }) {
         />
       </div>
       {result.warning && (
-        <p className="mt-3 text-[11px] text-amber-400">{result.warning}</p>
+        <p className="mt-3 text-center text-[11px] text-amber-400">{result.warning}</p>
       )}
     </div>
   );
@@ -238,7 +238,7 @@ function LabResult({ result }: { result: CustomCalcResult }) {
 
 function LabStat({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
   return (
-    <div>
+    <div className="text-center">
       <p className="text-[10px] uppercase tracking-[0.08em] text-slate-500">{label}</p>
       <p className={`mt-0.5 text-sm font-semibold tabular-nums ${accent ? "text-green-400" : "text-slate-200"}`}>
         {value}

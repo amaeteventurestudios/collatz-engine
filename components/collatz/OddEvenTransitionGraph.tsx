@@ -146,9 +146,9 @@ export function OddEvenTransitionGraph({ result, loading }: Props) {
       <div className="mx-auto max-w-7xl">
         <div className="engine-card">
           {/* Header */}
-          <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <div className="flex items-center gap-2">
+          <div className="mb-5 flex flex-col items-center gap-3 text-center sm:flex-row sm:items-start sm:justify-between sm:text-left">
+            <div className="max-w-2xl">
+              <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
                 <p className="section-heading">Odd/Even Transition Graph</p>
                 <PanelHelp
                   title="Odd/Even Transition Graph"
@@ -161,16 +161,16 @@ export function OddEvenTransitionGraph({ result, loading }: Props) {
               </p>
             </div>
             {loading && (
-              <span className="self-start rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-400 dark:bg-slate-800 dark:text-slate-500">
+              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-400 dark:bg-slate-800 dark:text-slate-500 sm:self-start">
                 Updating...
               </span>
             )}
           </div>
 
           {/* Metric chips */}
-          <div className="mb-4 flex flex-wrap gap-2">
+          <div className="mb-4 flex flex-wrap justify-center gap-2 sm:justify-start">
             {chips.map((c) => (
-              <div key={c.label} className={`rounded-xl px-3 py-2 ${c.cls}`}>
+              <div key={c.label} className={`rounded-xl px-3 py-2 text-center sm:text-left ${c.cls}`}>
                 <p className="text-[9px] font-semibold uppercase tracking-wider opacity-70">
                   {c.label}
                 </p>
@@ -317,19 +317,19 @@ export function OddEvenTransitionGraph({ result, loading }: Props) {
           )}
 
           {/* Legend */}
-          <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 border-t border-slate-200 pt-4 dark:border-slate-800">
+          <div className="mt-4 flex flex-wrap justify-center gap-x-5 gap-y-2 border-t border-slate-200 pt-4 text-center dark:border-slate-800 sm:justify-start sm:text-left">
             {[
               { color: "bg-violet-500", label: "Odd steps (3n + 1)" },
               { color: "bg-sky-500", label: "Even steps (n / 2)" },
             ].map((item) => (
-              <div key={item.label} className="flex items-center gap-2">
+              <div key={item.label} className="flex items-center justify-center gap-2 sm:justify-start">
                 <span className={`h-2.5 w-2.5 flex-shrink-0 rounded-sm ${item.color}`} />
                 <span className="text-xs text-slate-500 dark:text-slate-400">
                   {item.label}
                 </span>
               </div>
             ))}
-            <span className="ml-auto text-[10px] text-slate-400 dark:text-slate-500">
+            <span className="w-full text-[10px] text-slate-400 dark:text-slate-500 sm:ml-auto sm:w-auto">
               Top strip: parity sequence · Bottom: cumulative count
             </span>
           </div>

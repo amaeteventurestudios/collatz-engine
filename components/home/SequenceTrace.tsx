@@ -60,8 +60,8 @@ export function SequenceTrace({ result, displayLabel }: SequenceTraceProps) {
       <div className="mx-auto max-w-7xl">
         <div className="engine-card">
           {/* Header */}
-          <div className="mb-5 flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
+          <div className="mb-5 flex flex-col items-center justify-between gap-2 text-center sm:flex-row sm:text-left">
+            <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
               <p className="section-heading">Sequence Trace</p>
               <PanelHelp
                 title="Sequence Trace"
@@ -104,14 +104,14 @@ export function SequenceTrace({ result, displayLabel }: SequenceTraceProps) {
 
           {/* Current rule callout */}
           {currentRuleRow && (
-            <div className="mb-5 flex flex-col items-start gap-2 rounded-xl border border-sky-500/20 bg-sky-500/5 p-4 dark:border-sky-500/20 dark:bg-sky-500/5 sm:flex-row sm:items-center sm:gap-4">
-              <div className="flex items-center gap-2">
+          <div className="mb-5 flex flex-col items-center gap-2 rounded-xl border border-sky-500/20 bg-sky-500/5 p-4 text-center dark:border-sky-500/20 dark:bg-sky-500/5 sm:flex-row sm:items-center sm:text-left sm:gap-4">
+              <div className="flex items-center justify-center gap-2">
                 <span className="h-2 w-2 rounded-full bg-sky-500" />
                 <span className="text-[10px] font-semibold uppercase tracking-widest text-sky-600 dark:text-sky-400">
                   Step {Number(currentRuleRow.step)}
                 </span>
               </div>
-              <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm font-medium text-slate-700 dark:text-slate-300">
+              <div className="flex flex-wrap items-baseline justify-center gap-x-2 gap-y-1 text-sm font-medium text-slate-700 dark:text-slate-300 sm:justify-start">
                 <span className="font-mono text-base font-bold text-slate-900 dark:text-slate-100">
                   <span title={currentRuleRow.valueTitle}>
                     {currentRuleRow.value}

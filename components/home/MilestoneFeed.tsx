@@ -77,9 +77,9 @@ export function MilestoneFeed() {
     <section id="milestones" className="scroll-mt-20 px-4 pb-10 sm:pb-14">
       <div className="mx-auto max-w-7xl">
         <div className="rounded-lg border border-slate-800 bg-slate-950 p-5 shadow-sm sm:p-6">
-          <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <div className="flex items-center gap-2">
+          <div className="mb-5 flex flex-col items-center gap-3 text-center sm:flex-row sm:items-start sm:justify-between sm:text-left">
+            <div className="max-w-2xl">
+              <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
                 <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">
                   Milestone Feed
                 </p>
@@ -97,7 +97,7 @@ export function MilestoneFeed() {
                 Milestones are computation progress markers, not mathematical proof markers.
               </p>
             </div>
-            <div className="rounded border border-teal-500/30 bg-teal-500/10 px-3 py-2 text-right">
+            <div className="rounded border border-teal-500/30 bg-teal-500/10 px-3 py-2 text-center sm:text-right">
               <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.18em] text-teal-300">
                 Verified Catalog Size
               </p>
@@ -117,7 +117,7 @@ export function MilestoneFeed() {
           ) : (
             <>
               <div className="grid gap-3 lg:grid-cols-3">
-                <div className="rounded-md border border-slate-800 bg-slate-900/50 p-4">
+                <div className="rounded-md border border-slate-800 bg-slate-900/50 p-4 text-center sm:text-left">
                   <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                     Previous Milestone Reached
                   </p>
@@ -135,7 +135,7 @@ export function MilestoneFeed() {
                   </p>
                 </div>
 
-                <div className="rounded-md border border-cyan-500/30 bg-cyan-500/10 p-4">
+                <div className="rounded-md border border-cyan-500/30 bg-cyan-500/10 p-4 text-center sm:text-left">
                   <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.18em] text-cyan-300">
                     Current Target
                   </p>
@@ -156,7 +156,7 @@ export function MilestoneFeed() {
                   </p>
                 </div>
 
-                <div className="rounded-md border border-slate-800 bg-slate-900/50 p-4">
+                <div className="rounded-md border border-slate-800 bg-slate-900/50 p-4 text-center sm:text-left">
                   <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                     ETA
                   </p>
@@ -174,7 +174,7 @@ export function MilestoneFeed() {
               </div>
 
               <div className="mt-5">
-                <div className="mb-2 flex items-center justify-between gap-3">
+                <div className="mb-2 flex flex-col items-center justify-between gap-2 text-center sm:flex-row sm:text-left">
                   <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                     Progress Toward Current Target
                   </p>
@@ -201,10 +201,10 @@ export function MilestoneFeed() {
               </div>
 
               <div className="mt-5">
-                <p className="mb-2 font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                <p className="mb-2 text-center font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 sm:text-left">
                   Next Upcoming Milestones
                 </p>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap justify-center gap-2 sm:justify-start">
                   {milestoneState.upcoming.map((milestone) => (
                     <span
                       key={milestone}

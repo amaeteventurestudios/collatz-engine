@@ -252,8 +252,8 @@ function StatCard({
   accent: string;
 }) {
   return (
-    <div className="flex flex-col gap-1 rounded-xl border border-slate-800 bg-slate-900/70 px-3 py-3">
-      <div className="flex items-center gap-1.5">
+    <div className="flex flex-col items-center gap-1 rounded-xl border border-slate-800 bg-slate-900/70 px-3 py-3 text-center sm:items-start sm:text-left">
+      <div className="flex items-center justify-center gap-1.5 sm:justify-start">
         <span className={`text-sm ${accent}`}>{icon}</span>
         <p className="text-[9px] font-semibold uppercase tracking-wider text-slate-500">{label}</p>
       </div>
@@ -464,9 +464,9 @@ export function NearEscapeCandidates() {
         <div className="rounded-xl border border-slate-800 bg-slate-950 p-5 shadow-lg">
 
           {/* ── Header ──────────────────────────────────────────────── */}
-          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
+          <div className="mb-4 flex flex-col items-center gap-3 text-center sm:flex-row sm:items-start sm:justify-between sm:text-left">
+            <div className="min-w-0 max-w-3xl">
+              <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
                 <h2 className="text-base font-bold text-slate-50 tracking-tight">
                   Near-Escape Candidates
                 </h2>
@@ -479,8 +479,8 @@ export function NearEscapeCandidates() {
               <p className="mt-1 text-xs text-slate-400">
                 Numbers with unusually high peak ratios or long trajectories from the live catalog
               </p>
-              <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[10px] text-slate-500">
-                <span className="flex items-center gap-1">
+              <div className="mt-1.5 flex flex-wrap items-center justify-center gap-2 text-[10px] text-slate-500 sm:justify-start">
+                <span className="flex items-center justify-center gap-1">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
                   LIVE
                 </span>
@@ -565,7 +565,7 @@ export function NearEscapeCandidates() {
           {/* ── Top 3 featured cards ─────────────────────────────────── */}
           {top3.length >= 2 && (
             <div className="mb-5">
-              <p className="mb-2.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+              <p className="mb-2.5 text-center text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 sm:text-left">
                 Top 3 Near-Escape Candidates
               </p>
               <div className="grid gap-3 sm:grid-cols-3">
@@ -577,10 +577,10 @@ export function NearEscapeCandidates() {
           )}
 
           {/* ── Explainer callout ────────────────────────────────────── */}
-          <div className="mb-5 flex items-start gap-3 rounded-xl border border-orange-500/25 bg-orange-500/5 px-4 py-3">
-            <span className="mt-0.5 shrink-0 text-orange-400">△</span>
+          <div className="mb-5 flex flex-col items-center gap-3 rounded-xl border border-orange-500/25 bg-orange-500/5 px-4 py-3 text-center sm:flex-row sm:items-start sm:text-left">
+            <span className="shrink-0 text-orange-400 sm:mt-0.5">△</span>
             <div className="min-w-0">
-              <div className="mb-1 flex flex-wrap items-center gap-2">
+              <div className="mb-1 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
                 <p className="text-xs font-bold text-orange-300">What is a near-escape candidate?</p>
                 <span className="rounded-full bg-orange-500/15 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-orange-400">
                   Visualization label only
@@ -597,8 +597,8 @@ export function NearEscapeCandidates() {
           </div>
 
           {/* ── Ranking tabs ─────────────────────────────────────────── */}
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <div className="flex flex-wrap gap-2">
+          <div className="mb-4 flex flex-col items-center justify-between gap-3 sm:flex-row">
+            <div className="flex flex-wrap justify-center gap-2 sm:justify-start">
               <TabButton label="Top by Peak Ratio" active={tab === "peak_ratio"} onClick={() => setTab("peak_ratio")} />
               <TabButton label="Top by Long Path"  active={tab === "long_path"}  onClick={() => setTab("long_path")} />
               <TabButton
@@ -661,9 +661,9 @@ export function NearEscapeCandidates() {
           )}
 
           {/* Footer */}
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+          <div className="mt-3 flex flex-col items-center justify-between gap-2 text-center sm:flex-row">
             <p className="text-[10px] text-slate-500">
-              <span className="flex items-center gap-1.5">
+              <span className="flex items-center justify-center gap-1.5">
                 <span className="h-2 w-2 rounded-sm bg-violet-500 opacity-80" />
                 <span>Odd step (3n+1)</span>
               </span>
@@ -674,7 +674,7 @@ export function NearEscapeCandidates() {
                 : "Candidates flagged by peak ratio > 50× or trajectory length > 150 steps"}
             </p>
             <p className="text-[10px] text-slate-500">
-              <span className="flex items-center gap-1.5">
+              <span className="flex items-center justify-center gap-1.5">
                 <span className="h-2 w-2 rounded-sm bg-cyan-500 opacity-80" />
                 <span>Even step (n/2)</span>
               </span>

@@ -112,9 +112,9 @@ export function StoppingTimeGraph({ results, topBySteps, loading }: Props) {
       <div className="mx-auto max-w-7xl">
         <div className="engine-card">
           {/* Header */}
-          <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <div className="flex items-center gap-2">
+          <div className="mb-5 flex flex-col items-center gap-3 text-center sm:flex-row sm:items-start sm:justify-between sm:text-left">
+            <div className="max-w-2xl">
+              <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
                 <p className="section-heading">Stopping Time Graph</p>
                 <PanelHelp
                   title="Stopping Time Graph"
@@ -127,18 +127,18 @@ export function StoppingTimeGraph({ results, topBySteps, loading }: Props) {
               </p>
             </div>
             {loading && (
-              <span className="self-start rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-400 dark:bg-slate-800 dark:text-slate-500">
+              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-400 dark:bg-slate-800 dark:text-slate-500 sm:self-start">
                 Updating...
               </span>
             )}
           </div>
 
           {/* Metric chips */}
-          <div className="mb-4 flex flex-wrap gap-2">
+          <div className="mb-4 flex flex-wrap justify-center gap-2 sm:justify-start">
             {chips.map((c) => (
               <div
                 key={c.label}
-                className="rounded-xl bg-slate-100 px-3 py-2 dark:bg-slate-800/60"
+                className="rounded-xl bg-slate-100 px-3 py-2 text-center dark:bg-slate-800/60 sm:text-left"
                 title={c.title || undefined}
               >
                 <p className="text-[9px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
@@ -255,19 +255,19 @@ export function StoppingTimeGraph({ results, topBySteps, loading }: Props) {
           )}
 
           {/* Legend */}
-          <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-slate-200 pt-4 dark:border-slate-800">
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 border-t border-slate-200 pt-4 text-center dark:border-slate-800 sm:justify-start sm:text-left">
             {[
               { color: "bg-teal-400", label: "Steps to 1 per starting number" },
               { color: EVENT_COLORS.violet.dot, label: "Longest trajectory records" },
             ].map((item) => (
-              <div key={item.label} className="flex items-center gap-2">
+              <div key={item.label} className="flex items-center justify-center gap-2 sm:justify-start">
                 <span className={`h-2.5 w-2.5 flex-shrink-0 rounded-sm ${item.color}`} />
                 <span className="text-xs text-slate-500 dark:text-slate-400">
                   {item.label}
                 </span>
               </div>
             ))}
-            <span className="ml-auto text-[10px] text-slate-400 dark:text-slate-500">
+            <span className="w-full text-[10px] text-slate-400 dark:text-slate-500 sm:ml-auto sm:w-auto">
               n = {minN.toLocaleString("en-US")} to {maxN.toLocaleString("en-US")}
             </span>
           </div>

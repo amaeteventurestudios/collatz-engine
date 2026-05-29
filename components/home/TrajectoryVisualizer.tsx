@@ -366,9 +366,9 @@ export function TrajectoryVisualizer({
       <div className="mx-auto max-w-7xl">
         <div className="engine-card">
           {/* ── Header ──────────────────────────────────────────────────────── */}
-          <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <div className="flex items-center gap-2">
+          <div className="mb-5 flex flex-col items-center gap-3 text-center sm:flex-row sm:items-start sm:justify-between sm:text-left">
+            <div className="max-w-2xl">
+              <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
                 <p className="section-heading">Collatz Trajectory Visualizer</p>
                 <PanelHelp
                   title="Trajectory Visualizer"
@@ -389,20 +389,32 @@ export function TrajectoryVisualizer({
             </div>
 
             {/* View mode tabs */}
-            <div className="-mx-5 flex gap-1.5 overflow-x-auto px-5 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:pb-0">
-              {VIEW_MODES.map((m) => (
-                <button
-                  key={m}
-                  onClick={() => setActiveView(m)}
-                  className={`flex-shrink-0 rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
-                    activeView === m
-                      ? "bg-teal-500/20 text-teal-500 ring-1 ring-teal-500/40 dark:text-teal-300"
-                      : "text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
-                  }`}
+            <div className="w-full sm:w-auto">
+              <div className="relative -mx-5 sm:mx-0">
+                <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-6 bg-gradient-to-r from-white to-transparent dark:from-slate-900 sm:hidden" />
+                <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-6 bg-gradient-to-l from-white to-transparent dark:from-slate-900 sm:hidden" />
+                <div
+                  aria-label="Swipe horizontally to see trajectory view tabs"
+                  className="no-scrollbar flex snap-x snap-mandatory gap-2 overflow-x-auto px-5 pb-1 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0"
                 >
-                  {m}
-                </button>
-              ))}
+                  {VIEW_MODES.map((m) => (
+                    <button
+                      key={m}
+                      onClick={() => setActiveView(m)}
+                      className={`shrink-0 snap-start whitespace-nowrap rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
+                        activeView === m
+                          ? "bg-teal-500/20 text-teal-500 ring-1 ring-teal-500/40 dark:text-teal-300"
+                          : "text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
+                      }`}
+                    >
+                      {m}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <p className="mt-1 text-center text-[10px] text-slate-500 sm:hidden" aria-hidden="true">
+                Swipe →
+              </p>
             </div>
           </div>
 
@@ -417,7 +429,7 @@ export function TrajectoryVisualizer({
                   { color: "bg-yellow-400", label: "Peaks" },
                   { color: "bg-orange-400", label: "First descent" },
                 ].map((item) => (
-                  <div key={item.label} className="flex items-center gap-2">
+                  <div key={item.label} className="flex items-center justify-center gap-2 sm:justify-start">
                     <span className={`h-2.5 w-2.5 flex-shrink-0 rounded-sm ${item.color}`} />
                     <span className="text-xs text-slate-500 dark:text-slate-400">{item.label}</span>
                   </div>
@@ -504,9 +516,9 @@ export function TrajectoryVisualizer({
               </div>
 
               {/* Checkboxes */}
-              <div className="mt-4 flex flex-col gap-3 border-t border-slate-200 pt-4 dark:border-slate-800 sm:flex-row sm:flex-wrap sm:items-center">
+              <div className="mt-4 flex flex-col items-center gap-3 border-t border-slate-200 pt-4 text-center dark:border-slate-800 sm:flex-row sm:flex-wrap sm:items-center sm:justify-start sm:text-left">
                 {checkboxes.map(({ label, checked, setter }) => (
-                  <label key={label} className="flex cursor-pointer items-center gap-2">
+                  <label key={label} className="flex cursor-pointer items-center justify-center gap-2">
                     <input
                       type="checkbox"
                       checked={checked}

@@ -28,7 +28,7 @@ export function ObservatoryFilteredGrid({ notes }: { notes: DemoNote[] }) {
       <div
         role="group"
         aria-label="Filter notes by type"
-        className="no-scrollbar mb-6 flex gap-2 overflow-x-auto"
+        className="no-scrollbar mb-6 flex snap-x snap-mandatory justify-start gap-2 overflow-x-auto text-center sm:justify-center"
       >
         {FILTERS.map((f) => (
           <button
@@ -36,7 +36,7 @@ export function ObservatoryFilteredGrid({ notes }: { notes: DemoNote[] }) {
             type="button"
             aria-pressed={active === f.id}
             onClick={() => setActive(f.id)}
-            className={`flex-shrink-0 rounded-full px-4 py-1.5 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-400/50 ${
+            className={`shrink-0 snap-start whitespace-nowrap rounded-full px-4 py-1.5 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-400/50 ${
               active === f.id
                 ? "bg-teal-500/20 text-teal-300 ring-1 ring-teal-400/30"
                 : "bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200"

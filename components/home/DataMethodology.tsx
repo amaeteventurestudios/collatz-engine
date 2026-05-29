@@ -79,7 +79,7 @@ export function DataMethodology() {
               key={section.title}
               className={`rounded-2xl border-0 p-5 ring-1 ${section.bg} ${section.ring}`}
             >
-              <div className="mb-3 flex items-center gap-2.5">
+              <div className="mb-3 flex flex-col items-center gap-2.5 text-center sm:flex-row sm:text-left">
                 <span className={`text-base leading-none ${section.color}`}>{section.icon}</span>
                 <p className="text-sm font-bold text-slate-800 dark:text-slate-200">
                   {section.title}
@@ -87,7 +87,7 @@ export function DataMethodology() {
               </div>
               <ul className="space-y-1.5">
                 {section.items.map((item) => (
-                  <li key={item} className="flex items-start gap-2">
+                  <li key={item} className="flex items-start justify-center gap-2 text-center sm:justify-start sm:text-left">
                     <span className={`mt-1.5 h-1 w-1 shrink-0 rounded-full ${section.color} opacity-60`} />
                     <span className="text-xs leading-relaxed text-slate-600 dark:text-slate-400">
                       {item}

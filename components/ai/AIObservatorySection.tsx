@@ -28,8 +28,8 @@ export function AIObservatorySection() {
         <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5 sm:p-7">
 
           {/* Header */}
-          <div className="mb-1 flex items-start justify-between gap-4">
-            <div className="flex items-center gap-2.5">
+          <div className="mb-3 flex flex-col items-center justify-between gap-4 text-center sm:flex-row sm:items-start sm:text-left">
+            <div className="flex flex-wrap items-center justify-center gap-2.5 sm:justify-start">
               <span className="text-lg text-teal-400 glow-teal" aria-hidden>✦</span>
               <h2 className="text-xl font-bold tracking-tight text-slate-50 sm:text-2xl">
                 AI Observatory Notes
@@ -41,7 +41,7 @@ export function AIObservatorySection() {
             </div>
             <Link
               href="/observatory"
-              className="shrink-0 inline-flex items-center gap-1.5 rounded-lg border border-teal-500/40 px-3.5 py-2 text-xs font-semibold text-teal-300 transition-colors hover:bg-teal-500/10"
+              className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg border border-teal-500/40 px-3.5 py-2 text-xs font-semibold text-teal-300 transition-colors hover:bg-teal-500/10"
             >
               View all notes
               <ArrowRight className="h-3.5 w-3.5" aria-hidden />
@@ -49,8 +49,8 @@ export function AIObservatorySection() {
           </div>
 
           {/* Subtitle */}
-          <div className="mb-5 flex items-start gap-2">
-            <p className="text-sm leading-relaxed text-slate-400">
+          <div className="mb-5 flex flex-col items-center gap-2 text-center sm:flex-row sm:items-start sm:text-left">
+            <p className="max-w-3xl text-sm leading-relaxed text-slate-400">
               AI-assisted summaries generated from verified Collatz Engine data.
               Notes require human review before publication and do not claim to prove the conjecture.
             </p>
@@ -62,38 +62,47 @@ export function AIObservatorySection() {
           </div>
 
           {/* Tabs */}
-          <div
-            role="tablist"
-            aria-label="Observatory note categories"
-            className="no-scrollbar -mx-5 mb-6 flex overflow-x-auto border-b border-slate-800 px-5 sm:mx-0 sm:px-0"
-          >
-            {TAB_IDS.map((tab) => (
-              <div key={tab} className="relative flex items-center gap-1 pr-1">
-                <button
-                  role="tab"
-                  aria-selected={activeTab === tab}
-                  aria-controls={`tabpanel-${tab}`}
-                  id={`tab-${tab}`}
-                  type="button"
-                  onClick={() => setActiveTab(tab)}
-                  className={`flex-shrink-0 px-3 pb-3 pt-1 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-400/50 ${
-                    activeTab === tab
-                      ? "text-teal-400"
-                      : "text-slate-400 hover:text-slate-200"
-                  }`}
-                >
-                  {TAB_LABELS[tab]}
-                </button>
-                {/* Active underline */}
-                {activeTab === tab && (
-                  <span
-                    aria-hidden
-                    className="pointer-events-none absolute bottom-0 left-0 right-1 h-0.5 rounded-full bg-teal-400 shadow-[0_0_8px_rgba(45,212,191,0.6)]"
-                  />
-                )}
-                <GlowingInfoIcon tooltip={TAB_TOOLTIPS[tab]} align="center" size="sm" />
+          <div className="mb-6">
+            <div className="relative -mx-5 sm:mx-0">
+              <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-6 bg-gradient-to-r from-slate-900 to-transparent sm:hidden" />
+              <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-6 bg-gradient-to-l from-slate-900 to-transparent sm:hidden" />
+              <div
+                role="tablist"
+                aria-label="Observatory note categories. Swipe horizontally to see all tabs."
+                className="no-scrollbar flex snap-x snap-mandatory gap-2 overflow-x-auto border-b border-slate-800 px-5 sm:flex-wrap sm:overflow-visible sm:px-0"
+              >
+                {TAB_IDS.map((tab) => (
+                  <div key={tab} className="relative flex shrink-0 snap-start items-center gap-1.5 pr-1">
+                    <button
+                      role="tab"
+                      aria-selected={activeTab === tab}
+                      aria-controls={`tabpanel-${tab}`}
+                      id={`tab-${tab}`}
+                      type="button"
+                      onClick={() => setActiveTab(tab)}
+                      className={`shrink-0 whitespace-nowrap px-3 pb-3 pt-1 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-400/50 ${
+                        activeTab === tab
+                          ? "text-teal-400"
+                          : "text-slate-400 hover:text-slate-200"
+                      }`}
+                    >
+                      {TAB_LABELS[tab]}
+                    </button>
+                    {/* Active underline */}
+                    {activeTab === tab && (
+                      <span
+                        aria-hidden
+                        className="pointer-events-none absolute bottom-0 left-0 right-1 h-0.5 rounded-full bg-teal-400 shadow-[0_0_8px_rgba(45,212,191,0.6)]"
+                      />
+                    )}
+                    <GlowingInfoIcon tooltip={TAB_TOOLTIPS[tab]} align="center" size="sm" />
+                  </div>
+                ))}
               </div>
-            ))}
+            </div>
+            <p className="mt-1 text-center text-[10px] text-slate-500 sm:hidden" aria-hidden="true">
+              Swipe →
+            </p>
           </div>
 
           {/* Tab panel */}

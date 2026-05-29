@@ -13,9 +13,9 @@ export function AIObservatoryNoteCard({ note }: AIObservatoryNoteCardProps) {
   const miniStats = note.stats.slice(0, 2);
 
   return (
-    <div className="group flex flex-col rounded-xl border border-slate-800 bg-slate-950 p-4 transition-colors hover:border-slate-700">
+    <div className="group flex flex-col rounded-xl border border-slate-800 bg-slate-950 p-4 text-center transition-colors hover:border-slate-700 sm:text-left">
       {/* Top row: badge + date */}
-      <div className="mb-3 flex items-center justify-between gap-2">
+      <div className="mb-3 flex flex-col items-center justify-between gap-2 sm:flex-row">
         <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest ${meta.badgeClass}`}>
           {meta.label}
         </span>
@@ -34,9 +34,9 @@ export function AIObservatoryNoteCard({ note }: AIObservatoryNoteCardProps) {
 
       {/* Mini stats */}
       {miniStats.length > 0 && (
-        <div className="mb-3 flex items-center gap-4">
+        <div className="mb-3 flex flex-wrap items-center justify-center gap-4 sm:justify-start">
           {miniStats.map((stat) => (
-            <div key={stat.label} className="flex items-baseline gap-1.5">
+            <div key={stat.label} className="flex items-baseline justify-center gap-1.5">
               <span className="text-sm font-bold tabular-nums text-teal-400">{stat.value}</span>
               <span className="text-[10px] text-slate-500">{stat.label}</span>
             </div>
@@ -45,7 +45,7 @@ export function AIObservatoryNoteCard({ note }: AIObservatoryNoteCardProps) {
       )}
 
       {/* Footer row */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-center gap-4 sm:justify-between">
         <Link
           href={`/observatory/${note.id}`}
           className="inline-flex items-center gap-1 text-xs font-medium text-teal-400 transition-colors hover:text-teal-300"

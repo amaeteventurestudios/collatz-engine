@@ -77,7 +77,7 @@ export function PanelHelp({ title, description, details, source, warning, operat
         id={id}
         role="tooltip"
         aria-hidden={!open}
-        className={`panel-help-popover ${open ? "panel-help-popover-open visible" : "invisible"} ${alignClasses[align]} pointer-events-none absolute top-full z-50 mt-2 w-[min(20rem,calc(100vw-2rem))] rounded-lg border border-cyan-400/25 bg-slate-950 px-4 py-3 text-left shadow-2xl shadow-cyan-950/40 max-sm:fixed max-sm:left-4 max-sm:right-4 max-sm:top-20 max-sm:mt-0 max-sm:w-auto max-sm:translate-x-0`}
+        className={`panel-help-popover ${open ? "panel-help-popover-open visible" : "hidden"} ${alignClasses[align]} pointer-events-none absolute top-full z-50 mt-2 w-[min(20rem,calc(100vw-2rem))] rounded-lg border border-cyan-400/25 bg-slate-950 px-4 py-3 text-left shadow-2xl shadow-cyan-950/40 max-sm:fixed max-sm:left-4 max-sm:right-4 max-sm:top-20 max-sm:mt-0 max-sm:w-auto max-sm:translate-x-0`}
       >
         <span className="block text-xs font-bold text-slate-50">{title}</span>
         <span className="mt-1.5 block text-xs leading-relaxed text-slate-300">

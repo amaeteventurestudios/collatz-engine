@@ -70,9 +70,9 @@ export function CalculatorMetricCards({ result }: Props) {
       {cards.map((card) => (
         <div
           key={card.label}
-          className="rounded-xl border border-slate-800 bg-slate-900/80 p-4 transition-colors hover:border-slate-700"
+          className="rounded-xl border border-slate-800 bg-slate-900/80 p-4 text-center transition-colors hover:border-slate-700"
         >
-          <div className={`mb-3 flex h-8 w-8 items-center justify-center rounded-lg ring-1 ${card.bg} ${card.ring}`}>
+          <div className={`mx-auto mb-3 flex h-8 w-8 items-center justify-center rounded-lg ring-1 ${card.bg} ${card.ring}`}>
             <span className={card.color}>{card.icon}</span>
           </div>
           <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-500">

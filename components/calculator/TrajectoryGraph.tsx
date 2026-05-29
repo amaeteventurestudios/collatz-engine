@@ -127,9 +127,9 @@ export function TrajectoryGraph({ result, logScale, onLogScaleChange }: Props) {
   return (
     <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-5">
       {/* Header */}
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <div className="mb-4 flex flex-col items-center justify-between gap-3 text-center sm:flex-row sm:text-left">
         <h2 className="text-sm font-semibold text-slate-200">Trajectory Graph</h2>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-end">
           <span className="inline-flex h-2 w-5 rounded-full bg-gradient-to-r from-teal-500 to-cyan-400" />
           <span className="text-[10px] text-slate-500">Value</span>
           <div className="ml-2 flex overflow-hidden rounded-lg border border-slate-700">
@@ -263,7 +263,7 @@ export function TrajectoryGraph({ result, logScale, onLogScaleChange }: Props) {
 
       {/* Mini range note */}
       {result.graphPoints.length < result.totalSteps && (
-        <p className="mt-2 text-[10px] text-slate-600">
+        <p className="mt-2 text-center text-[10px] text-slate-600 sm:text-left">
           Showing {fmtNum(result.graphPoints.length)} sampled points from {fmtNum(result.totalSteps)} total steps for performance.
         </p>
       )}

@@ -138,7 +138,7 @@ function TimelineMetricCard({
 }) {
   const color = EVENT_COLORS[tone];
   return (
-    <div className={`rounded-xl border px-3 py-3 ${color.border} ${color.bg}`}>
+    <div className={`rounded-xl border px-3 py-3 text-center sm:text-left ${color.border} ${color.bg}`}>
       <p className="card-label">{label}</p>
       <p className={`mt-1 text-sm font-semibold tabular-nums tracking-tight ${color.text}`} title={title}>
         {value}
@@ -172,22 +172,22 @@ function RecordEventCard({ event }: { event: RecordTimelineEvent }) {
   const previous = previousValueLabel(event);
 
   return (
-    <article className="relative pl-12 sm:pl-16">
+    <article className="relative pl-0 sm:pl-16">
       <div
-        className={`absolute left-[1.15rem] top-12 h-full w-px ${visual.lineClass}`}
+        className={`absolute left-[1.15rem] top-12 hidden h-full w-px sm:block ${visual.lineClass}`}
         aria-hidden="true"
       />
       <div
-        className={`absolute left-0 top-1 flex h-10 w-10 items-center justify-center rounded-full border ${visual.markerClass}`}
+        className={`mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full border sm:absolute sm:left-0 sm:top-1 sm:mx-0 sm:mb-0 ${visual.markerClass}`}
         aria-hidden="true"
       >
         <Icon className="h-5 w-5" />
       </div>
 
       <div className={`rounded-xl border p-4 shadow-sm ${visual.borderClass} ${visual.backgroundClass}`}>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex flex-col items-center gap-3 text-center sm:flex-row sm:items-start sm:justify-between sm:text-left">
           <div className="min-w-0">
-            <div className="mb-2 flex flex-wrap items-center gap-2">
+            <div className="mb-2 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
               <span className={`engine-badge ${visual.badgeClass}`}>
                 <Icon className="h-3.5 w-3.5" aria-hidden="true" />
                 {recordTypeLabel(event.type)}
@@ -211,7 +211,7 @@ function RecordEventCard({ event }: { event: RecordTimelineEvent }) {
           </time>
         </div>
 
-        <div className="mt-4 flex flex-wrap gap-2">
+        <div className="mt-4 flex flex-wrap justify-center gap-2 sm:justify-start">
           <MetricChip tone="slate">n = {fmtNumber(event.n)}</MetricChip>
           <MetricChip
             tone={event.type === "peak" ? "amber" : "violet"}
@@ -277,9 +277,9 @@ export function RecordBreakerTimeline({
     <section className="scroll-mt-20 px-4 pb-10 sm:pb-14">
       <div className="mx-auto max-w-7xl">
         <div className="engine-card">
-          <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <div className="flex items-center gap-2">
+          <div className="mb-5 flex flex-col items-center gap-3 text-center sm:flex-row sm:items-start sm:justify-between sm:text-left">
+            <div className="max-w-2xl">
+              <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
                 <p className="section-heading">Record Breaker Timeline</p>
                 <PanelHelp
                   title="Record Breaker Timeline"
@@ -292,7 +292,7 @@ export function RecordBreakerTimeline({
               </p>
             </div>
             {loading && (
-              <span className="self-start rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-400 dark:bg-slate-800 dark:text-slate-500">
+              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-400 dark:bg-slate-800 dark:text-slate-500 sm:self-start">
                 Updating...
               </span>
             )}
@@ -351,7 +351,7 @@ function LeaderboardTable({
 
   return (
     <div className={`overflow-hidden rounded-xl border ${color.border}`}>
-      <div className={`border-b px-4 py-3 ${color.border} ${color.bg}`}>
+      <div className={`border-b px-4 py-3 text-center sm:text-left ${color.border} ${color.bg}`}>
         <p className={`text-sm font-semibold ${color.text}`}>{title}</p>
       </div>
       <div className="overflow-x-auto">
@@ -433,9 +433,9 @@ export function RecordLeaderboards({
     <section className="scroll-mt-20 px-4 pb-10 sm:pb-14">
       <div className="mx-auto max-w-7xl">
         <div className="engine-card">
-          <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <div className="flex items-center gap-2">
+          <div className="mb-5 flex flex-col items-center gap-3 text-center sm:flex-row sm:items-start sm:justify-between sm:text-left">
+            <div className="max-w-2xl">
+              <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
                 <p className="section-heading">Record Leaderboards</p>
                 <PanelHelp
                   title="Record Leaderboards"
@@ -448,7 +448,7 @@ export function RecordLeaderboards({
               </p>
             </div>
             {loading && (
-              <span className="self-start rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-400 dark:bg-slate-800 dark:text-slate-500">
+              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-400 dark:bg-slate-800 dark:text-slate-500 sm:self-start">
                 Updating...
               </span>
             )}

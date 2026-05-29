@@ -147,8 +147,8 @@ export function AboutSection() {
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {sections.map((sec) => (
-            <div key={sec.num} className="engine-card flex flex-col gap-3">
-              <div className="flex items-start gap-3">
+            <div key={sec.num} className="engine-card flex flex-col items-center gap-3 text-center sm:items-start sm:text-left">
+              <div className="flex flex-col items-center gap-3 sm:flex-row sm:items-start">
                 <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-teal-500/15 text-xs font-bold text-teal-600 dark:text-teal-400">
                   {sec.num}
                 </span>
@@ -162,7 +162,7 @@ export function AboutSection() {
               <button
                 type="button"
                 onClick={() => setActiveTitle(sec.title)}
-                className="mt-auto text-left text-xs font-medium text-teal-600 transition-colors hover:text-teal-500 dark:text-teal-400 dark:hover:text-teal-300"
+                className="mt-auto text-center text-xs font-medium text-teal-600 transition-colors hover:text-teal-500 dark:text-teal-400 dark:hover:text-teal-300 sm:text-left"
               >
                 {sec.cta}
               </button>
@@ -170,7 +170,7 @@ export function AboutSection() {
           ))}
 
           {/* Table of contents card */}
-          <div className="engine-card">
+          <div className="engine-card text-center sm:text-left">
             <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400">
               Table of Contents
             </p>
@@ -179,7 +179,7 @@ export function AboutSection() {
                 <li key={sec.num}>
                   <a
                     href="#about"
-                    className="flex items-start gap-2 rounded-md px-1 py-0.5 text-xs text-slate-600 transition-colors hover:text-teal-600 dark:text-slate-400 dark:hover:text-teal-400"
+                    className="flex items-start justify-center gap-2 rounded-md px-1 py-0.5 text-xs text-slate-600 transition-colors hover:text-teal-600 dark:text-slate-400 dark:hover:text-teal-400 sm:justify-start"
                   >
                     <span className="mt-px shrink-0 text-slate-400 dark:text-slate-600">
                       {sec.num}.
@@ -195,7 +195,7 @@ export function AboutSection() {
                 <li key={extra.num}>
                   <a
                     href={extra.href}
-                    className="flex items-start gap-2 rounded-md px-1 py-0.5 text-xs text-slate-600 transition-colors hover:text-teal-600 dark:text-slate-400 dark:hover:text-teal-400"
+                    className="flex items-start justify-center gap-2 rounded-md px-1 py-0.5 text-xs text-slate-600 transition-colors hover:text-teal-600 dark:text-slate-400 dark:hover:text-teal-400 sm:justify-start"
                   >
                     <span className="mt-px shrink-0 text-slate-400 dark:text-slate-600">
                       {extra.num}.

@@ -67,8 +67,8 @@ export function PriorWork() {
         </div>
 
         {/* Clarification notice */}
-        <div className="mb-6 flex items-start gap-2.5 rounded-2xl border border-blue-500/20 bg-blue-500/5 px-4 py-4 dark:border-blue-400/20 dark:bg-blue-400/5">
-          <span className="mt-0.5 shrink-0 text-sm text-blue-500 dark:text-blue-400">ℹ</span>
+        <div className="mb-6 flex flex-col items-center gap-2.5 rounded-2xl border border-blue-500/20 bg-blue-500/5 px-4 py-4 text-center dark:border-blue-400/20 dark:bg-blue-400/5 sm:flex-row sm:items-start sm:text-left">
+          <span className="shrink-0 text-sm text-blue-500 dark:text-blue-400 sm:mt-0.5">ℹ</span>
           <div>
             <p className="text-sm font-semibold text-blue-700 dark:text-blue-300">
               Scope clarification
@@ -87,7 +87,7 @@ export function PriorWork() {
           {focusAreas.map((area) => (
             <div
               key={area.title}
-              className="engine-card-sm flex flex-col gap-2"
+              className="engine-card-sm flex flex-col items-center gap-2 text-center sm:items-start sm:text-left"
             >
               <span className={`text-lg leading-none ${area.color}`}>{area.icon}</span>
               <p className="text-sm font-bold text-slate-800 dark:text-slate-200">{area.title}</p>
@@ -100,7 +100,7 @@ export function PriorWork() {
 
         {/* Prior projects table */}
         <div>
-          <p className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+          <p className="mb-3 text-center text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 sm:text-left">
             Notable prior &amp; related efforts
           </p>
           <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800">
@@ -114,14 +114,14 @@ export function PriorWork() {
                 }`}
               >
                 <div>
-                  <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  <p className="text-center text-xs font-semibold text-slate-700 dark:text-slate-300 sm:text-left">
                     {proj.name}
                   </p>
-                  <p className="mt-0.5 text-[10px] text-slate-400 dark:text-slate-500">
+                  <p className="mt-0.5 text-center text-[10px] text-slate-400 dark:text-slate-500 sm:text-left">
                     {proj.scope}
                   </p>
                 </div>
-                <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400 sm:col-span-2">
+                <p className="text-center text-xs leading-relaxed text-slate-500 dark:text-slate-400 sm:col-span-2 sm:text-left">
                   {proj.note}
                 </p>
               </div>
