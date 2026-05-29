@@ -17,7 +17,8 @@
     "collatz:health": "tsx scripts/check-collatz-health.ts",
     "collatz:health:persist": "tsx scripts/check-collatz-health.ts --persist",
     "collatz:cleanup": "tsx scripts/cleanup-collatz-storage.ts",
-    "collatz:verify-sequential": "tsx scripts/verify-sequential.ts"
+    "collatz:verify-sequential": "tsx scripts/verify-sequential.ts",
+    "collatz:verify-worker-lock": "tsx scripts/verify-worker-lock.ts"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.7",

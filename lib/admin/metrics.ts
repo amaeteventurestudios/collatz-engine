@@ -1,6 +1,6 @@
 import "server-only";
 import { createClient } from "@supabase/supabase-js";
-import type { EngineAdminState, ActivityLogEntry, RuntimeConfig } from "./types";
+import type { EngineAdminState, ActivityLogEntry, RuntimeConfig, WorkerLockState } from "./types";
 
 function getServiceClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -147,6 +147,69 @@ export async function getThroughputHistory(limit = 30): Promise<{
   } catch (err) {
     return {
       data: [],
+      error: err instanceof Error ? err.message : "Unknown error",
+    };
+  }
+}
+
+export async function getWorkerLockState(): Promise<{
+  data: WorkerLockState | null;
+  tableExists: boolean;
+  error: string | null;
+}> {
+  const client = getServiceClient() ?? getAnonClient();
+  if (!client) return { data: null, tableExists: false, error: "Supabase not configured" };
+
+  try {
+    // Most recent active lock, then most recent overall (to show last-held info)
+    const { data, error } = await client
+      .from("collatz_worker_lock")
+      .select("*")
+      .eq("lock_name", "primary")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      // Table may not exist yet (migration not run)
+      if (error.message?.includes("does not exist") || error.code === "42P01") {
+        return { data: null, tableExists: false, error: null };
+      }
+      return { data: null, tableExists: true, error: error.message };
+    }
+
+    if (!data) {
+      return { data: null, tableExists: true, error: null };
+    }
+
+    const r = data as Record<string, unknown>;
+    const expiresAt = r.expires_at as string;
+    const secondsUntilExpiry = Math.floor(
+      (new Date(expiresAt).getTime() - Date.now()) / 1000,
+    );
+
+    return {
+      data: {
+        id: r.id as string,
+        lockName: r.lock_name as string,
+        workerInstanceId: r.worker_instance_id as string,
+        hostname: (r.hostname as string) ?? null,
+        pid: (r.pid as number) ?? null,
+        acquiredAt: r.acquired_at as string,
+        heartbeatAt: r.heartbeat_at as string,
+        expiresAt,
+        releasedAt: (r.released_at as string) ?? null,
+        status: r.status as WorkerLockState["status"],
+        secondsUntilExpiry,
+        metadata: (r.metadata as Record<string, unknown>) ?? {},
+      },
+      tableExists: true,
+      error: null,
+    };
+  } catch (err) {
+    return {
+      data: null,
+      tableExists: false,
       error: err instanceof Error ? err.message : "Unknown error",
     };
   }

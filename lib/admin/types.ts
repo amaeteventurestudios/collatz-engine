@@ -106,3 +106,18 @@ export interface HealthPanel {
   metricsEnabled: boolean;
   recentWarnings: ActivityLogEntry[];
 }
+
+export interface WorkerLockState {
+  id: string;
+  lockName: string;
+  workerInstanceId: string;
+  hostname: string | null;
+  pid: number | null;
+  acquiredAt: string;
+  heartbeatAt: string;
+  expiresAt: string;
+  releasedAt: string | null;
+  status: "active" | "expired" | "released" | "force_released";
+  secondsUntilExpiry: number;
+  metadata: Record<string, unknown>;
+}

@@ -87,6 +87,10 @@ export async function runCleanupFormAction(): Promise<void> {
   await runCleanupAction();
 }
 
+export async function forceReleaseLockFormAction(): Promise<void> {
+  await forceReleaseLockAction();
+}
+
 // ── Engine actions ────────────────────────────────────────────────────────────
 
 export async function pauseEngineAction(): Promise<{ ok: boolean; error?: string }> {
@@ -168,6 +172,36 @@ export async function applyModeAction(
       event_type: "admin_mode_change",
       message: `Runtime config set to "${mode}" mode by admin.`,
       metadata: { source: "admin_panel", mode, preset },
+    }).then(undefined, () => {});
+
+    revalidatePath("/admin");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Unknown error" };
+  }
+}
+
+// ── Worker lock force-release action ─────────────────────────────────────────
+
+export async function forceReleaseLockAction(): Promise<{ ok: boolean; error?: string }> {
+  await requireAdminSession();
+  try {
+    const client = getServiceClient();
+    const { data, error } = await client.rpc("force_release_collatz_worker_lock", {
+      p_lock_name: "primary",
+    });
+
+    if (error) return { ok: false, error: error.message };
+
+    const result = data as Record<string, unknown>;
+    if (!result.success) {
+      return { ok: false, error: (result.reason as string) ?? "no active lock to release" };
+    }
+
+    await client.from("collatz_activity_logs").insert({
+      event_type: "admin_force_release_lock",
+      message: "Worker lock force-released by admin via control panel.",
+      metadata: { source: "admin_panel", released_lock: result.released_lock },
     }).then(undefined, () => {});
 
     revalidatePath("/admin");

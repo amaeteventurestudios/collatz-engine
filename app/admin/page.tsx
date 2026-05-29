@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getEngineAdminState, getRecentActivityLogs, getThroughputHistory, getDbRuntimeConfig } from "@/lib/admin/metrics";
+import { getEngineAdminState, getRecentActivityLogs, getThroughputHistory, getDbRuntimeConfig, getWorkerLockState } from "@/lib/admin/metrics";
 import { getStorageMonitor, formatBytes } from "@/lib/admin/storage";
 import { getR2Status } from "@/lib/admin/r2";
 import { MODE_PRESETS, secondsSince, formatDuration, heartbeatStatus } from "@/lib/admin/engine";
@@ -11,8 +11,9 @@ import {
   applySafeModeFormAction,
   applyNormalModeFormAction,
   runCleanupFormAction,
+  forceReleaseLockFormAction,
 } from "./actions";
-import type { StorageStatus, TableSizeRow } from "@/lib/admin/types";
+import type { StorageStatus, TableSizeRow, WorkerLockState } from "@/lib/admin/types";
 
 export const dynamic = "force-dynamic";
 
@@ -232,8 +233,16 @@ function HealthDot({ ok, label }: { ok: boolean | null; label: string }) {
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 
+function lockStatusPill(status: WorkerLockState["status"] | null) {
+  if (!status) return <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-700 px-2.5 py-0.5 text-[10px] font-semibold text-slate-400">◌ None</span>;
+  if (status === "active") return <span className="inline-flex items-center gap-1.5 rounded-full bg-green-500/15 px-2.5 py-0.5 text-[10px] font-semibold text-green-400"><span className="h-1.5 w-1.5 rounded-full bg-green-400 animate-pulse" />Active</span>;
+  if (status === "expired") return <span className="inline-flex items-center gap-1.5 rounded-full bg-red-500/15 px-2.5 py-0.5 text-[10px] font-semibold text-red-400">⚠ Expired</span>;
+  if (status === "force_released") return <span className="inline-flex items-center gap-1.5 rounded-full bg-orange-500/15 px-2.5 py-0.5 text-[10px] font-semibold text-orange-400">⚡ Force Released</span>;
+  return <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-700 px-2.5 py-0.5 text-[10px] font-semibold text-slate-400">✓ Released</span>;
+}
+
 export default async function AdminPage() {
-  const [engineResult, storageData, r2Data, throughputData, activityData, dbConfigResult] =
+  const [engineResult, storageData, r2Data, throughputData, activityData, dbConfigResult, workerLockResult] =
     await Promise.all([
       getEngineAdminState(),
       getStorageMonitor(),
@@ -241,9 +250,12 @@ export default async function AdminPage() {
       getThroughputHistory(40),
       getRecentActivityLogs(15),
       getDbRuntimeConfig(),
+      getWorkerLockState(),
     ]);
 
   const engine = engineResult.data;
+  const workerLock = workerLockResult.data;
+  const lockTableExists = workerLockResult.tableExists;
   // Use live DB config when available, fall back to env-derived config
   const runtime = dbConfigResult.data ?? {
     mode: "recovery", batchSize: 25, batchDelayMs: 10000, logIntervalMs: 60000,
@@ -343,6 +355,90 @@ export default async function AdminPage() {
             </span>
             <DisabledButton label="Stop Engine" phase="Phase 3" />
           </div>
+        </Card>
+      </section>
+
+      {/* ── Section A2: Worker Lock ───────────────────── */}
+      <section>
+        <SectionHeading id="worker-lock">Worker Lock</SectionHeading>
+        <Card>
+          {!lockTableExists ? (
+            <div className="rounded-xl border border-yellow-900/50 bg-yellow-950/30 px-4 py-3">
+              <p className="text-[11px] text-yellow-400">
+                Worker lock table not found. Run{" "}
+                <span className="font-mono">supabase/phase-2b-worker-lock.sql</span> in the Supabase SQL Editor to enable the single-worker lock.
+              </p>
+            </div>
+          ) : (
+            <>
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                <div className="flex items-center gap-3">
+                  {lockStatusPill(workerLock?.status ?? null)}
+                  {workerLock?.status === "active" && (
+                    <span className="text-[10px] text-slate-500">
+                      expires in{" "}
+                      <span className={workerLock.secondsUntilExpiry < 10 ? "text-red-400 font-bold" : "text-slate-400"}>
+                        {workerLock.secondsUntilExpiry}s
+                      </span>
+                    </span>
+                  )}
+                </div>
+                <form action={forceReleaseLockFormAction}>
+                  <button
+                    type="submit"
+                    disabled={!workerLock || workerLock.status !== "active"}
+                    className="rounded-lg border border-red-800 px-3 py-1.5 text-[11px] font-medium text-red-400 hover:bg-red-950 disabled:cursor-not-allowed disabled:opacity-40 transition-colors"
+                  >
+                    Force Release Lock
+                  </button>
+                </form>
+              </div>
+
+              {workerLock ? (
+                <div className="grid grid-cols-2 gap-x-8 gap-y-1.5 sm:grid-cols-3 text-[11px]">
+                  {[
+                    ["Instance ID", workerLock.workerInstanceId],
+                    ["Hostname", workerLock.hostname ?? "—"],
+                    ["PID", workerLock.pid != null ? String(workerLock.pid) : "—"],
+                    ["Acquired at", new Date(workerLock.acquiredAt).toUTCString()],
+                    ["Last heartbeat", new Date(workerLock.heartbeatAt).toUTCString()],
+                    ["Expires at", new Date(workerLock.expiresAt).toUTCString()],
+                    ["Status", workerLock.status],
+                    ["Released at", workerLock.releasedAt ? new Date(workerLock.releasedAt).toUTCString() : "—"],
+                  ].map(([k, v]) => (
+                    <div key={k} className="flex justify-between border-b border-slate-800/50 py-1">
+                      <span className="text-slate-600">{k}</span>
+                      <span className="font-mono text-slate-300 text-right break-all">{v}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-[11px] text-slate-600">No lock history found — no worker has run since the migration.</p>
+              )}
+
+              {workerLock?.status === "active" && isPaused && (
+                <div className="mt-4 rounded-xl border border-yellow-900/50 bg-yellow-950/30 px-4 py-3">
+                  <p className="text-[11px] text-yellow-400">
+                    Engine is paused but a worker lock is active. The worker is idle (respecting pause) but holds the lock. This is normal — the lock will heartbeat until the worker is stopped.
+                  </p>
+                </div>
+              )}
+
+              {workerLock?.status === "expired" && (
+                <div className="mt-4 rounded-xl border border-red-900/50 bg-red-950/30 px-4 py-3">
+                  <p className="text-[11px] text-red-400">
+                    The last lock expired without a clean release. The worker likely crashed. A new worker can start freely — the expired lock does not block acquisition.
+                  </p>
+                </div>
+              )}
+
+              <p className="mt-3 text-[10px] text-slate-700">
+                Only one worker may run globally. TTL: 30s · Heartbeat: every 10s.
+                Force release only if the worker is confirmed stopped. See{" "}
+                <span className="font-mono">docs/operations/worker-lock.md</span>.
+              </p>
+            </>
+          )}
         </Card>
       </section>
 
