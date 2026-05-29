@@ -324,6 +324,61 @@ export async function readCommittedMaxN(
 }
 
 /**
+ * Fetch batch_completed activity log entries whose batch_start falls within
+ * [batchStartFrom, batchEndTo]. Used by the incident repair script to
+ * inspect the exact logs around a known incident range.
+ *
+ * Returns entries sorted ascending by batch_start, then batch_end.
+ */
+export async function getBatchCompletedLogsInRange(
+  batchStartFrom: number,
+  batchEndTo: number,
+  limit = 500,
+): Promise<ActivityLogRow[]> {
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from("collatz_activity_logs")
+    .select(
+      "id, event_type, message, batch_start, batch_end, numbers_processed, duration_ms, numbers_per_second, metadata, created_at",
+    )
+    .eq("event_type", "batch_completed")
+    .gte("batch_start", batchStartFrom)
+    .lte("batch_start", batchEndTo)
+    .order("batch_start", { ascending: true })
+    .order("batch_end", { ascending: true })
+    .limit(limit);
+  if (error) {
+    console.error("[Collatz Engine] getBatchCompletedLogsInRange failed", error);
+    return [];
+  }
+  return (data ?? []) as ActivityLogRow[];
+}
+
+/**
+ * Fetch all activity log entries of a given event_type, newest first.
+ * Used by the verifier to find documented incident repairs.
+ */
+export async function getActivityLogsByEventType(
+  eventType: string,
+  limit = 50,
+): Promise<ActivityLogRow[]> {
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from("collatz_activity_logs")
+    .select(
+      "id, event_type, message, batch_start, batch_end, numbers_processed, duration_ms, numbers_per_second, metadata, created_at",
+    )
+    .eq("event_type", eventType)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) {
+    console.error(`[Collatz Engine] getActivityLogsByEventType(${eventType}) failed`, error);
+    return [];
+  }
+  return (data ?? []) as ActivityLogRow[];
+}
+
+/**
  * Convenience wrapper to update throughput-tracking columns on engine state.
  */
 export async function updateThroughputState(updates: {

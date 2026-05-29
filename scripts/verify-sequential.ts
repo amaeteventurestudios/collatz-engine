@@ -4,6 +4,17 @@
  * Checks that recent activity logs and engine state do not show gaps in the
  * sequential range of processed numbers. Exits 0 if clean, 1 if gaps found.
  *
+ * Repair awareness:
+ *   If batch_completed logs contain anomalies (overlaps or gaps) that are
+ *   fully documented in a "duplicate_worker_incident_repair" activity log
+ *   entry, those anomalies are classified as REPAIRED and do NOT cause a
+ *   failure. Only anomalies with NO matching repair entry fail.
+ *
+ *   This distinction is precise:
+ *     - current_number = last_checked_number + 1 is always enforced (no exceptions).
+ *     - Unrepaired gaps/overlaps always fail.
+ *     - Repaired anomalies are reported but do not fail.
+ *
  * Usage:
  *   npm run collatz:verify-sequential
  */
@@ -13,15 +24,17 @@ import { loadEnvConfig } from "@next/env";
 loadEnvConfig(process.cwd());
 
 async function main() {
-  const { getEngineState, getRecentActivityLogs } = await import(
-    "../lib/collatz/store"
+  const { getEngineState, getRecentActivityLogs, getActivityLogsByEventType } =
+    await import("../lib/collatz/store");
+  const { analyzeSequence, extractRepairs } = await import(
+    "../lib/collatz/incident-repair"
   );
 
   console.log("\n┌──────────────────────────────────────────┐");
   console.log("│   Collatz Sequential Integrity Verifier   │");
   console.log("└──────────────────────────────────────────┘\n");
 
-  // ── Engine state check ───────────────────────────────────────────────────
+  // ── Engine state check ────────────────────────────────────────────────────
   const state = await getEngineState();
   if (!state) {
     console.error("[verify-sequential] Engine state not found. Cannot verify.\n");
@@ -45,22 +58,33 @@ async function main() {
   console.log(`    total_numbers_checked: ${state.total_numbers_checked.toLocaleString("en-US")}`);
   console.log(`    status               : ${state.current_status}\n`);
 
+  // ── Fetch documented incident repairs ─────────────────────────────────────
+  const repairLogs = await getActivityLogsByEventType("duplicate_worker_incident_repair", 20);
+  const allRepairs = repairLogs.flatMap((log) =>
+    log.metadata ? extractRepairs(log.metadata) : [],
+  );
+
+  if (repairLogs.length > 0) {
+    console.log(
+      `  Found ${repairLogs.length} documented incident repair(s) covering ${allRepairs.length} transition(s).`,
+    );
+    for (const log of repairLogs) {
+      console.log(`    [repair] ${log.message?.slice(0, 100)}...`);
+    }
+    console.log();
+  }
+
   // ── Activity log gap check ────────────────────────────────────────────────
   const logs = await getRecentActivityLogs(200);
-  const batchLogs = logs
+
+  const completed = logs
     .filter(
       (l) =>
-        (l.event_type === "batch_completed" || l.event_type === "batch_started") &&
+        l.event_type === "batch_completed" &&
         l.batch_start != null &&
         l.batch_end != null,
     )
-    .sort((a, b) => {
-      // Sort ascending by batch_start for gap analysis
-      return (a.batch_start ?? 0) - (b.batch_start ?? 0);
-    });
-
-  // Keep only batch_completed entries (deduplicate started/completed pairs)
-  const completed = batchLogs.filter((l) => l.event_type === "batch_completed");
+    .sort((a, b) => (a.batch_start ?? 0) - (b.batch_start ?? 0));
 
   if (completed.length === 0) {
     console.log("  No batch_completed log entries found — skipping gap analysis.");
@@ -71,40 +95,59 @@ async function main() {
 
   console.log(`  Analyzing ${completed.length} batch_completed log entries...\n`);
 
-  let gapsFound = 0;
-  let prevEnd: number | null = null;
+  const batchEntries = completed.map((l) => ({
+    batch_start: l.batch_start!,
+    batch_end: l.batch_end!,
+  }));
 
-  for (const entry of completed) {
-    const start = entry.batch_start!;
-    const end = entry.batch_end!;
+  const analysis = analyzeSequence(batchEntries, allRepairs);
 
-    if (prevEnd !== null) {
-      const expectedStart = prevEnd + 1;
-      if (start !== expectedStart) {
-        const gap = start - expectedStart;
-        console.error(
-          `  [GAP] batch_end=${prevEnd.toLocaleString("en-US")} → ` +
-            `batch_start=${start.toLocaleString("en-US")} ` +
-            `(gap of ${gap.toLocaleString("en-US")} numbers, ` +
-            `expected start=${expectedStart.toLocaleString("en-US")})`,
-        );
-        gapsFound++;
-      }
+  // Report repaired anomalies (informational — not a failure)
+  if (analysis.repairedAnomalies.length > 0) {
+    console.log(
+      `  ${analysis.repairedAnomalies.length} anomaly/anomalies covered by documented incident repair(s):`,
+    );
+    for (const a of analysis.repairedAnomalies) {
+      const detail =
+        a.type === "overlap"
+          ? `overlap (${Math.abs(a.delta)} numbers)`
+          : `gap of ${a.delta} numbers`;
+      console.log(
+        `    [repaired] prevEnd=${a.prevEnd.toLocaleString("en-US")} → ` +
+          `batchStart=${a.batchStart.toLocaleString("en-US")} [${detail}]`,
+      );
     }
-    prevEnd = end;
+    console.log();
   }
 
-  if (gapsFound === 0) {
-    console.log(`  All ${completed.length} logged batches are contiguous.\n`);
-    console.log("[verify-sequential] Result: PASS\n");
-    process.exit(0);
-  } else {
+  // Report unrepaired anomalies (these fail)
+  if (analysis.unrepairedAnomalies.length > 0) {
+    for (const a of analysis.unrepairedAnomalies) {
+      const detail =
+        a.type === "overlap"
+          ? `overlap of ${Math.abs(a.delta)} numbers`
+          : `gap of ${a.delta} numbers (${(a.prevEnd + 1).toLocaleString("en-US")}–${(a.batchStart - 1).toLocaleString("en-US")} missing)`;
+      console.error(
+        `  [UNREPAIRED] prevEnd=${a.prevEnd.toLocaleString("en-US")} → ` +
+          `batchStart=${a.batchStart.toLocaleString("en-US")} [${detail}]`,
+      );
+    }
     console.error(
-      `\n[verify-sequential] Result: FAIL — ${gapsFound} gap(s) detected in recent logs.\n` +
-        `  This means numbers were skipped. Check admin panel and worker logs.\n`,
+      `\n[verify-sequential] Result: FAIL — ${analysis.unrepairedAnomalies.length} unrepaired anomaly/anomalies.\n` +
+        `  Run 'npm run collatz:repair-duplicate-worker-incident' if this is from a known incident,\n` +
+        `  or investigate the gap source before continuing.\n`,
     );
     process.exit(1);
   }
+
+  const summaryLine =
+    analysis.repairedAnomalies.length > 0
+      ? `All ${analysis.totalBatches} logged batches are contiguous (${analysis.repairedAnomalies.length} repaired anomaly/anomalies excluded from clean count).`
+      : `All ${analysis.totalBatches} logged batches are contiguous.`;
+
+  console.log(`  ${summaryLine}\n`);
+  console.log("[verify-sequential] Result: PASS\n");
+  process.exit(0);
 }
 
 main().catch((err: unknown) => {
