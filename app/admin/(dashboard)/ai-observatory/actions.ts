@@ -15,7 +15,12 @@ import {
   upsertDraft,
   updateDraftStatus,
   createAINote,
+  updateAINoteStatus,
   getAIProviderEncryptedKey,
+  getDraftById,
+  getPublishingProfiles,
+  logDraftEvent,
+  createGeneratedImageRecord,
 } from "@/lib/ai-observatory/admin-store";
 import { checkDraftGuardrails } from "@/lib/ai-observatory/guardrails";
 import type { ProviderName, ContentType, NoteType, NoteSeverity, DraftStatus } from "@/lib/ai-observatory/types";
@@ -195,11 +200,16 @@ export async function saveDraftAction(formData: FormData): Promise<{ ok: boolean
   const draftData = {
     title: formData.get("title") as string,
     content_type: formData.get("content_type") as ContentType,
+    excerpt: formData.get("excerpt") as string | null,
+    tags: ((formData.get("tags") as string | null) ?? "").split(",").map((s) => s.trim()).filter(Boolean),
     body_markdown: formData.get("body_markdown") as string | null,
     body_plain_text: formData.get("body_plain_text") as string | null,
+    body_html: formData.get("body_html") as string | null,
     image_prompt: formData.get("image_prompt") as string | null,
+    image_preset_id: formData.get("image_preset_id") as string | null,
     publishing_profile_id: formData.get("publishing_profile_id") as string | null,
     source_note_id: formData.get("source_note_id") as string | null,
+    review_notes: formData.get("review_notes") as string | null,
     status: (formData.get("status") as DraftStatus) ?? "draft",
   };
 
@@ -209,7 +219,27 @@ export async function saveDraftAction(formData: FormData): Promise<{ ok: boolean
     { ...draftData, guardrail_status: guardrailResult.summary },
     id ?? undefined,
   );
+  if (result.ok && result.id) {
+    await logDraftEvent(result.id, id ? "draft_updated" : "draft_created", id ? "Draft updated" : "Draft created");
+  }
 
+  revalidatePath("/admin/ai-observatory");
+  return result;
+}
+
+export async function createBlankDraftAction(formData: FormData): Promise<{ ok: boolean; id?: string; error?: string }> {
+  await requireSession();
+  const title = ((formData.get("title") as string | null) ?? "Untitled Observatory Draft").trim();
+  const contentType = ((formData.get("content_type") as ContentType | null) ?? "blog_post");
+  const publishingProfileId = formData.get("publishing_profile_id") as string | null;
+  const result = await upsertDraft({
+    title,
+    content_type: contentType,
+    publishing_profile_id: publishingProfileId || null,
+    status: "draft",
+    guardrail_status: "Not checked yet.",
+  });
+  if (result.ok && result.id) await logDraftEvent(result.id, "draft_created", "Draft created manually");
   revalidatePath("/admin/ai-observatory");
   return result;
 }
@@ -218,6 +248,15 @@ export async function approveDraftAction(formData: FormData): Promise<{ ok: bool
   await requireSession();
   const id = formData.get("id") as string;
   if (!id) return { ok: false, error: "Draft ID required." };
+  const draft = await getDraftById(id);
+  if (!draft) return { ok: false, error: "Draft not found." };
+  const guardrails = checkDraftGuardrails(draft);
+  if (!guardrails.passed) return { ok: false, error: guardrails.summary };
+  const profiles = await getPublishingProfiles();
+  const profile = profiles.find((p) => p.id === draft.publishing_profile_id);
+  if (profile?.requires_image && !draft.image_url) {
+    return { ok: false, error: "This publishing profile requires an image before approval." };
+  }
   const result = await updateDraftStatus(id, "approved", { approved_at: new Date().toISOString() });
   revalidatePath("/admin/ai-observatory");
   return result;
@@ -246,9 +285,35 @@ export async function markPublishedAction(formData: FormData): Promise<{ ok: boo
   await requireSession();
   const id = formData.get("id") as string;
   if (!id) return { ok: false, error: "Draft ID required." };
+  const draft = await getDraftById(id);
+  if (!draft) return { ok: false, error: "Draft not found." };
+  if (draft.status !== "approved") return { ok: false, error: "Only approved drafts can be marked published/exported." };
   const result = await updateDraftStatus(id, "published", { published_at: new Date().toISOString() });
   revalidatePath("/admin/ai-observatory");
   return result;
+}
+
+export async function reopenDraftAction(formData: FormData): Promise<{ ok: boolean; error?: string }> {
+  await requireSession();
+  const id = formData.get("id") as string;
+  if (!id) return { ok: false, error: "Draft ID required." };
+  const result = await updateDraftStatus(id, "needs_review");
+  revalidatePath("/admin/ai-observatory");
+  return result;
+}
+
+export async function runGuardrailsAction(formData: FormData): Promise<{ ok: boolean; summary?: string; error?: string }> {
+  await requireSession();
+  const id = formData.get("id") as string;
+  if (!id) return { ok: false, error: "Draft ID required." };
+  const draft = await getDraftById(id);
+  if (!draft) return { ok: false, error: "Draft not found." };
+  const guardrails = checkDraftGuardrails(draft);
+  const result = await upsertDraft({ guardrail_status: guardrails.summary }, id);
+  await logDraftEvent(id, "guardrails_checked", "Guardrails checked", { passed: guardrails.passed, failedCount: guardrails.failedCount });
+  revalidatePath("/admin/ai-observatory");
+  if (!result.ok) return { ok: false, error: result.error };
+  return { ok: true, summary: guardrails.summary };
 }
 
 // ─── Generation ───────────────────────────────────────────────────────────────
@@ -268,6 +333,40 @@ export async function generateTextAction(formData: FormData): Promise<{ ok: bool
   return result;
 }
 
+export async function improveDraftAction(formData: FormData): Promise<{ ok: boolean; id?: string; error?: string }> {
+  await requireSession();
+  const id = formData.get("id") as string | null;
+  const instruction = (formData.get("instruction") as string | null) ?? "Improve this draft while preserving verified source data and no-proof disclaimers.";
+  const draft = id ? await getDraftById(id) : null;
+  if (!draft) return { ok: false, error: "Select a draft before running AI improvement." };
+  const providerName = (formData.get("provider_name") as ProviderName | null) ?? "anthropic";
+  const modelName = (formData.get("model_name") as string | null) ?? "claude-opus-4-8";
+  const encryptedKey = await getAIProviderEncryptedKey(providerName).catch(() => null);
+  const result = await generateText({
+    taskType: "drafts",
+    prompt: [
+      instruction,
+      "Return only the revised markdown body.",
+      "Do not claim the Collatz Conjecture is solved or proved.",
+      `Title: ${draft.title}`,
+      `Content type: ${draft.content_type}`,
+      `Source data: ${JSON.stringify(draft.source_data ?? {})}`,
+      `Current markdown:\n${draft.body_markdown ?? ""}`,
+    ].join("\n\n"),
+  }, encryptedKey ?? null, providerName, modelName);
+  if (!result.ok || !result.text) return { ok: false, error: result.error ?? "No text generated." };
+  const guardrails = checkDraftGuardrails({ ...draft, body_markdown: result.text, status: "needs_review" });
+  const saved = await upsertDraft({
+    body_markdown: result.text,
+    body_plain_text: result.text.replace(/[#*_`>\-]/g, "").trim(),
+    status: "needs_review",
+    guardrail_status: guardrails.summary,
+  }, draft.id);
+  if (saved.ok) await logDraftEvent(draft.id, "text_generated", "Text generated or improved", { provider: result.provider, model: result.model });
+  revalidatePath("/admin/ai-observatory");
+  return saved;
+}
+
 export async function generateImageAction(formData: FormData): Promise<{ ok: boolean; imageUrl?: string; error?: string }> {
   await requireSession();
 
@@ -281,5 +380,29 @@ export async function generateImageAction(formData: FormData): Promise<{ ok: boo
 
   const encryptedKey = await getAIProviderEncryptedKey("openai").catch(() => null);
   const result = await generateImage({ prompt, width, height, target, draftId: draftId ?? undefined }, encryptedKey ?? null);
+  if (result.ok && result.imageUrl) {
+    await createGeneratedImageRecord({
+      draft_id: draftId,
+      provider_name: "openai",
+      model_name: result.model ?? "dall-e-3",
+      prompt,
+      image_url: result.imageUrl,
+      width,
+      height,
+      target,
+      status: "generated",
+    });
+    revalidatePath("/admin/ai-observatory");
+  }
+  return result;
+}
+
+export async function updateNoteStatusAction(formData: FormData): Promise<{ ok: boolean; error?: string }> {
+  await requireSession();
+  const id = formData.get("id") as string;
+  const status = formData.get("status") as string;
+  if (!id || !status) return { ok: false, error: "Note ID and status are required." };
+  const result = await updateAINoteStatus(id, status);
+  revalidatePath("/admin/ai-observatory");
   return result;
 }

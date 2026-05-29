@@ -1,6 +1,5 @@
 import { supabase } from "@/lib/supabase";
 import {
-  DEMO_NOTES,
   REPORT_TYPE_META,
   type DemoNote,
   type ReportType,
@@ -25,6 +24,20 @@ interface SupabaseNote {
   longest_sequence_length?: number | null;
   highest_peak_value?: number | null;
   report_data?: Record<string, unknown> | null;
+}
+
+interface PublicDraft {
+  id: string;
+  title: string;
+  content_type: string;
+  excerpt: string | null;
+  body_markdown: string | null;
+  body_plain_text: string | null;
+  status: string;
+  source_data: Record<string, unknown> | null;
+  approved_at: string | null;
+  published_at: string | null;
+  updated_at: string;
 }
 
 function formatPublishedDate(iso: string | null): string {
@@ -123,35 +136,87 @@ function mapToDemoNote(row: SupabaseNote): DemoNote {
   };
 }
 
+function mapDraftToNote(row: PublicDraft): DemoNote {
+  const reportType = mapReportType(row.content_type);
+  const bodyText = row.body_markdown ?? row.body_plain_text ?? "";
+  const body = bodyText
+    ? bodyText.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean)
+    : [];
+  const source = row.source_data ?? {};
+
+  return {
+    id: row.id,
+    reportType,
+    tabCategory: mapTabCategory(reportType),
+    title: row.title,
+    summary: row.excerpt ?? body[0] ?? "Reviewed Observatory content from verified Collatz Engine data.",
+    body,
+    publishedAt: formatPublishedDate(row.published_at ?? row.approved_at ?? row.updated_at),
+    reviewedBy: "Admin",
+    stats: buildStats({
+      id: row.id,
+      report_type: reportType,
+      title: row.title,
+      summary: row.excerpt ?? "",
+      body: bodyText,
+      status: row.status,
+      published_at: row.published_at ?? row.approved_at,
+      reviewed_by: "Admin",
+      total_checked: Number(source.total_checked ?? source.numbers_checked ?? 0) || null,
+      longest_sequence_length: Number(source.longest_sequence_length ?? source.longest_trajectory ?? 0) || null,
+      highest_peak_value: Number(source.highest_peak_value ?? source.highest_peak ?? 0) || null,
+      report_data: source,
+    }),
+    isPublic: true,
+  };
+}
+
 /**
- * Fetch all published Observatory notes.
- * Queries ai_observatory_notes where status = 'published', ordered newest first.
- * Falls back to DEMO_NOTES if Supabase is unavailable or the table is empty.
+ * Fetch approved/published Observatory content.
+ * No demo fallback is used here: public content must come from approved data.
  */
 export async function getPublishedNotes(): Promise<DemoNote[]> {
-  if (!supabase) return DEMO_NOTES;
+  if (!supabase) return [];
   try {
+    const drafts = await supabase
+      .from("ai_drafts")
+      .select("id,title,content_type,excerpt,body_markdown,body_plain_text,status,source_data,approved_at,published_at,updated_at")
+      .in("status", ["approved", "published"])
+      .order("published_at", { ascending: false, nullsFirst: false })
+      .order("approved_at", { ascending: false, nullsFirst: false });
+
+    if (!drafts.error && drafts.data && drafts.data.length > 0) {
+      return (drafts.data as PublicDraft[]).map(mapDraftToNote);
+    }
+
     const { data, error } = await supabase
       .from("ai_observatory_notes")
       .select("*")
       .eq("status", "published")
       .order("published_at", { ascending: false });
 
-    if (error || !data || data.length === 0) return DEMO_NOTES;
+    if (error || !data || data.length === 0) return [];
     return (data as SupabaseNote[]).map(mapToDemoNote);
   } catch {
-    return DEMO_NOTES;
+    return [];
   }
 }
 
 /**
  * Fetch a single published Observatory note by id.
  * Returns null (→ 404) if the note does not exist or is not published.
- * Falls back to DEMO_NOTES lookup when Supabase is unavailable.
  */
 export async function getPublishedNoteById(id: string): Promise<DemoNote | null> {
   if (supabase) {
     try {
+      const draft = await supabase
+        .from("ai_drafts")
+        .select("id,title,content_type,excerpt,body_markdown,body_plain_text,status,source_data,approved_at,published_at,updated_at")
+        .eq("id", id)
+        .in("status", ["approved", "published"])
+        .maybeSingle();
+      if (!draft.error && draft.data) return mapDraftToNote(draft.data as PublicDraft);
+
       const { data, error } = await supabase
         .from("ai_observatory_notes")
         .select("*")
@@ -161,7 +226,7 @@ export async function getPublishedNoteById(id: string): Promise<DemoNote | null>
 
       if (!error && data) return mapToDemoNote(data as SupabaseNote);
       if (!error && !data) return null; // exists but not published → 404
-    } catch { /* fall through to demo */ }
+    } catch { return null; }
   }
-  return DEMO_NOTES.find((n) => n.id === id) ?? null;
+  return null;
 }

@@ -232,6 +232,8 @@ export interface AIDraftRow {
   id: string;
   title: string;
   content_type: ContentType;
+  excerpt: string | null;
+  tags: string[] | null;
   body_markdown: string | null;
   body_plain_text: string | null;
   body_html: string | null;
@@ -248,6 +250,15 @@ export interface AIDraftRow {
   published_at: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface AIDraftAuditEvent {
+  id: string;
+  draft_id: string;
+  event_type: string;
+  event_label: string;
+  metadata: Record<string, unknown> | null;
+  created_at: string;
 }
 
 // ─── Generated Images ─────────────────────────────────────────────────────────

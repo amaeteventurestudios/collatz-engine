@@ -9,8 +9,11 @@ import type {
   AIPublishingProfile,
   AINoteRow,
   AIDraftRow,
+  AIDraftAuditEvent,
+  AIGeneratedImage,
   AIObservatoryStats,
   ProviderName,
+  DraftStatus,
 } from "./types";
 
 // ─── Supabase client ──────────────────────────────────────────────────────────
@@ -84,11 +87,22 @@ export async function getAIProviderEncryptedKey(providerId: string): Promise<str
     const { data, error } = await client
       .from("ai_providers")
       .select("api_key_encrypted")
-      .eq("id", providerId)
+      .eq("provider_name", providerId)
       .maybeSingle();
     if (error || !data) return null;
     return (data as { api_key_encrypted: string | null }).api_key_encrypted;
   } catch { return null; }
+}
+
+export async function getAISetupState(): Promise<{ tablesReady: boolean }> {
+  const client = getClient();
+  if (!client) return { tablesReady: false };
+  try {
+    const { error } = await client.from("ai_drafts").select("id", { head: true, count: "exact" }).limit(1);
+    return { tablesReady: !error };
+  } catch {
+    return { tablesReady: false };
+  }
 }
 
 export async function upsertAIProvider(
@@ -258,6 +272,20 @@ export async function getRecentAINotes(limit = 10): Promise<AINoteRow[]> {
   } catch { return []; }
 }
 
+export async function getAINotes(limit = 50): Promise<AINoteRow[]> {
+  const client = getClient();
+  if (!client) return [];
+  try {
+    const { data, error } = await client
+      .from("ai_notes")
+      .select("*")
+      .order("updated_at", { ascending: false })
+      .limit(limit);
+    if (error || isMissingTable(error)) return [];
+    return (data ?? []) as AINoteRow[];
+  } catch { return []; }
+}
+
 export async function createAINote(
   noteData: Omit<AINoteRow, "id" | "created_at" | "updated_at">,
 ): Promise<{ ok: boolean; id?: string; error?: string }> {
@@ -276,6 +304,24 @@ export async function createAINote(
   }
 }
 
+export async function updateAINoteStatus(
+  id: string,
+  status: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const client = getClient();
+  if (!client) return { ok: false, error: "Supabase not configured." };
+  try {
+    const { error } = await client.from("ai_notes").update({
+      status,
+      updated_at: new Date().toISOString(),
+    }).eq("id", id);
+    if (error) return { ok: false, error: error.message };
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Failed to update note." };
+  }
+}
+
 // ─── AI Drafts ────────────────────────────────────────────────────────────────
 
 export async function getRecentDrafts(limit = 20, statusFilter?: string[]): Promise<AIDraftRow[]> {
@@ -287,6 +333,20 @@ export async function getRecentDrafts(limit = 20, statusFilter?: string[]): Prom
       query = query.in("status", statusFilter);
     }
     const { data, error } = await query;
+    if (error || isMissingTable(error)) return [];
+    return (data ?? []) as AIDraftRow[];
+  } catch { return []; }
+}
+
+export async function getAllDrafts(limit = 100): Promise<AIDraftRow[]> {
+  const client = getClient();
+  if (!client) return [];
+  try {
+    const { data, error } = await client
+      .from("ai_drafts")
+      .select("*")
+      .order("updated_at", { ascending: false })
+      .limit(limit);
     if (error || isMissingTable(error)) return [];
     return (data ?? []) as AIDraftRow[];
   } catch { return []; }
@@ -320,9 +380,45 @@ export async function upsertDraft(
   }
 }
 
+export async function logDraftEvent(
+  draftId: string,
+  eventType: string,
+  eventLabel: string,
+  metadata?: Record<string, unknown>,
+): Promise<void> {
+  const client = getClient();
+  if (!client) return;
+  try {
+    await client.from("ai_draft_audit_events").insert({
+      draft_id: draftId,
+      event_type: eventType,
+      event_label: eventLabel,
+      metadata: metadata ?? null,
+      created_at: new Date().toISOString(),
+    });
+  } catch {
+    /* Phase 3B audit table is additive; missing table should not block draft saves. */
+  }
+}
+
+export async function getDraftAuditEvents(draftId: string): Promise<AIDraftAuditEvent[]> {
+  const client = getClient();
+  if (!client) return [];
+  try {
+    const { data, error } = await client
+      .from("ai_draft_audit_events")
+      .select("*")
+      .eq("draft_id", draftId)
+      .order("created_at", { ascending: false })
+      .limit(50);
+    if (error || isMissingTable(error)) return [];
+    return (data ?? []) as AIDraftAuditEvent[];
+  } catch { return []; }
+}
+
 export async function updateDraftStatus(
   id: string,
-  status: string,
+  status: DraftStatus,
   extras?: { review_notes?: string; approved_at?: string; published_at?: string },
 ): Promise<{ ok: boolean; error?: string }> {
   const client = getClient();
@@ -334,8 +430,39 @@ export async function updateDraftStatus(
       updated_at: new Date().toISOString(),
     }).eq("id", id);
     if (error) return { ok: false, error: error.message };
+    await logDraftEvent(id, `status_${status}`, `Status changed to ${status.replace("_", " ")}`, extras);
     return { ok: true };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : "Failed to update draft status." };
+  }
+}
+
+export async function createGeneratedImageRecord(
+  image: Omit<AIGeneratedImage, "id" | "created_at" | "updated_at">,
+): Promise<{ ok: boolean; id?: string; error?: string }> {
+  const client = getClient();
+  if (!client) return { ok: false, error: "Supabase not configured." };
+  try {
+    const { data, error } = await client
+      .from("ai_generated_images")
+      .insert({ ...image, created_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+      .select("id")
+      .maybeSingle();
+    if (error) return { ok: false, error: error.message };
+    if (image.draft_id && image.image_url) {
+      await client.from("ai_drafts").update({
+        image_url: image.image_url,
+        image_prompt: image.prompt,
+        updated_at: new Date().toISOString(),
+      }).eq("id", image.draft_id);
+      await logDraftEvent(image.draft_id, "image_generated", "Image generated", {
+        provider: image.provider_name,
+        model: image.model_name,
+        target: image.target,
+      });
+    }
+    return { ok: true, id: (data as { id: string } | null)?.id };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Failed to save generated image." };
   }
 }

@@ -28,6 +28,7 @@ Run the migration in the Supabase SQL Editor:
 
 ```sql
 -- supabase/phase-3a-ai-observatory.sql
+-- supabase/phase-3b-ai-draft-workflow.sql
 ```
 
 Tables created:
@@ -41,6 +42,9 @@ Tables created:
 - `ai_drafts` — editable draft content
 - `ai_generated_images` — image generation records
 - `ai_usage_events` — usage and cost tracking (future)
+- `ai_draft_audit_events` — draft workflow history (Phase 3B)
+
+Phase 3B also adds draft `excerpt`, `tags`, and export metadata fields.
 
 ---
 
@@ -179,9 +183,29 @@ draft → needs_review → approved → published
 ```
 
 Rules:
-- Only `approved` drafts can be published/exported
-- `published` requires `approved_at` timestamp
-- All status changes are logged
+- Draft Queue and Draft Editor live inside `/admin/ai-observatory`; there is no separate admin sidebar item.
+- Clicking a draft in Draft Queue opens the Draft Editor tab with that draft selected.
+- Drafts can be saved, edited, regenerated, rejected, archived, reopened, approved, and manually exported.
+- Only `approved` drafts can be marked `published` / exported.
+- `published` requires the previous approved status and a `published_at` timestamp.
+- Status changes are logged to `ai_draft_audit_events` when the Phase 3B migration has been run.
+- Published drafts should not be edited unless reopened for review.
+
+Editable fields:
+- title
+- body markdown / plain text / HTML
+- excerpt
+- tags
+- publishing profile
+- content type
+- image preset
+- image prompt
+- review notes
+
+Read-only fields:
+- verified source data
+- engine metrics
+- audit metadata
 
 ---
 
@@ -198,6 +222,25 @@ Rules:
 - Source data attached — checked at draft save
 - Disclaimers required — phrase check in content
 
+Approval is blocked when hard guardrails fail:
+- proof or solution claims are detected
+- unsupported mathematical claims are detected
+- required source data is missing
+- approval-before-publish rules are violated
+- a publishing profile requires an image and no image exists
+
+Saving remains allowed while guardrails fail so an operator can continue editing.
+
+---
+
+## Image Placeholder and Generation
+
+The Draft Editor image panel never displays fake generated images. If no real generated image URL exists, it shows a premium dark placeholder with the expected preset dimensions and setup guidance.
+
+OpenAI image generation remains disabled until an OpenAI key is configured in AI Studio → Providers. When configured, image generation runs server-side, maps platform dimensions to a supported OpenAI image size, stores a row in `ai_generated_images`, and attaches the returned image URL to the draft.
+
+Image prompts must include Collatz Engine context, target platform, dimensions/aspect ratio, no proof claims, no false mathematical announcements, no generic robot imagery, and the dark observatory / mission-control aesthetic.
+
 ---
 
 ## Export Formats
@@ -208,6 +251,9 @@ Available from the draft detail view:
 - Download .md file
 - Download .txt file
 - JSON export with metadata and source data
+- Copy image prompt
+- Copy source data JSON
+- Download `.json`
 
 For Ghost:
 - Markdown with title, excerpt, tags, feature image URL
@@ -217,6 +263,8 @@ For LinkedIn:
 
 For X:
 - Thread format (numbered posts)
+
+Export is manual only in Phase 3B. Ghost, LinkedIn, X, Substack, Website, and Export Files targets explain the package they prepare; they do not directly post to third-party APIs.
 
 ---
 
@@ -235,10 +283,12 @@ This policy is enforced by the status workflow and server action guards.
 
 URL: `/observatory`
 
-Shows only content where `status = 'published'` or `status = 'approved'` from the `ai_observatory_notes` table (legacy) or `ai_drafts` table.
+Shows only content where `status = 'published'` or `status = 'approved'` from `ai_drafts`, with legacy `ai_observatory_notes` used only if no approved/public draft rows exist.
 
 If no approved content exists, a polished empty state is shown:
 "The Observatory will publish reviewed reports from verified engine activity."
+
+The public route does not fall back to static demo notes. Draft, needs-review, rejected, and archived content are excluded.
 
 ---
 
@@ -258,3 +308,42 @@ Guardrail checks flag the following phrases as violations:
 - "conjecture solved"
 - "definitive proof"
 - "mathematical proof" (in context of Collatz results)
+
+---
+
+## AI Notes Workflow
+
+AI Notes are internal observations from verified source events. Operators can:
+- create manual notes
+- mark notes reviewed
+- archive notes
+- convert notes into drafts
+
+If a provider is configured, conversion can generate draft body text server-side. If no provider is configured, the operator can create a blank draft seeded by real note/source context. The system must not invent source data.
+
+---
+
+## Weekly Report Generator
+
+The Weekly Report action creates a review draft foundation. With a configured text provider, it can generate a needs-review report from real recent engine/source data. Without a provider, it creates a structured draft shell only; it must not pretend that AI generated the report.
+
+Recommended sections:
+- engine progress
+- records/highlights
+- near-escape candidates
+- integrity status
+- operations/storage note when relevant
+- no-proof disclaimer
+
+---
+
+## Provider Setup Troubleshooting
+
+If provider buttons are disabled:
+1. Confirm `AI_SETTINGS_ENCRYPTION_KEY` is present locally and in Vercel.
+2. Redeploy after setting the encryption key.
+3. Add or replace the provider key in AI Studio → Providers.
+4. Use Test Connection.
+5. Confirm the selected task model uses a configured provider.
+
+Never log or expose full API keys. The browser should only receive masked key status.
