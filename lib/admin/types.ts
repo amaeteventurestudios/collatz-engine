@@ -122,6 +122,27 @@ export interface WorkerLockState {
   metadata: Record<string, unknown>;
 }
 
+export type WatchdogSignalStatus = "safe" | "warning" | "critical" | "unknown";
+
+export interface WatchdogSignal {
+  name: string;
+  status: WatchdogSignalStatus;
+  message: string;
+  detail?: string;
+}
+
+export interface WatchdogResult {
+  overall: WatchdogSignalStatus;
+  signals: {
+    lock: WatchdogSignal;
+    progress: WatchdogSignal;
+    pointer: WatchdogSignal;
+    storage: WatchdogSignal;
+    config: WatchdogSignal;
+  };
+  evaluatedAt: string;
+}
+
 /** Shape returned by GET /api/admin/metrics */
 export interface AdminMetricsApiResponse {
   engine: EngineAdminState | null;
@@ -133,5 +154,8 @@ export interface AdminMetricsApiResponse {
   activity: ActivityLogEntry[];
   workerLock: WorkerLockState | null;
   lockTableExists: boolean;
+  watchdog: WatchdogResult;
+  runtimeConfigExists: boolean;
+  latestIntegrityRun: null;
   fetchedAt: string;
 }

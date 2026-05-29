@@ -5,9 +5,11 @@ import {
   getRecentActivityLogs,
   getThroughputHistory,
   getWorkerLockState,
+  getDbRuntimeConfig,
 } from "@/lib/admin/metrics";
 import { getStorageMonitor } from "@/lib/admin/storage";
 import { getR2Status } from "@/lib/admin/r2";
+import { computeWatchdog } from "@/lib/admin/watchdog";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +25,7 @@ export async function GET() {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const [engine, storage, r2, throughput, activity, workerLock] =
+  const [engine, storage, r2, throughput, activity, workerLock, runtimeConfig] =
     await Promise.all([
       getEngineAdminState(),
       getStorageMonitor(),
@@ -31,7 +33,16 @@ export async function GET() {
       getThroughputHistory(40),
       getRecentActivityLogs(20),
       getWorkerLockState(),
+      getDbRuntimeConfig(),
     ]);
+
+  const watchdog = computeWatchdog({
+    engine: engine.data,
+    workerLock: workerLock.data,
+    lockTableExists: workerLock.tableExists,
+    storageStatus: storage.status,
+    runtimeConfigExists: runtimeConfig.exists,
+  });
 
   return Response.json({
     engine: engine.data,
@@ -43,6 +54,9 @@ export async function GET() {
     activity: activity.data,
     workerLock: workerLock.data,
     lockTableExists: workerLock.tableExists,
+    watchdog,
+    runtimeConfigExists: runtimeConfig.exists,
+    latestIntegrityRun: null,
     fetchedAt: new Date().toISOString(),
   });
 }

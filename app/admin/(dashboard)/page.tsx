@@ -3,6 +3,7 @@ import { getEngineAdminState, getRecentActivityLogs, getThroughputHistory, getDb
 import { getStorageMonitor, formatBytes } from "@/lib/admin/storage";
 import { getR2Status } from "@/lib/admin/r2";
 import { MODE_PRESETS, secondsSince, formatDuration, heartbeatStatus } from "@/lib/admin/engine";
+import { computeWatchdog } from "@/lib/admin/watchdog";
 import {
   logoutAction,
   applyRecoveryModeFormAction,
@@ -199,6 +200,14 @@ export default async function AdminPage() {
   const hbStatus = heartbeatStatus(hbAge);
   const isRunning = engine?.status === "running";
 
+  const watchdog = computeWatchdog({
+    engine: engineResult.data,
+    workerLock: workerLockResult.data,
+    lockTableExists: workerLockResult.tableExists,
+    storageStatus: storageData.status,
+    runtimeConfigExists,
+  });
+
   // Initial data passed to the live client component (hydrates then polls)
   const initialLiveData: AdminMetricsApiResponse = {
     engine: engineResult.data,
@@ -210,6 +219,9 @@ export default async function AdminPage() {
     activity: activityData.data,
     workerLock: workerLockResult.data,
     lockTableExists: workerLockResult.tableExists,
+    watchdog,
+    runtimeConfigExists,
+    latestIntegrityRun: null,
     fetchedAt: new Date().toISOString(),
   };
 
@@ -526,7 +538,7 @@ export default async function AdminPage() {
       {/* ── Section J: Health / Errors ────────────────── */}
       <section>
         <SectionHeading id="health-errors">Health / Errors</SectionHeading>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 mb-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           {[
             { label: "DB Timeouts 24h", value: "—" },
             { label: "Failed Writes 24h", value: "—" },
@@ -548,31 +560,9 @@ export default async function AdminPage() {
             </div>
           ))}
         </div>
-
-        {activityData.data.length > 0 ? (
-          <Card className="!p-0 overflow-hidden">
-            <div className="border-b border-slate-800 px-4 py-3">
-              <p className="text-xs font-semibold text-slate-400">Recent Activity Log</p>
-            </div>
-            <div className="divide-y divide-slate-800/60 max-h-64 overflow-y-auto">
-              {activityData.data.map((entry, i) => (
-                <div key={entry.id ?? i} className="flex items-start gap-3 px-4 py-2">
-                  <span className="mt-0.5 shrink-0 rounded px-1.5 py-0.5 text-[9px] font-mono bg-slate-800 text-slate-400">
-                    {entry.event_type}
-                  </span>
-                  <span className="flex-1 text-[11px] text-slate-400">{entry.message}</span>
-                  <span className="shrink-0 text-[9px] tabular-nums text-slate-700">
-                    {new Date(entry.created_at).toUTCString().slice(5, 22)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </Card>
-        ) : (
-          <div className="rounded-xl border border-slate-800 bg-slate-900/50 px-4 py-6 text-center">
-            <p className="text-xs text-slate-600">No activity log entries yet</p>
-          </div>
-        )}
+        <p className="mt-3 text-[10px] text-slate-700">
+          Live activity log and operations health available in the Engine Status section above.
+        </p>
       </section>
 
       {/* ── Section K: Data Integrity ─────────────────── */}
