@@ -18,11 +18,40 @@ import type {
 
 // ─── Supabase client ──────────────────────────────────────────────────────────
 
+// Admin store always uses the service role key — never the anon key.
+// The anon key cannot write to ai_providers (no grants, protected by RLS).
 function getClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) return null;
   return createClient(url, key, { auth: { persistSession: false } });
+}
+
+function serviceRoleError(): { ok: false; error: string } {
+  return {
+    ok: false,
+    error:
+      "Supabase service role key not configured. " +
+      "Set SUPABASE_SERVICE_ROLE_KEY in your environment before saving provider keys.",
+  };
+}
+
+function classifyDbError(err: unknown): string {
+  const msg = String((err as { message?: string })?.message ?? err);
+  if (msg.includes("permission denied")) {
+    return (
+      "Permission denied for AI Observatory tables. " +
+      "Run supabase/phase-3c-ai-provider-permissions.sql and ensure " +
+      "SUPABASE_SERVICE_ROLE_KEY is set correctly."
+    );
+  }
+  if (isMissingTable(err)) {
+    return (
+      "AI Observatory tables not found. " +
+      "Run supabase/phase-3a-ai-observatory.sql first."
+    );
+  }
+  return msg || "Unknown database error.";
 }
 
 // ─── Graceful table-missing helper ────────────────────────────────────────────
@@ -110,17 +139,17 @@ export async function upsertAIProvider(
   updates: Partial<Omit<AIProvider, "id" | "created_at"> & { api_key_encrypted?: string }>,
 ): Promise<{ ok: boolean; error?: string }> {
   const client = getClient();
-  if (!client) return { ok: false, error: "Supabase not configured." };
+  if (!client) return serviceRoleError();
   try {
     const { error } = await client.from("ai_providers").upsert({
       provider_name: providerName,
       ...updates,
       updated_at: new Date().toISOString(),
     }, { onConflict: "provider_name" });
-    if (error) return { ok: false, error: error.message };
+    if (error) return { ok: false, error: classifyDbError(error) };
     return { ok: true };
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : "Failed to save provider." };
+    return { ok: false, error: classifyDbError(err) };
   }
 }
 
@@ -158,17 +187,17 @@ export async function upsertModelSetting(
   updates: Partial<Omit<AIModelSetting, "id" | "created_at">>,
 ): Promise<{ ok: boolean; error?: string }> {
   const client = getClient();
-  if (!client) return { ok: false, error: "Supabase not configured." };
+  if (!client) return serviceRoleError();
   try {
     const { error } = await client.from("ai_model_settings").upsert({
       task_type: taskType,
       ...updates,
       updated_at: new Date().toISOString(),
     }, { onConflict: "task_type" });
-    if (error) return { ok: false, error: error.message };
+    if (error) return { ok: false, error: classifyDbError(error) };
     return { ok: true };
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : "Failed to save model setting." };
+    return { ok: false, error: classifyDbError(err) };
   }
 }
 
@@ -189,16 +218,16 @@ export async function upsertBrandVoiceProfile(
   id?: string,
 ): Promise<{ ok: boolean; error?: string; id?: string }> {
   const client = getClient();
-  if (!client) return { ok: false, error: "Supabase not configured." };
+  if (!client) return serviceRoleError();
   try {
     const payload = { ...profileData, updated_at: new Date().toISOString() };
     const { data, error } = id
       ? await client.from("ai_brand_voice_profiles").update(payload).eq("id", id).select("id").maybeSingle()
       : await client.from("ai_brand_voice_profiles").insert(payload).select("id").maybeSingle();
-    if (error) return { ok: false, error: error.message };
+    if (error) return { ok: false, error: classifyDbError(error) };
     return { ok: true, id: (data as { id: string } | null)?.id };
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : "Failed to save brand voice." };
+    return { ok: false, error: classifyDbError(err) };
   }
 }
 
@@ -219,16 +248,16 @@ export async function upsertPromptTemplate(
   id?: string,
 ): Promise<{ ok: boolean; error?: string }> {
   const client = getClient();
-  if (!client) return { ok: false, error: "Supabase not configured." };
+  if (!client) return serviceRoleError();
   try {
     const payload = { ...templateData, updated_at: new Date().toISOString() };
     const { error } = id
       ? await client.from("ai_prompt_templates").update(payload).eq("id", id)
       : await client.from("ai_prompt_templates").insert(payload);
-    if (error) return { ok: false, error: error.message };
+    if (error) return { ok: false, error: classifyDbError(error) };
     return { ok: true };
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : "Failed to save template." };
+    return { ok: false, error: classifyDbError(err) };
   }
 }
 
@@ -290,17 +319,17 @@ export async function createAINote(
   noteData: Omit<AINoteRow, "id" | "created_at" | "updated_at">,
 ): Promise<{ ok: boolean; id?: string; error?: string }> {
   const client = getClient();
-  if (!client) return { ok: false, error: "Supabase not configured." };
+  if (!client) return serviceRoleError();
   try {
     const { data, error } = await client
       .from("ai_notes")
       .insert({ ...noteData, created_at: new Date().toISOString(), updated_at: new Date().toISOString() })
       .select("id")
       .maybeSingle();
-    if (error) return { ok: false, error: error.message };
+    if (error) return { ok: false, error: classifyDbError(error) };
     return { ok: true, id: (data as { id: string } | null)?.id };
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : "Failed to create note." };
+    return { ok: false, error: classifyDbError(err) };
   }
 }
 
@@ -309,16 +338,16 @@ export async function updateAINoteStatus(
   status: string,
 ): Promise<{ ok: boolean; error?: string }> {
   const client = getClient();
-  if (!client) return { ok: false, error: "Supabase not configured." };
+  if (!client) return serviceRoleError();
   try {
     const { error } = await client.from("ai_notes").update({
       status,
       updated_at: new Date().toISOString(),
     }).eq("id", id);
-    if (error) return { ok: false, error: error.message };
+    if (error) return { ok: false, error: classifyDbError(error) };
     return { ok: true };
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : "Failed to update note." };
+    return { ok: false, error: classifyDbError(err) };
   }
 }
 
@@ -367,16 +396,16 @@ export async function upsertDraft(
   id?: string,
 ): Promise<{ ok: boolean; id?: string; error?: string }> {
   const client = getClient();
-  if (!client) return { ok: false, error: "Supabase not configured." };
+  if (!client) return serviceRoleError();
   try {
     const payload = { ...draftData, updated_at: new Date().toISOString() };
     const { data, error } = id
       ? await client.from("ai_drafts").update(payload).eq("id", id).select("id").maybeSingle()
       : await client.from("ai_drafts").insert({ ...payload, created_at: new Date().toISOString() }).select("id").maybeSingle();
-    if (error) return { ok: false, error: error.message };
+    if (error) return { ok: false, error: classifyDbError(error) };
     return { ok: true, id: (data as { id: string } | null)?.id };
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : "Failed to save draft." };
+    return { ok: false, error: classifyDbError(err) };
   }
 }
 
@@ -422,18 +451,18 @@ export async function updateDraftStatus(
   extras?: { review_notes?: string; approved_at?: string; published_at?: string },
 ): Promise<{ ok: boolean; error?: string }> {
   const client = getClient();
-  if (!client) return { ok: false, error: "Supabase not configured." };
+  if (!client) return serviceRoleError();
   try {
     const { error } = await client.from("ai_drafts").update({
       status,
       ...extras,
       updated_at: new Date().toISOString(),
     }).eq("id", id);
-    if (error) return { ok: false, error: error.message };
+    if (error) return { ok: false, error: classifyDbError(error) };
     await logDraftEvent(id, `status_${status}`, `Status changed to ${status.replace("_", " ")}`, extras);
     return { ok: true };
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : "Failed to update draft status." };
+    return { ok: false, error: classifyDbError(err) };
   }
 }
 
@@ -441,7 +470,7 @@ export async function createGeneratedImageRecord(
   image: Omit<AIGeneratedImage, "id" | "created_at" | "updated_at">,
 ): Promise<{ ok: boolean; id?: string; error?: string }> {
   const client = getClient();
-  if (!client) return { ok: false, error: "Supabase not configured." };
+  if (!client) return serviceRoleError();
   try {
     const { data, error } = await client
       .from("ai_generated_images")
