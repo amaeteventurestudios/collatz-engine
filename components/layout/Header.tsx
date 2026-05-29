@@ -2,11 +2,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
 import { Sun, Moon, Menu, X } from "lucide-react";
 
 const navLinks = [
   { href: "/", label: "Dashboard" },
+  { href: "/calculator", label: "Calculator" },
   { href: "/#visualizer", label: "Visualizer" },
   { href: "/visual-studio", label: "Visual Studio" },
   { href: "/#records", label: "Records" },
@@ -18,6 +20,7 @@ const navLinks = [
 export function Header() {
   const { theme, setTheme } = useTheme();
   const [menuOpen, setMenuOpen] = useState(false);
+  const pathname = usePathname();
 
   function toggleTheme() {
     setTheme(theme === "dark" ? "light" : "dark");
@@ -35,15 +38,22 @@ export function Header() {
         </Link>
 
         <nav className="flex items-center gap-0.5">
-          {navLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className="rounded-md px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
-            >
-              {link.label}
-            </Link>
-          ))}
+          {navLinks.map((link) => {
+            const isActive = link.href === "/" ? pathname === "/" : pathname.startsWith(link.href.split("#")[0]) && link.href.split("#")[0] !== "/";
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                  isActive
+                    ? "bg-teal-500/10 text-teal-600 dark:text-teal-400"
+                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+                }`}
+              >
+                {link.label}
+              </Link>
+            );
+          })}
         </nav>
 
         <ThemeButton onClick={toggleTheme} />

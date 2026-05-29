@@ -2,6 +2,7 @@ import Link from "next/link";
 
 const navigateLinks = [
   { href: "/", label: "Dashboard" },
+  { href: "/calculator", label: "Calculator" },
   { href: "/#visualizer", label: "Visualizer" },
   { href: "/visual-studio", label: "Visual Studio" },
   { href: "/#records", label: "Records" },
@@ -11,9 +12,11 @@ const navigateLinks = [
 ];
 
 const resourceLinks = [
-  { href: "/status", label: "Status" },
+  { href: "/calculator", label: "Calculator" },
+  { href: "/observatory", label: "Observatory" },
   { href: "/docs/api", label: "API Docs" },
   { href: "/methodology", label: "Methodology" },
+  { href: "/about", label: "About" },
 ];
 
 export function Footer() {
