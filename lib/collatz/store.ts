@@ -4,6 +4,7 @@ export interface EngineState {
   id: string;
   started_at: string | null;
   last_checked_number: number;
+  current_number: number;
   total_numbers_checked: number;
   highest_peak: number;
   longest_steps: number;

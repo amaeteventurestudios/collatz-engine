@@ -16,7 +16,8 @@
     "collatz:verify:persist": "tsx scripts/verify-collatz-integrity.ts --persist",
     "collatz:health": "tsx scripts/check-collatz-health.ts",
     "collatz:health:persist": "tsx scripts/check-collatz-health.ts --persist",
-    "collatz:cleanup": "tsx scripts/cleanup-collatz-storage.ts"
+    "collatz:cleanup": "tsx scripts/cleanup-collatz-storage.ts",
+    "collatz:verify-sequential": "tsx scripts/verify-sequential.ts"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.7",

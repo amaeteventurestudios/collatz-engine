@@ -117,6 +117,10 @@ async function main() {
   const MAX_CONSECUTIVE_ERRORS = 5;
   const workerStart = Date.now();
 
+  // Sequential integrity guard: tracks the last successful batchEnd so the
+  // next batch can be verified to start at exactly previousBatchEnd + 1.
+  let previousBatchEnd: number | null = null;
+
   // Wall-clock throttle: activity logs written at most once per logIntervalMs.
   let lastActivityLogMs = 0;
 
@@ -168,6 +172,25 @@ async function main() {
         keepRecentResults: cfg.keepRecentResults,
       });
       consecutiveErrors = 0;
+
+      // ── Sequential integrity check ──────────────────────────────────────────
+      // Enforce: every batch must start at exactly previousBatchEnd + 1.
+      // A gap here means last_checked_number was advanced by something other
+      // than this worker. Halt immediately to prevent silent data loss.
+      if (previousBatchEnd !== null && result.batchStart !== previousBatchEnd + 1) {
+        const gapSize = result.batchStart - (previousBatchEnd + 1);
+        console.error(
+          `\n[Collatz Worker] FATAL — sequential integrity violation detected!` +
+            `\n  Expected batchStart : ${fmtN(previousBatchEnd + 1)}` +
+            `\n  Actual   batchStart : ${fmtN(result.batchStart)}` +
+            `\n  Gap (numbers skipped): ${fmtN(gapSize)}` +
+            `\n  This means last_checked_number was advanced outside this worker.` +
+            `\n  Halting to prevent further data loss. Check engine state in Supabase.\n`,
+        );
+        process.exit(2);
+      }
+      previousBatchEnd = result.batchEnd;
+
       totalProcessed += result.numbersProcessed;
 
       const durationStr =

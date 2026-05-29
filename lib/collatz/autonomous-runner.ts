@@ -128,19 +128,11 @@ export async function runAutonomousBatch(
     // ── Persist results ────────────────────────────────────────────────────────
     await insertBatchResults(rows);
 
-    // ── Free-tier rolling buffer: prune old results after every batch ──────────
-    // Keeps collatz_results bounded to keepRecentResults rows (highest n).
-    // Runs asynchronously and never blocks the main loop on failure.
-    if (storageMode === "free-tier") {
-      pruneResultsIfNeeded(keepRecentResults).catch((err: unknown) => {
-        console.warn("[Collatz Runner] Inline prune failed (non-fatal):", err);
-      });
-    }
-
     // ── Verify inserted rows are visible before advancing state ────────────────
     // A read-back confirms the upsert is committed and readable. If the max
     // visible n is below batchEnd, state is NOT advanced and a failure event
     // is logged so the batch can be retried on the next iteration.
+    // NOTE: prune runs AFTER this verification so it cannot race with the read.
     const verifiedMaxN = await readCommittedMaxN(batchStart, batchEnd);
     if (verifiedMaxN < batchEnd) {
       const verifyMsg =
@@ -169,9 +161,13 @@ export async function runAutonomousBatch(
     const now = new Date().toISOString();
 
     // ── Update engine state ───────────────────────────────────────────────────
+    // Invariant: last_checked_number = batchEnd, current_number = batchEnd + 1.
+    // total_numbers_checked advances by exactly rows.length (the actual count
+    // processed in this batch — never a stale or default config value).
     await updateEngineState({
       started_at: state.started_at ?? now,
       last_checked_number: batchEnd,
+      current_number: batchEnd + 1,
       total_numbers_checked:
         Number(state.total_numbers_checked ?? 0) + rows.length,
       highest_peak: highestPeak,
@@ -185,6 +181,15 @@ export async function runAutonomousBatch(
       worker_heartbeat_at: now,
       last_error: null,
     });
+
+    // ── Free-tier rolling buffer: prune old results after state is committed ───
+    // Runs after state advancement so prune never races with readCommittedMaxN.
+    // Fire-and-forget: failures are non-fatal and logged to console only.
+    if (storageMode === "free-tier") {
+      pruneResultsIfNeeded(keepRecentResults).catch((err: unknown) => {
+        console.warn("[Collatz Runner] Inline prune failed (non-fatal):", err);
+      });
+    }
 
     // ── Log: batch_completed (suppressed when shouldLogActivity=false) ───────
     if (logActivity) {
