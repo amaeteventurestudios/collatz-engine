@@ -6,14 +6,27 @@ import { formatSteps } from "@/lib/collatz/format";
 import type { CollatzResult } from "@/lib/collatz/types";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-
+//
+// Layout (top → bottom):
+//   [PARITY_LABEL_H]  dedicated row for "Parity sequence…" label
+//   [STRIP_H]         parity-strip colored rects
+//   [STRIP_GAP]       breathing room
+//   [CHART_LABEL_H]   dedicated row for "Cumulative count" label
+//   [CHART_H]         cumulative chart data area
+//   [AXIS_H]          step-axis tick labels
+//
 const SVG_W = 600;
-const STRIP_H = 24;
-const STRIP_GAP = 10;
-const CHART_TOP = STRIP_H + STRIP_GAP;
-const CHART_H = 150;
-const SVG_H = CHART_TOP + CHART_H + 18;
-const Y_CHART_BOTTOM = CHART_TOP + CHART_H;
+const PARITY_LABEL_H = 11;   // label row above the parity strip
+const STRIP_H = 20;           // height of colored parity rects
+const STRIP_GAP = 8;          // gap between strip bottom and chart label row
+const CHART_LABEL_H = 11;     // label row above the cumulative chart
+const CHART_H = 140;
+const AXIS_H = 18;
+
+const STRIP_Y = PARITY_LABEL_H;                                         // 11  — top of parity rects
+const CHART_TOP = PARITY_LABEL_H + STRIP_H + STRIP_GAP + CHART_LABEL_H; // 50  — top of chart data area
+const Y_CHART_BOTTOM = CHART_TOP + CHART_H;                             // 190
+const SVG_H = Y_CHART_BOTTOM + AXIS_H;                                  // 208
 const MAX_STRIP = SVG_W;
 const MAX_CHART_POINTS = 250;
 
@@ -183,34 +196,37 @@ export function OddEvenTransitionGraph({ result, loading }: Props) {
                 aria-label={`Odd/even transition graph for n=${result.start_number.toString()}, ${formatSteps(result.steps_to_1)} steps, ${result.odd_steps} odd, ${result.even_steps} even`}
               >
                 {/* ── Parity strip ─────────────────────────────────────────── */}
-                <text x="4" y={STRIP_H - 2} fontSize="7" fill="currentColor" opacity="0.65">
+                {/* Label sits in its own row (y 0→PARITY_LABEL_H) above the rects */}
+                <text x="4" y={PARITY_LABEL_H - 3} fontSize="7" fill="currentColor" opacity="0.65">
                   Parity sequence (odd = violet, even = cyan)
                 </text>
+                {/* Rects start at STRIP_Y, safely below the label row */}
                 {stripRects.map((r, i) => (
                   <rect
                     key={i}
                     x={r.x}
-                    y="0"
+                    y={STRIP_Y}
                     width={r.w}
-                    height={STRIP_H - 4}
+                    height={STRIP_H}
                     fill={r.isOdd ? "#a855f7" : "#0ea5e9"}
                     opacity="0.75"
                   />
                 ))}
 
-                {/* Divider */}
+                {/* Divider — sits in the gap between strip and chart-label row */}
                 <line
                   x1="0"
-                  y1={STRIP_H + 2}
+                  y1={STRIP_Y + STRIP_H + 3}
                   x2={SVG_W}
-                  y2={STRIP_H + 2}
+                  y2={STRIP_Y + STRIP_H + 3}
                   stroke="currentColor"
                   strokeOpacity="0.08"
                   strokeWidth="1"
                 />
 
                 {/* ── Cumulative chart ──────────────────────────────────────── */}
-                <text x="4" y={CHART_TOP + 11} fontSize="7" fill="currentColor" opacity="0.65">
+                {/* Label sits in its own row (CHART_TOP - CHART_LABEL_H → CHART_TOP) above the chart data */}
+                <text x="4" y={CHART_TOP - 3} fontSize="7" fill="currentColor" opacity="0.65">
                   Cumulative count
                 </text>
 
