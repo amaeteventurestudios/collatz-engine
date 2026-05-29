@@ -1,4 +1,24 @@
+import type { Metadata } from "next";
 import { Header } from "@/components/layout/Header";
+
+export const metadata: Metadata = {
+  title: "The Collatz Engine | Autonomous Collatz Conjecture Explorer",
+  description:
+    "A public autonomous system exploring the Collatz Conjecture through persistent computation, live telemetry, transparent records, and visual analysis.",
+  openGraph: {
+    title: "The Collatz Engine | Autonomous Collatz Conjecture Explorer",
+    description:
+      "A public autonomous system exploring the Collatz Conjecture through persistent computation, live telemetry, transparent records, and visual analysis.",
+    images: [{ url: "/images/collatz-preview.jpg" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "The Collatz Engine | Autonomous Collatz Conjecture Explorer",
+    description:
+      "A public autonomous system exploring the Collatz Conjecture through persistent computation, live telemetry, transparent records, and visual analysis.",
+    images: ["/images/collatz-preview.jpg"],
+  },
+};
 import { Footer } from "@/components/layout/Footer";
 import { HeroSection } from "@/components/home/HeroSection";
 import { StatusStrip } from "@/components/home/StatusStrip";

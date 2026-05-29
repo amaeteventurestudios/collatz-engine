@@ -49,12 +49,14 @@ export const metadata: Metadata = {
     siteName: "The Collatz Engine",
     type: "website",
     locale: "en_US",
+    images: [{ url: "/images/collatz-preview.jpg" }],
   },
   twitter: {
     card: "summary_large_image",
     title: "The Collatz Engine",
     description:
       "Live computation, trajectory visualization, and public records from an autonomous Collatz Conjecture exploration engine.",
+    images: ["/images/collatz-preview.jpg"],
   },
   robots: {
     index: true,
