@@ -1,9 +1,13 @@
 import { cookies } from "next/headers";
 import { verifySessionToken, SESSION_COOKIE } from "@/lib/admin/auth";
-import { getEngineAdminState, getRecentActivityLogs, getThroughputHistory } from "@/lib/admin/metrics";
+import {
+  getEngineAdminState,
+  getRecentActivityLogs,
+  getThroughputHistory,
+  getWorkerLockState,
+} from "@/lib/admin/metrics";
 import { getStorageMonitor } from "@/lib/admin/storage";
 import { getR2Status } from "@/lib/admin/r2";
-import { getRuntimeConfig } from "@/lib/admin/engine";
 
 export const dynamic = "force-dynamic";
 
@@ -19,13 +23,15 @@ export async function GET() {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const [engine, storage, r2, throughput, activity] = await Promise.all([
-    getEngineAdminState(),
-    getStorageMonitor(),
-    getR2Status(),
-    getThroughputHistory(30),
-    getRecentActivityLogs(20),
-  ]);
+  const [engine, storage, r2, throughput, activity, workerLock] =
+    await Promise.all([
+      getEngineAdminState(),
+      getStorageMonitor(),
+      getR2Status(),
+      getThroughputHistory(40),
+      getRecentActivityLogs(20),
+      getWorkerLockState(),
+    ]);
 
   return Response.json({
     engine: engine.data,
@@ -33,9 +39,10 @@ export async function GET() {
     engineError: engine.error,
     storage,
     r2,
-    runtime: getRuntimeConfig(),
     throughput: throughput.data,
     activity: activity.data,
+    workerLock: workerLock.data,
+    lockTableExists: workerLock.tableExists,
     fetchedAt: new Date().toISOString(),
   });
 }

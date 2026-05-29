@@ -5,15 +5,13 @@ import { getR2Status } from "@/lib/admin/r2";
 import { MODE_PRESETS, secondsSince, formatDuration, heartbeatStatus } from "@/lib/admin/engine";
 import {
   logoutAction,
-  pauseEngineFormAction,
-  resumeEngineFormAction,
   applyRecoveryModeFormAction,
   applySafeModeFormAction,
   applyNormalModeFormAction,
   runCleanupFormAction,
-  forceReleaseLockFormAction,
 } from "./actions";
-import type { StorageStatus, TableSizeRow, WorkerLockState } from "@/lib/admin/types";
+import type { StorageStatus, TableSizeRow, AdminMetricsApiResponse } from "@/lib/admin/types";
+import { AdminLiveMetrics } from "@/components/admin/AdminLiveMetrics";
 
 export const dynamic = "force-dynamic";
 
@@ -92,61 +90,7 @@ function DisabledButton({ label, phase }: { label: string; phase: string }) {
   );
 }
 
-// ── Throughput SVG sparkline ──────────────────────────────────────────────────
-
-function ThroughputChart({ data }: { data: Array<{ ts: string; nps: number }> }) {
-  if (!data.length) {
-    return (
-      <div className="flex h-40 items-center justify-center rounded-xl border border-slate-800 bg-slate-950/50">
-        <p className="text-xs text-slate-600">No throughput history yet</p>
-      </div>
-    );
-  }
-
-  const W = 600;
-  const H = 120;
-  const pad = { t: 8, r: 12, b: 24, l: 44 };
-  const maxNps = Math.max(...data.map((d) => d.nps), 1);
-  const pts = data.map((d, i) => {
-    const x = pad.l + (i / Math.max(data.length - 1, 1)) * (W - pad.l - pad.r);
-    const y = pad.t + ((maxNps - d.nps) / maxNps) * (H - pad.t - pad.b);
-    return `${x.toFixed(1)},${y.toFixed(1)}`;
-  });
-
-  const areaClose = `${pts[pts.length - 1].split(",")[0]},${H - pad.b} ${pad.l},${H - pad.b}`;
-  const area = `M ${pts.join(" L ")} L ${areaClose} Z`;
-  const line = `M ${pts.join(" L ")}`;
-
-  return (
-    <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-3">
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" preserveAspectRatio="none" style={{ height: 140 }}>
-        <defs>
-          <linearGradient id="tpGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#14b8a6" stopOpacity={0.3} />
-            <stop offset="100%" stopColor="#14b8a6" stopOpacity={0} />
-          </linearGradient>
-        </defs>
-        {/* Grid lines */}
-        {[0.25, 0.5, 0.75, 1].map((frac) => {
-          const y = pad.t + (1 - frac) * (H - pad.t - pad.b);
-          return (
-            <g key={frac}>
-              <line x1={pad.l} y1={y} x2={W - pad.r} y2={y} stroke="#1e293b" strokeWidth={1} />
-              <text x={pad.l - 4} y={y + 3} textAnchor="end" fill="#475569" fontSize={7}>
-                {Math.round(maxNps * frac)}
-              </text>
-            </g>
-          );
-        })}
-        <path d={area} fill="url(#tpGrad)" />
-        <path d={line} fill="none" stroke="#14b8a6" strokeWidth={1.5} strokeLinejoin="round" strokeLinecap="round" />
-        <text x={W / 2} y={H - 4} textAnchor="middle" fill="#475569" fontSize={7}>
-          {data.length} data points · numbers/second over time
-        </text>
-      </svg>
-    </div>
-  );
-}
+// ThroughputChart moved to AdminLiveMetrics (client component)
 
 // ── Storage gauge ─────────────────────────────────────────────────────────────
 
@@ -231,16 +175,6 @@ function HealthDot({ ok, label }: { ok: boolean | null; label: string }) {
   );
 }
 
-// ── Main page ─────────────────────────────────────────────────────────────────
-
-function lockStatusPill(status: WorkerLockState["status"] | null) {
-  if (!status) return <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-700 px-2.5 py-0.5 text-[10px] font-semibold text-slate-400">◌ None</span>;
-  if (status === "active") return <span className="inline-flex items-center gap-1.5 rounded-full bg-green-500/15 px-2.5 py-0.5 text-[10px] font-semibold text-green-400"><span className="h-1.5 w-1.5 rounded-full bg-green-400 animate-pulse" />Active</span>;
-  if (status === "expired") return <span className="inline-flex items-center gap-1.5 rounded-full bg-red-500/15 px-2.5 py-0.5 text-[10px] font-semibold text-red-400">⚠ Expired</span>;
-  if (status === "force_released") return <span className="inline-flex items-center gap-1.5 rounded-full bg-orange-500/15 px-2.5 py-0.5 text-[10px] font-semibold text-orange-400">⚡ Force Released</span>;
-  return <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-700 px-2.5 py-0.5 text-[10px] font-semibold text-slate-400">✓ Released</span>;
-}
-
 export default async function AdminPage() {
   const [engineResult, storageData, r2Data, throughputData, activityData, dbConfigResult, workerLockResult] =
     await Promise.all([
@@ -254,9 +188,6 @@ export default async function AdminPage() {
     ]);
 
   const engine = engineResult.data;
-  const workerLock = workerLockResult.data;
-  const lockTableExists = workerLockResult.tableExists;
-  // Use live DB config when available, fall back to env-derived config
   const runtime = dbConfigResult.data ?? {
     mode: "recovery", batchSize: 25, batchDelayMs: 10000, logIntervalMs: 60000,
     storageMode: "free-tier", keepRecentResults: 1000, activityLogRetentionRows: 250,
@@ -266,9 +197,21 @@ export default async function AdminPage() {
   const runtimeConfigExists = dbConfigResult.exists;
   const hbAge = secondsSince(engine?.lastHeartbeat);
   const hbStatus = heartbeatStatus(hbAge);
-  const runtimeSecs = engine?.startedAt ? secondsSince(engine.startedAt) : null;
-  const isPaused = engine?.status === "paused";
   const isRunning = engine?.status === "running";
+
+  // Initial data passed to the live client component (hydrates then polls)
+  const initialLiveData: AdminMetricsApiResponse = {
+    engine: engineResult.data,
+    engineConnected: engineResult.connected,
+    engineError: engineResult.error,
+    storage: storageData,
+    r2: r2Data,
+    throughput: throughputData.data,
+    activity: activityData.data,
+    workerLock: workerLockResult.data,
+    lockTableExists: workerLockResult.tableExists,
+    fetchedAt: new Date().toISOString(),
+  };
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 space-y-10">
@@ -280,13 +223,7 @@ export default async function AdminPage() {
           <p className="mt-0.5 text-sm text-slate-500">Mission control for The Collatz Engine</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          {statusPill(engine?.status ?? null)}
           <span className="text-[10px] text-slate-600">{utcNow()}</span>
-          {runtimeSecs != null && (
-            <span className="rounded-full bg-slate-800 px-2.5 py-0.5 text-[10px] text-slate-400">
-              up {formatDuration(runtimeSecs)}
-            </span>
-          )}
           <form action={logoutAction}>
             <button type="submit" className="rounded-lg border border-slate-700 px-3 py-1.5 text-[11px] text-slate-500 hover:border-red-800 hover:text-red-400 transition-colors">
               Sign out
@@ -295,189 +232,8 @@ export default async function AdminPage() {
         </div>
       </div>
 
-      {/* ── Section A: Engine Status ───────────────────── */}
-      <section>
-        <SectionHeading id="engine-status">Engine Status</SectionHeading>
-        <Card>
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-            {[
-              { label: "Current Number", value: n(engine?.currentNumber) },
-              { label: "Total Checked", value: n(engine?.totalChecked) },
-              { label: "Throughput", value: engine?.throughputPerSecond != null ? `${n(engine.throughputPerSecond)} /s` : "—" },
-              { label: "Status", value: engine?.status ?? "Unknown" },
-              { label: "Highest Peak", value: n(engine?.highestPeak) },
-              { label: "Longest Steps", value: n(engine?.longestSteps) },
-              {
-                label: "Last Heartbeat",
-                value: hbAge != null ? `${formatDuration(hbAge)} ago` : "—",
-                valueClass: hbStatus === "live" ? "text-green-400" : hbStatus === "delayed" ? "text-yellow-400" : "text-red-400",
-              },
-              { label: "Workers Active", value: String(engine?.workersActive ?? 0) },
-            ].map((item) => (
-              <div key={item.label} className="rounded-xl bg-slate-950/50 px-4 py-3">
-                <p className="text-[9px] font-bold uppercase tracking-[0.1em] text-slate-600">{item.label}</p>
-                <p className={`mt-1 text-lg font-bold tabular-nums ${item.valueClass ?? "text-slate-100"}`}>
-                  {item.value}
-                </p>
-              </div>
-            ))}
-          </div>
-
-          {engine?.lastError && (
-            <div className="mt-4 rounded-xl border border-red-900/50 bg-red-950/30 px-4 py-3">
-              <p className="text-[10px] font-semibold text-red-400">Last engine error</p>
-              <p className="mt-0.5 text-xs text-red-300/70">{engine.lastError}</p>
-            </div>
-          )}
-
-          <div className="mt-5 flex flex-wrap gap-2 border-t border-slate-800 pt-4">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-600 self-center mr-2">Controls:</span>
-            <form action={pauseEngineFormAction}>
-              <button
-                type="submit"
-                disabled={isPaused}
-                className="rounded-lg border border-yellow-800 px-3 py-1.5 text-[11px] font-medium text-yellow-400 hover:bg-yellow-950 disabled:cursor-not-allowed disabled:opacity-40 transition-colors"
-              >
-                Pause Engine
-              </button>
-            </form>
-            <form action={resumeEngineFormAction}>
-              <button
-                type="submit"
-                disabled={isRunning}
-                className="rounded-lg border border-teal-800 px-3 py-1.5 text-[11px] font-medium text-teal-400 hover:bg-teal-950 disabled:cursor-not-allowed disabled:opacity-40 transition-colors"
-              >
-                Resume Engine
-              </button>
-            </form>
-            <span className="rounded-lg border border-slate-800 px-3 py-1.5 text-[11px] text-slate-700">
-              Restart Worker — manual/local worker required
-            </span>
-            <DisabledButton label="Stop Engine" phase="Phase 3" />
-          </div>
-        </Card>
-      </section>
-
-      {/* ── Section A2: Worker Lock ───────────────────── */}
-      <section>
-        <SectionHeading id="worker-lock">Worker Lock</SectionHeading>
-        <Card>
-          {!lockTableExists ? (
-            <div className="rounded-xl border border-yellow-900/50 bg-yellow-950/30 px-4 py-3">
-              <p className="text-[11px] text-yellow-400">
-                Worker lock table not found. Run{" "}
-                <span className="font-mono">supabase/phase-2b-worker-lock.sql</span> in the Supabase SQL Editor to enable the single-worker lock.
-              </p>
-            </div>
-          ) : (
-            <>
-              <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-                <div className="flex items-center gap-3">
-                  {lockStatusPill(workerLock?.status ?? null)}
-                  {workerLock?.status === "active" && (
-                    <span className="text-[10px] text-slate-500">
-                      expires in{" "}
-                      <span className={workerLock.secondsUntilExpiry < 10 ? "text-red-400 font-bold" : "text-slate-400"}>
-                        {workerLock.secondsUntilExpiry}s
-                      </span>
-                    </span>
-                  )}
-                </div>
-                <form action={forceReleaseLockFormAction}>
-                  <button
-                    type="submit"
-                    disabled={!workerLock || workerLock.status !== "active"}
-                    className="rounded-lg border border-red-800 px-3 py-1.5 text-[11px] font-medium text-red-400 hover:bg-red-950 disabled:cursor-not-allowed disabled:opacity-40 transition-colors"
-                  >
-                    Force Release Lock
-                  </button>
-                </form>
-              </div>
-
-              {workerLock ? (
-                <div className="grid grid-cols-2 gap-x-8 gap-y-1.5 sm:grid-cols-3 text-[11px]">
-                  {[
-                    ["Instance ID", workerLock.workerInstanceId],
-                    ["Hostname", workerLock.hostname ?? "—"],
-                    ["PID", workerLock.pid != null ? String(workerLock.pid) : "—"],
-                    ["Acquired at", new Date(workerLock.acquiredAt).toUTCString()],
-                    ["Last heartbeat", new Date(workerLock.heartbeatAt).toUTCString()],
-                    ["Expires at", new Date(workerLock.expiresAt).toUTCString()],
-                    ["Status", workerLock.status],
-                    ["Released at", workerLock.releasedAt ? new Date(workerLock.releasedAt).toUTCString() : "—"],
-                  ].map(([k, v]) => (
-                    <div key={k} className="flex justify-between border-b border-slate-800/50 py-1">
-                      <span className="text-slate-600">{k}</span>
-                      <span className="font-mono text-slate-300 text-right break-all">{v}</span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-[11px] text-slate-600">No lock history found — no worker has run since the migration.</p>
-              )}
-
-              {workerLock?.status === "active" && isPaused && (
-                <div className="mt-4 rounded-xl border border-yellow-900/50 bg-yellow-950/30 px-4 py-3">
-                  <p className="text-[11px] text-yellow-400">
-                    Engine is paused but a worker lock is active. The worker is idle (respecting pause) but holds the lock. This is normal — the lock will heartbeat until the worker is stopped.
-                  </p>
-                </div>
-              )}
-
-              {workerLock?.status === "expired" && (
-                <div className="mt-4 rounded-xl border border-red-900/50 bg-red-950/30 px-4 py-3">
-                  <p className="text-[11px] text-red-400">
-                    The last lock expired without a clean release. The worker likely crashed. A new worker can start freely — the expired lock does not block acquisition.
-                  </p>
-                </div>
-              )}
-
-              <p className="mt-3 text-[10px] text-slate-700">
-                Only one worker may run globally. TTL: 30s · Heartbeat: every 10s.
-                Force release only if the worker is confirmed stopped. See{" "}
-                <span className="font-mono">docs/operations/worker-lock.md</span>.
-              </p>
-            </>
-          )}
-        </Card>
-      </section>
-
-      {/* ── Section B: Key Metrics ────────────────────── */}
-      <section>
-        <SectionHeading id="key-metrics">Key Metrics</SectionHeading>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {[
-            { label: "Total Checked", value: n(engine?.totalChecked) },
-            { label: "Longest Sequence", value: n(engine?.longestSteps) },
-            { label: "Highest Peak", value: n(engine?.highestPeak) },
-            { label: "Throughput Avg", value: engine?.throughputPerSecond != null ? `${n(engine.throughputPerSecond)}/s` : "—" },
-            { label: "Runtime", value: runtimeSecs != null ? formatDuration(runtimeSecs) : "—" },
-            { label: "Storage Used", value: formatBytes(storageData.estimatedUsedBytes) },
-            { label: "Storage %", value: `${storageData.percentUsed}%` },
-            { label: "Archive Status", value: r2Data.config.archiveEnabled ? "Enabled" : "Disabled" },
-          ].map((item) => (
-            <Card key={item.label} className="!p-4">
-              <p className="text-[9px] font-bold uppercase tracking-[0.1em] text-slate-600">{item.label}</p>
-              <p className="mt-1.5 text-xl font-bold tabular-nums text-slate-100">{item.value}</p>
-              <div className="mt-2 h-6 rounded bg-slate-800/50" aria-hidden>
-                {/* Sparkline placeholder — real data in Phase 2 */}
-              </div>
-            </Card>
-          ))}
-        </div>
-      </section>
-
-      {/* ── Section C: Throughput Graph ───────────────── */}
-      <section>
-        <SectionHeading id="throughput">Throughput Graph</SectionHeading>
-        <Card className="!p-4">
-          <div className="mb-3 flex items-center justify-between">
-            <p className="text-xs font-semibold text-slate-300">Numbers / second over time</p>
-            <span className="text-[10px] text-slate-600">{throughputData.data.length} points</span>
-          </div>
-          <ThroughputChart data={throughputData.data} />
-        </Card>
-      </section>
+      {/* ── Sections A, A2, B, C — live client component ── */}
+      <AdminLiveMetrics initial={initialLiveData} />
 
       {/* ── Section D: Database Storage Monitor ──────── */}
       <section>

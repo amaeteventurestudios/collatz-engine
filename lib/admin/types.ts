@@ -121,3 +121,17 @@ export interface WorkerLockState {
   secondsUntilExpiry: number;
   metadata: Record<string, unknown>;
 }
+
+/** Shape returned by GET /api/admin/metrics */
+export interface AdminMetricsApiResponse {
+  engine: EngineAdminState | null;
+  engineConnected: boolean;
+  engineError: string | null;
+  storage: StorageMonitor;
+  r2: R2Status;
+  throughput: Array<{ ts: string; nps: number }>;
+  activity: ActivityLogEntry[];
+  workerLock: WorkerLockState | null;
+  lockTableExists: boolean;
+  fetchedAt: string;
+}
