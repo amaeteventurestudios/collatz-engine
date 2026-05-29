@@ -44,10 +44,16 @@ function buildRecords(
     {
       icon: "⏱",
       label: "Longest Path",
-      value: topTrajectory ? `${fmt(topTrajectory.steps)} steps` : "Pending",
+      value: engineState
+        ? `${fmt(engineState.longest_steps)} steps`
+        : topTrajectory
+          ? `${fmt(topTrajectory.steps)} steps`
+          : "Pending",
       sub: topTrajectory
         ? `n = ${fmt(topTrajectory.n)}`
-        : "Awaiting dataset growth",
+        : engineState
+          ? "All-time engine record"
+          : "Awaiting dataset growth",
       color: EVENT_COLORS.violet.text,
       ring: EVENT_COLORS.violet.ring,
       bg: EVENT_COLORS.violet.bg,

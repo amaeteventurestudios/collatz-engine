@@ -183,7 +183,7 @@ export function OddEvenTransitionGraph({ result, loading }: Props) {
                 aria-label={`Odd/even transition graph for n=${result.start_number.toString()}, ${formatSteps(result.steps_to_1)} steps, ${result.odd_steps} odd, ${result.even_steps} even`}
               >
                 {/* ── Parity strip ─────────────────────────────────────────── */}
-                <text x="4" y={STRIP_H - 2} fontSize="7" fill="currentColor" opacity="0.35">
+                <text x="4" y={STRIP_H - 2} fontSize="7" fill="currentColor" opacity="0.65">
                   Parity sequence (odd = violet, even = cyan)
                 </text>
                 {stripRects.map((r, i) => (
@@ -210,7 +210,7 @@ export function OddEvenTransitionGraph({ result, loading }: Props) {
                 />
 
                 {/* ── Cumulative chart ──────────────────────────────────────── */}
-                <text x="4" y={CHART_TOP + 11} fontSize="7" fill="currentColor" opacity="0.35">
+                <text x="4" y={CHART_TOP + 11} fontSize="7" fill="currentColor" opacity="0.65">
                   Cumulative count
                 </text>
 
@@ -272,7 +272,7 @@ export function OddEvenTransitionGraph({ result, loading }: Props) {
                   y={SVG_H - 3}
                   fontSize="8"
                   fill="currentColor"
-                  opacity="0.35"
+                  opacity="0.65"
                 >
                   0
                 </text>
@@ -281,7 +281,7 @@ export function OddEvenTransitionGraph({ result, loading }: Props) {
                   y={SVG_H - 3}
                   fontSize="8"
                   fill="currentColor"
-                  opacity="0.35"
+                  opacity="0.65"
                   textAnchor="end"
                 >
                   {result.steps_to_1.toLocaleString("en-US")}
@@ -291,7 +291,7 @@ export function OddEvenTransitionGraph({ result, loading }: Props) {
                   y={SVG_H - 3}
                   fontSize="8"
                   fill="currentColor"
-                  opacity="0.25"
+                  opacity="0.55"
                   textAnchor="middle"
                 >
                   Step

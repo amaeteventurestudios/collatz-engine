@@ -439,12 +439,12 @@ export function RecordLeaderboards({
                 <p className="section-heading">Record Leaderboards</p>
                 <PanelHelp
                   title="Record Leaderboards"
-                  description="Shows the current top ranked records found by the engine, including the longest trajectories and highest peaks from persisted results."
+                  description="Shows the top ranked results from the retained results buffer. The engine retains recent results for analysis; all-time records are tracked separately in engine state."
                   align="left"
                 />
               </div>
               <p className="panel-subtitle mt-1">
-                All-time top records across the engine&apos;s exploration.
+                Top results from the retained catalog buffer.
               </p>
             </div>
             {loading && (
@@ -468,7 +468,8 @@ export function RecordLeaderboards({
           </div>
 
           <p className="mt-5 text-center text-[11px] text-slate-400 dark:text-slate-500">
-            All records are verified computational observations, not proof of the Collatz Conjecture.
+            These tables reflect the retained recent results buffer, not all-time engine records.
+            All-time records (longest trajectory, highest peak) are tracked in engine state.
           </p>
         </div>
 

@@ -148,9 +148,10 @@ export function VerificationPanel() {
         ]);
         if (!mounted) return;
 
-        if (!liveRes.ok || liveJson.ok === false) {
+        if (!liveRes.ok) {
           setLiveError(liveJson.error ?? "Live verification summary is unavailable.");
         } else {
+          // ok: false means some checks failed (warning) — data is still available
           setLiveSummary(liveJson as LiveIntegritySummary);
           setLiveError(null);
         }

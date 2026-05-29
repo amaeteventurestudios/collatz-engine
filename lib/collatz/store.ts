@@ -37,6 +37,7 @@ export interface CollatzResultRow {
   steps: number;
   peak: number;
   reached_one?: boolean;
+  created_at?: string | null;
 }
 
 const ENGINE_ID = "main";
@@ -191,7 +192,7 @@ export async function getTopLongestTrajectories(
   if (!supabase) return [];
   const { data, error } = await supabase
     .from("collatz_results")
-    .select("n, steps, peak, reached_one")
+    .select("n, steps, peak, reached_one, created_at")
     .order("steps", { ascending: false })
     .limit(limit);
   if (error) {
@@ -209,7 +210,7 @@ export async function getTopHighestPeaks(limit = 10): Promise<CollatzResultRow[]
   if (!supabase) return [];
   const { data, error } = await supabase
     .from("collatz_results")
-    .select("n, steps, peak, reached_one")
+    .select("n, steps, peak, reached_one, created_at")
     .order("peak", { ascending: false })
     .limit(limit);
   if (error) {
