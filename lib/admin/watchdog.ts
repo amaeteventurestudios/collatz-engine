@@ -160,31 +160,54 @@ function evaluateProgress(engine: EngineAdminState | null): WatchdogSignal {
 }
 
 function evaluatePointer(engine: EngineAdminState | null): WatchdogSignal {
-  if (!engine || engine.currentNumber == null || engine.lastProcessed == null) {
+  if (!engine) {
     return {
       name: "Sequence Pointer",
       status: "unknown",
-      message: "Pointer data unavailable",
-      detail: "currentNumber or lastProcessed is null.",
+      message: "Engine state unavailable",
+      detail: "Cannot evaluate pointer without engine state.",
     };
   }
 
-  const expected = engine.lastProcessed + 1;
-  if (engine.currentNumber === expected) {
+  const lastChecked = engine.lastProcessed;   // last_checked_number
+  const current = engine.currentNumber;        // current_number
+
+  if (lastChecked == null) {
+    return {
+      name: "Sequence Pointer",
+      status: "unknown",
+      message: "last_checked_number unavailable",
+      detail: "Engine has not reported a completed number yet.",
+    };
+  }
+
+  // current_number may not exist on older schemas — degrade gracefully.
+  if (current == null) {
+    return {
+      name: "Sequence Pointer",
+      status: "unknown",
+      message: `last_checked_number = ${lastChecked.toLocaleString("en-US")}`,
+      detail: "current_number not present in engine state. Cannot verify pointer alignment.",
+    };
+  }
+
+  const expectedCurrent = lastChecked + 1;
+  const delta = current - lastChecked;
+
+  if (current === expectedCurrent) {
     return {
       name: "Sequence Pointer",
       status: "safe",
-      message: `Aligned at n=${engine.currentNumber.toLocaleString("en-US")}`,
-      detail: "currentNumber = lastProcessed + 1 as expected.",
+      message: `Aligned — last_checked = ${lastChecked.toLocaleString("en-US")}`,
+      detail: `current_number (${current.toLocaleString("en-US")}) = last_checked_number (${lastChecked.toLocaleString("en-US")}) + 1 ✓`,
     };
   }
 
-  const gap = engine.currentNumber - engine.lastProcessed;
   return {
     name: "Sequence Pointer",
     status: "critical",
-    message: `Pointer gap: ${gap.toLocaleString("en-US")}`,
-    detail: `currentNumber (${engine.currentNumber.toLocaleString("en-US")}) is ${gap} ahead of lastProcessed (${engine.lastProcessed.toLocaleString("en-US")}). Possible coverage gap.`,
+    message: `Pointer delta: ${delta.toLocaleString("en-US")}`,
+    detail: `current_number (${current.toLocaleString("en-US")}) ≠ expected (${expectedCurrent.toLocaleString("en-US")}). last_checked_number = ${lastChecked.toLocaleString("en-US")}. Delta: ${delta}.`,
   };
 }
 

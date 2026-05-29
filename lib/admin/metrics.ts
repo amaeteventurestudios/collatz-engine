@@ -56,7 +56,11 @@ export async function getEngineAdminState(): Promise<{
 
     return {
       data: {
-        currentNumber: n(state.last_checked_number),
+        // current_number is the number the worker is currently computing;
+        // last_checked_number is the last fully-completed number.
+        // They are different columns. If current_number is absent (old schema),
+        // null is returned so the watchdog shows "unknown" rather than "critical".
+        currentNumber: n(state.current_number) ?? null,
         lastProcessed: n(state.last_checked_number),
         totalChecked: n(state.total_numbers_checked),
         status: (state.current_status as string) ?? null,

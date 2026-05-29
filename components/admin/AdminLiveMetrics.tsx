@@ -320,7 +320,8 @@ export function AdminLiveMetrics({ initial }: Props) {
         <Card>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
             {[
-              { label: "Current Number", value: fmtN(engine?.currentNumber) },
+              { label: "current_number", value: fmtN(engine?.currentNumber) },
+              { label: "last_checked_number", value: fmtN(engine?.lastProcessed) },
               { label: "Total Checked", value: fmtN(engine?.totalChecked) },
               {
                 label: "Throughput",
