@@ -9,7 +9,7 @@ import {
   applySafeModeFormAction,
   applyNormalModeFormAction,
   runCleanupFormAction,
-} from "./actions";
+} from "../actions";
 import type { StorageStatus, TableSizeRow, AdminMetricsApiResponse } from "@/lib/admin/types";
 import { AdminLiveMetrics } from "@/components/admin/AdminLiveMetrics";
 
