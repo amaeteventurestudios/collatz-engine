@@ -34,6 +34,7 @@ export function useAdminRealtimeMetrics(
     initial ? new Date() : null,
   );
 
+  // eslint-disable-next-line react-hooks/purity
   const lastSuccessMs = useRef<number>(initial ? Date.now() : 0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const staleRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -63,7 +64,7 @@ export function useAdminRealtimeMetrics(
   }, []);
 
   useEffect(() => {
-    // Immediate first poll (after mount)
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void poll();
 
     // Recurring poll

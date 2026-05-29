@@ -94,28 +94,6 @@ function DisabledButton({ label, phase }: { label: string; phase: string }) {
   );
 }
 
-function StatusPill({ status }: { status: string | null }) {
-  const s = (status ?? "unknown").toLowerCase();
-  if (s === "running")
-    return (
-      <span className="inline-flex items-center gap-1.5 rounded-full bg-green-500/15 px-2.5 py-0.5 text-[10px] font-semibold text-green-400">
-        <span className="h-1.5 w-1.5 rounded-full bg-green-400 animate-pulse" />
-        Running
-      </span>
-    );
-  if (s === "paused")
-    return (
-      <span className="inline-flex items-center gap-1.5 rounded-full bg-yellow-500/15 px-2.5 py-0.5 text-[10px] font-semibold text-yellow-400">
-        ⏸ Paused
-      </span>
-    );
-  return (
-    <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-700 px-2.5 py-0.5 text-[10px] font-semibold text-slate-400">
-      ◌ {status ?? "Unknown"}
-    </span>
-  );
-}
-
 function LockStatusPill({ status }: { status: WorkerLockState["status"] | null }) {
   if (!status)
     return <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-700 px-2.5 py-0.5 text-[10px] font-semibold text-slate-400">◌ None</span>;
@@ -198,9 +176,8 @@ const SIGNAL_LABELS: Record<WatchdogSignalStatus, string> = {
 
 function OverallStatusBanner({ watchdog }: { watchdog: WatchdogResult }) {
   const c = SIGNAL_COLORS[watchdog.overall];
-  const evaluatedAgo = Math.floor(
-    (Date.now() - new Date(watchdog.evaluatedAt).getTime()) / 1000,
-  );
+  // eslint-disable-next-line react-hooks/purity
+  const evaluatedAgo = Math.floor((Date.now() - new Date(watchdog.evaluatedAt).getTime()) / 1000);
   return (
     <div className={`flex items-center justify-between rounded-2xl border ${c.border} ${c.bg} px-5 py-4`}>
       <div className="flex items-center gap-3">
@@ -306,11 +283,12 @@ export function AdminLiveMetrics({ initial }: Props) {
   const isPaused = engine?.status === "paused";
   const isRunning = engine?.status === "running";
 
-  // Live seconds-until-expiry (re-computed on each render from heartbeatAt)
+  /* eslint-disable react-hooks/purity */
   const lockSecondsLeft =
     workerLock?.status === "active"
       ? Math.max(0, Math.floor((new Date(workerLock.expiresAt).getTime() - Date.now()) / 1000))
       : null;
+  /* eslint-enable react-hooks/purity */
 
   return (
     <div className="space-y-10">

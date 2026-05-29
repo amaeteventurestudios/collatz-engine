@@ -195,7 +195,7 @@ describe("worker pre-batch lock ownership guard", () => {
     const lock = {
       worker_instance_id: myInstanceId,
       expires_at: new Date(Date.now() + 20_000).toISOString(),
-      status: "released" as const,
+      status: "released" as string,
     };
     const canProceed =
       !isLockExpired(lock) &&
@@ -208,7 +208,7 @@ describe("worker pre-batch lock ownership guard", () => {
     const lock = {
       worker_instance_id: myInstanceId,
       expires_at: new Date(Date.now() + 20_000).toISOString(),
-      status: "force_released" as const,
+      status: "force_released" as string,
     };
     const canProceed =
       !isLockExpired(lock) &&

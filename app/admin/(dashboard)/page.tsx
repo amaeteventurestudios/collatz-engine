@@ -2,7 +2,7 @@ import Link from "next/link";
 import { getEngineAdminState, getRecentActivityLogs, getThroughputHistory, getDbRuntimeConfig, getWorkerLockState } from "@/lib/admin/metrics";
 import { getStorageMonitor, formatBytes } from "@/lib/admin/storage";
 import { getR2Status } from "@/lib/admin/r2";
-import { MODE_PRESETS, secondsSince, formatDuration, heartbeatStatus } from "@/lib/admin/engine";
+import { MODE_PRESETS, secondsSince, heartbeatStatus } from "@/lib/admin/engine";
 import { computeWatchdog } from "@/lib/admin/watchdog";
 import {
   logoutAction,
@@ -20,15 +20,6 @@ export const dynamic = "force-dynamic";
 
 function utcNow() {
   return new Date().toUTCString();
-}
-
-function statusPill(status: string | null) {
-  const s = (status ?? "unknown").toLowerCase();
-  if (s === "running")
-    return <span className="inline-flex items-center gap-1.5 rounded-full bg-green-500/15 px-2.5 py-0.5 text-[10px] font-semibold text-green-400"><span className="h-1.5 w-1.5 rounded-full bg-green-400 animate-pulse" />Running</span>;
-  if (s === "paused")
-    return <span className="inline-flex items-center gap-1.5 rounded-full bg-yellow-500/15 px-2.5 py-0.5 text-[10px] font-semibold text-yellow-400">⏸ Paused</span>;
-  return <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-700 px-2.5 py-0.5 text-[10px] font-semibold text-slate-400">◌ {status ?? "Unknown"}</span>;
 }
 
 function storageStatusColor(s: StorageStatus): string {
@@ -198,7 +189,6 @@ export default async function AdminPage() {
   const runtimeConfigExists = dbConfigResult.exists;
   const hbAge = secondsSince(engine?.lastHeartbeat);
   const hbStatus = heartbeatStatus(hbAge);
-  const isRunning = engine?.status === "running";
 
   const watchdog = computeWatchdog({
     engine: engineResult.data,
