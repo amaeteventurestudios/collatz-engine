@@ -2,99 +2,118 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { useState } from "react";
 
 export function HeroSection() {
   return (
-    <section className="relative min-h-[560px] overflow-hidden bg-slate-950 px-4 pb-12 pt-10 text-center sm:min-h-[600px] sm:pb-16 sm:pt-20">
+    <section className="relative overflow-hidden bg-[#020617] min-h-[720px]">
 
-      {/* ── Hero image (placed under content) ───────────────────────── */}
-      {/* Fails gracefully — fallback is the dark slate-950 background above */}
-      <div className="pointer-events-none absolute inset-0" aria-hidden>
-        <Image
-          src="/images/collatz-hero.webp"
-          alt=""
-          fill
-          priority
-          sizes="100vw"
-          className="object-cover object-center"
-          style={{ opacity: 0.35 }}
-          onError={() => {/* silently ignore if image not yet present */}}
-        />
-        {/* gradient overlay — keeps text readable over the image */}
-        <div className="absolute inset-0 bg-gradient-to-b from-slate-950/80 via-slate-950/50 to-slate-950/90" />
-        {/* subtle teal radial glow behind the title */}
-        <div className="absolute left-1/2 top-0 h-[500px] w-full max-w-3xl -translate-x-1/2 rounded-full bg-teal-500/10 blur-3xl" />
+      {/* ── Right-side trajectory field image ─────────────────────────── */}
+      <div className="absolute inset-y-0 right-0 w-full md:w-[62%]">
+        <HeroImage />
       </div>
 
-      {/* ── Content ─────────────────────────────────────────────────── */}
-      <div className="relative z-10 mx-auto max-w-3xl">
+      {/* ── Left-to-right gradient so text area stays dark ───────────── */}
+      <div className="absolute inset-0 bg-gradient-to-r from-[#020617] via-[#020617]/95 to-[#020617]/15 md:to-[#020617]/10" />
+      {/* ── Mobile overlay — darken image behind text ────────────────── */}
+      <div className="absolute inset-0 bg-[#020617]/75 md:hidden" />
+      {/* ── Bottom fade into next section ────────────────────────────── */}
+      <div className="absolute bottom-0 inset-x-0 h-24 bg-gradient-to-b from-transparent to-[#020617]" />
 
-        {/* Live badge */}
-        <div className="mb-6 flex items-center justify-center">
-          <span className="inline-flex items-center gap-2 rounded-full border border-green-500/30 bg-green-500/10 px-3.5 py-1.5 text-xs font-semibold text-green-400 backdrop-blur-sm">
-            <span className="live-dot" />
-            Engine Online
-          </span>
-        </div>
+      {/* ── Hero content ─────────────────────────────────────────────── */}
+      <div className="relative z-10 mx-auto flex min-h-[720px] max-w-7xl items-center px-6 py-16 md:py-0">
+        <div className="max-w-[520px] w-full md:w-[45%]">
 
-        {/* Main title */}
-        <h1 className="text-4xl font-bold leading-tight tracking-tight text-white sm:text-5xl lg:text-6xl">
-          The{" "}
-          <span className="bg-gradient-to-r from-teal-400 to-blue-500 bg-clip-text text-transparent">
-            Collatz Engine
-          </span>
-        </h1>
+          {/* Eyebrow */}
+          <div className="mb-5 flex items-center gap-2.5">
+            <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 text-teal-400" fill="none" stroke="currentColor" strokeWidth={2}>
+              <circle cx="12" cy="12" r="10" />
+              <path d="M12 8v4l3 3" />
+            </svg>
+            <span className="text-[10px] font-semibold tracking-[0.2em] text-teal-400 uppercase">
+              Autonomous Mathematical Observatory
+            </span>
+          </div>
 
-        {/* Subtitle */}
-        <p className="mx-auto mt-5 max-w-xl px-2 text-base leading-relaxed text-slate-300 sm:px-0 sm:text-lg">
-          A public autonomous observatory exploring one of mathematics&apos; most famous unsolved
-          problems.
-        </p>
+          {/* Main heading */}
+          <h1 className="text-5xl font-bold leading-[1.1] tracking-tight text-white sm:text-6xl lg:text-[4rem]">
+            The{" "}
+            <span className="bg-gradient-to-r from-teal-400 to-blue-500 bg-clip-text text-transparent">
+              Collatz Engine
+            </span>
+          </h1>
 
-        {/* Supporting description */}
-        <p className="mx-auto mt-3 max-w-xl px-2 text-sm leading-relaxed text-slate-400 sm:px-0">
-          The engine continuously catalogs, visualizes, and analyzes Collatz trajectories using
-          persistent computation, transparent records, and live mathematical telemetry.
-        </p>
+          {/* Subheadline */}
+          <p className="mt-5 text-base leading-relaxed text-slate-300 sm:text-lg">
+            Exploring one of mathematics&apos; most famous unsolved problems.
+          </p>
 
-        {/* Credibility note */}
-        <p className="mx-auto mt-3 max-w-md px-4 text-xs leading-relaxed text-slate-500 sm:px-0">
-          This project does not claim to prove the Collatz Conjecture. It is a public exploration
-          and visualization system.
-        </p>
+          {/* Supporting line */}
+          <p className="mt-3 text-sm leading-relaxed text-slate-400">
+            The engine continuously catalogs, visualizes, and analyzes Collatz
+            trajectories using persistent computation, transparent records, and
+            live mathematical telemetry.
+          </p>
 
-        {/* CTAs */}
-        <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-          <Link
-            href="/#visualizer"
-            className="inline-flex h-12 w-full items-center justify-center rounded-xl bg-teal-500 px-8 text-sm font-semibold text-white shadow-lg shadow-teal-500/20 transition-colors hover:bg-teal-400 sm:h-11 sm:w-auto"
-          >
-            Explore the Data
-          </Link>
-          <Link
-            href="/#about"
-            className="inline-flex h-12 w-full items-center justify-center rounded-xl border border-slate-700 bg-slate-900/60 px-8 text-sm font-semibold text-slate-200 backdrop-blur-sm transition-colors hover:border-slate-600 hover:bg-slate-800/60 sm:h-11 sm:w-auto"
-          >
-            How the Engine Works
-          </Link>
-        </div>
+          {/* Status row */}
+          <div className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-medium text-slate-400">
+            <span className="flex items-center gap-1.5">
+              <span className="live-dot" />
+              <span className="text-green-400">Engine Online</span>
+            </span>
+            <span className="text-slate-600">|</span>
+            <span>All Systems Operational</span>
+            <span className="text-slate-600">|</span>
+            <span>Data Is Live</span>
+          </div>
 
-        {/* Scroll hint */}
-        <div className="mt-10 flex flex-col items-center gap-1">
-          <span className="text-[10px] uppercase tracking-widest text-slate-500">
-            Scroll to explore
-          </span>
-          <svg
-            className="h-4 w-4 animate-bounce text-slate-600"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2}
-          >
-            <polyline points="6 9 12 15 18 9" />
-          </svg>
+          {/* CTAs */}
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+            <Link
+              href="/#visualizer"
+              className="inline-flex h-11 items-center justify-center rounded-xl bg-teal-500 px-7 text-sm font-semibold text-white shadow-lg shadow-teal-500/20 transition-colors hover:bg-teal-400"
+            >
+              Explore the Data →
+            </Link>
+            <Link
+              href="/#about"
+              className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-700 bg-slate-900/60 px-7 text-sm font-semibold text-slate-200 backdrop-blur-sm transition-colors hover:border-slate-500 hover:bg-slate-800/60"
+            >
+              How the Engine Works →
+            </Link>
+          </div>
+
+          {/* Disclaimer card */}
+          <div className="mt-8 flex items-start gap-2.5 rounded-xl border border-slate-800 bg-slate-900/50 px-4 py-3 backdrop-blur-sm">
+            <svg viewBox="0 0 24 24" className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" fill="none" stroke="currentColor" strokeWidth={2}>
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+            </svg>
+            <p className="text-xs leading-relaxed text-slate-500">
+              This project does not claim to prove the Collatz Conjecture.{" "}
+              It is a public exploration and visualization system.
+            </p>
+          </div>
+
         </div>
       </div>
     </section>
+  );
+}
+
+function HeroImage() {
+  const [missing, setMissing] = useState(false);
+
+  if (missing) return null;
+
+  return (
+    <Image
+      src="/images/collatz-hero.webp"
+      alt="Collatz trajectory field converging toward one"
+      fill
+      preload
+      sizes="(max-width: 768px) 100vw, 62vw"
+      className="object-cover object-right"
+      onError={() => setMissing(true)}
+    />
   );
 }
