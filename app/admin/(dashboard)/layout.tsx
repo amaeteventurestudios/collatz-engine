@@ -8,6 +8,12 @@ const sidebarSections = [
     items: [{ href: "/admin", label: "Overview" }],
   },
   {
+    label: "Observatory",
+    items: [
+      { href: "/admin/ai-observatory", label: "AI Observatory" },
+    ],
+  },
+  {
     label: "Operations",
     items: [
       { href: "/admin/engine-control", label: "Engine Control" },
@@ -22,12 +28,6 @@ const sidebarSections = [
       { href: "/admin/database-monitor", label: "Database Monitor" },
       { href: "/admin/storage-archive",  label: "Storage & Archive" },
       { href: "/admin/system-health",    label: "System Health" },
-    ],
-  },
-  {
-    label: "Observatory",
-    items: [
-      { href: "/admin/ai-observatory", label: "AI Observatory" },
     ],
   },
   {
