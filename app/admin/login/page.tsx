@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { loginAction } from "../actions";
+import { AdminLoginForm } from "@/components/admin/AdminLoginForm";
 
 export const metadata: Metadata = {
   title: "Admin Login | The Collatz Engine",
@@ -18,10 +18,11 @@ export default async function AdminLoginPage({ searchParams }: Props) {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-slate-950 px-4 py-12">
       <div className="w-full max-w-sm">
+
         {/* Brand */}
         <div className="mb-8 text-center">
           <Link href="/" className="inline-block">
-            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-teal-500/10 ring-1 ring-teal-500/30">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-teal-500/10 ring-2 ring-teal-500/20">
               <svg
                 viewBox="0 0 24 24"
                 className="h-7 w-7 text-teal-400"
@@ -42,62 +43,12 @@ export default async function AdminLoginPage({ searchParams }: Props) {
         </div>
 
         {/* Login card */}
-        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
-          {hasError && (
-            <div className="mb-5 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3">
-              <p className="text-xs font-medium text-red-400">
-                Invalid credentials. Please try again.
-              </p>
-            </div>
-          )}
-
-          <form action={loginAction} className="space-y-4">
-            <div>
-              <label
-                htmlFor="username"
-                className="mb-1.5 block text-xs font-semibold text-slate-400"
-              >
-                Username
-              </label>
-              <input
-                id="username"
-                name="username"
-                type="text"
-                required
-                autoComplete="username"
-                placeholder="admin"
-                className="w-full rounded-xl border border-slate-700 bg-slate-800 px-3.5 py-3 text-sm text-slate-100 placeholder-slate-600 focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
-              />
-            </div>
-
-            <div>
-              <label
-                htmlFor="password"
-                className="mb-1.5 block text-xs font-semibold text-slate-400"
-              >
-                Password
-              </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                required
-                autoComplete="current-password"
-                placeholder="••••••••"
-                className="w-full rounded-xl border border-slate-700 bg-slate-800 px-3.5 py-3 text-sm text-slate-100 placeholder-slate-600 focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
-              />
-            </div>
-
-            <button
-              type="submit"
-              className="w-full rounded-xl bg-teal-600 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-teal-500 active:bg-teal-700"
-            >
-              Sign In
-            </button>
-          </form>
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-6 shadow-2xl shadow-black/40 backdrop-blur-sm">
+          <AdminLoginForm hasError={hasError} />
         </div>
 
-        <div className="mt-5 text-center">
+        {/* Footer links */}
+        <div className="mt-5 flex items-center justify-center gap-4">
           <Link
             href="/"
             className="text-xs text-slate-600 transition-colors hover:text-slate-400"
