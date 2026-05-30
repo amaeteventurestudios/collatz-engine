@@ -13,6 +13,7 @@ import type {
   AIGeneratedImage,
   AIObservatoryStats,
   AIObservatorySettings,
+  AIUsageEvent,
   ProviderName,
   DraftStatus,
 } from "./types";
@@ -533,6 +534,51 @@ export async function saveObservatorySettings(
   } catch (err) {
     return { ok: false, error: classifyDbError(err) };
   }
+}
+
+// ─── Usage Events ─────────────────────────────────────────────────────────────
+
+export async function logUsageEvent(
+  event: Omit<AIUsageEvent, "id" | "created_at">,
+): Promise<void> {
+  const client = getClient();
+  if (!client) return;
+  try {
+    await client.from("ai_usage_events").insert({
+      ...event,
+      created_at: new Date().toISOString(),
+    });
+  } catch { /* usage logging must never crash generation workflows */ }
+}
+
+export async function getUsageEvents(limit = 100): Promise<AIUsageEvent[]> {
+  const client = getClient();
+  if (!client) return [];
+  try {
+    const { data, error } = await client
+      .from("ai_usage_events")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(limit);
+    if (error || isMissingTable(error)) return [];
+    return (data ?? []) as AIUsageEvent[];
+  } catch { return []; }
+}
+
+// ─── Article Queue ────────────────────────────────────────────────────────────
+
+export async function getQueuedArticles(): Promise<AIDraftRow[]> {
+  const client = getClient();
+  if (!client) return [];
+  try {
+    const { data, error } = await client
+      .from("ai_drafts")
+      .select("*")
+      .not("scheduled_at", "is", null)
+      .order("scheduled_at", { ascending: true });
+    if (error || isMissingTable(error)) return [];
+    return (data ?? []) as AIDraftRow[];
+  } catch { return []; }
 }
 
 // ─── Recent Activity ──────────────────────────────────────────────────────────

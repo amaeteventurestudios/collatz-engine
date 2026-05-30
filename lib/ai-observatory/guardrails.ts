@@ -77,6 +77,12 @@ const PROOF_CLAIM_PHRASES = [
 ];
 
 const DISCLAIMER_PHRASES = [
+  // Standard disclosure text inserted by Content Radar drafts
+  "does not claim to prove",
+  "no proof claim",
+  "not claiming to prove",
+  "generated automatically",
+  // Legacy / manually written disclaimer phrases
   "computational observation",
   "not a proof",
   "consistent with",

@@ -61,12 +61,14 @@ import {
   runGuardrailsAction,
   saveDraftAction,
   saveObservatorySettingsAction,
+  scheduleArticleAction,
+  unscheduleArticleAction,
   updateNoteStatusAction,
 } from "./actions";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
-type MainTab = "overview" | "radar" | "queue" | "editor" | "notes" | "reports" | "published" | "studio" | "usage" | "settings";
+type MainTab = "overview" | "radar" | "queue" | "editor" | "notes" | "reports" | "published" | "article-queue" | "studio" | "usage" | "settings";
 type QueueFilter = "all" | DraftStatus | "published_exported";
 type SortMode = "updated" | "created" | "status" | "content_type";
 type RadarFilter = "all" | TopicCategory;
@@ -97,16 +99,17 @@ interface Props {
 // ── Constants ──────────────────────────────────────────────────────────────────
 
 const mainTabs: { id: MainTab; label: string }[] = [
-  { id: "overview",   label: "Overview"           },
-  { id: "radar",      label: "Content Radar"      },
-  { id: "queue",      label: "Draft Queue"        },
-  { id: "editor",     label: "Draft Editor"       },
-  { id: "notes",      label: "AI Notes"           },
-  { id: "reports",    label: "Reports"            },
-  { id: "published",  label: "Published"          },
-  { id: "studio",     label: "AI Studio"          },
-  { id: "usage",      label: "Usage"              },
-  { id: "settings",   label: "Settings"           },
+  { id: "overview",       label: "Overview"       },
+  { id: "radar",          label: "Content Radar"  },
+  { id: "queue",          label: "Draft Queue"    },
+  { id: "editor",         label: "Draft Editor"   },
+  { id: "notes",          label: "AI Notes"       },
+  { id: "reports",        label: "Reports"        },
+  { id: "published",      label: "Published"      },
+  { id: "article-queue",  label: "Article Queue"  },
+  { id: "studio",         label: "AI Studio"      },
+  { id: "usage",          label: "Usage"          },
+  { id: "settings",       label: "Settings"       },
 ];
 
 const contentTypes: ContentType[] = [
@@ -502,6 +505,7 @@ export function AIObservatoryDesk({
       {activeTab === "notes"      && renderNotes()}
       {activeTab === "reports"    && renderReports()}
       {activeTab === "published"  && renderPublished()}
+      {activeTab === "article-queue" && renderArticleQueue()}
       {activeTab === "studio"     && (
         <AIStudioClient
           providers={providers} modelSettings={modelSettings} brandVoices={brandVoices}
@@ -797,6 +801,37 @@ export function AIObservatoryDesk({
             <input name="tags" defaultValue={selectedTags} disabled={!canEdit} placeholder="collatz, computation, observatory"
               className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-[11px] text-slate-200 outline-none focus:border-teal-500 disabled:opacity-60" />
           </label>
+          {/* SEO / Article Metadata */}
+          <details className="rounded-lg border border-slate-800">
+            <summary className="cursor-pointer px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500 hover:text-slate-300">
+              SEO &amp; Article Metadata
+            </summary>
+            <div className="space-y-3 px-3 pb-3 pt-2">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label>
+                  <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-slate-500">Slug</span>
+                  <input name="slug" defaultValue={selectedDraft.slug ?? ""} disabled={!canEdit} placeholder="my-article-slug"
+                    className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-[11px] text-slate-200 outline-none focus:border-teal-500 disabled:opacity-60" />
+                </label>
+                <label>
+                  <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-slate-500">Category</span>
+                  <input name="category" defaultValue={selectedDraft.category ?? ""} disabled={!canEdit} placeholder="Research · Weekly · Record"
+                    className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-[11px] text-slate-200 outline-none focus:border-teal-500 disabled:opacity-60" />
+                </label>
+              </div>
+              <label>
+                <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-slate-500">SEO Title</span>
+                <input name="seo_title" defaultValue={selectedDraft.seo_title ?? ""} disabled={!canEdit}
+                  className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-[11px] text-slate-200 outline-none focus:border-teal-500 disabled:opacity-60" />
+              </label>
+              <label>
+                <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-slate-500">SEO Description</span>
+                <textarea name="seo_description" defaultValue={selectedDraft.seo_description ?? ""} disabled={!canEdit} rows={2}
+                  className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-[11px] text-slate-200 outline-none focus:border-teal-500 disabled:opacity-60" />
+              </label>
+            </div>
+          </details>
+
           <input type="hidden" name="status" value={selectedDraft.status} />
           <input type="hidden" name="source_note_id" value={selectedDraft.source_note_id ?? ""} />
 
@@ -1086,10 +1121,11 @@ export function AIObservatoryDesk({
           <div className="space-y-1.5 p-3">
             <button type="button" disabled={isPending} onClick={() => runDraftAction(approveDraftAction)}
               className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-green-500/40 bg-green-500/10 px-3 py-2 text-[10px] font-bold text-green-200 disabled:opacity-40">
-              <Check className="h-3.5 w-3.5" /> Approve &amp; Publish Now
+              <Check className="h-3.5 w-3.5" /> Approve Draft
             </button>
-            <button type="button" className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-slate-700 px-3 py-2 text-[10px] text-slate-400 opacity-50">
-              Schedule for Later
+            <button type="button" onClick={() => setActiveTab("article-queue")}
+              className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-slate-700 px-3 py-2 text-[10px] text-slate-400 hover:border-teal-500/30 hover:text-teal-300">
+              {selectedDraft.scheduled_at ? `Scheduled: ${fmtDate(selectedDraft.scheduled_at)}` : "Add to Article Queue →"}
             </button>
             <button type="button" onClick={() => runDraftAction(archiveDraftAction)}
               className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-slate-700 px-3 py-2 text-[10px] font-semibold text-slate-300">
@@ -1149,7 +1185,8 @@ export function AIObservatoryDesk({
               <span className="font-bold tabular-nums text-slate-200">{value}</span>
             </div>
           ))}
-          <p className="pt-1 text-right text-[9px] text-slate-600">Last Updated: {fmtDate(new Date().toISOString())}</p>
+          {/* Use DB heartbeat timestamp, not client render time */}
+          <p className="pt-1 text-right text-[9px] text-slate-600">Last Updated: {fmtDate(e?.lastHeartbeat)}</p>
         </div>
       </Panel>
     );
@@ -1475,12 +1512,203 @@ export function AIObservatoryDesk({
   function renderUsage() {
     return (
       <Panel>
-        <PanelTitle title="Usage / Cost" help={<PanelHelp title="Usage" description="Provider usage events appear here after generation calls are logged." />} />
+        <PanelTitle title="Usage / Cost" help={<PanelHelp title="Usage" description="Provider usage events logged after each text or image generation call." />} />
         <div className="p-10 text-center">
-          <p className="text-sm font-semibold text-slate-300">No usage events to display yet.</p>
-          <p className="mt-2 text-[11px] text-slate-500">Generation is server-side and reports real provider usage when available.</p>
+          <p className="text-sm font-semibold text-slate-300">Usage events are now recorded.</p>
+          <p className="mt-2 text-[11px] text-slate-500">
+            After your first AI generation call, data will appear here from the{" "}
+            <code className="rounded bg-slate-800 px-1 py-0.5 text-cyan-300">ai_usage_events</code>{" "}
+            table. Refresh this page after generating text or images to see token counts, model names, and provider info.
+          </p>
+          <p className="mt-3 text-[10px] text-slate-600">
+            AI Studio → Usage / Cost shows aggregated totals once the table has data.
+          </p>
         </div>
       </Panel>
+    );
+  }
+
+  // ╔══════════════════════════════════════════════════════════════════╗
+  // ║  ARTICLE QUEUE TAB                                               ║
+  // ╚══════════════════════════════════════════════════════════════════╝
+  function renderArticleQueue() {
+    // Show all drafts that have a scheduled_at, plus approved drafts without one
+    const queued    = drafts.filter((d) => d.scheduled_at && !["archived","rejected"].includes(d.status));
+    const readyPool = drafts.filter((d) => d.status === "approved" && !d.scheduled_at);
+    const isHold    = mode === "emergency_hold";
+
+    function articleReadiness(d: AIDraftRow) {
+      const gr = checkDraftGuardrails(d);
+      const profile = profileFor(d);
+      const needsImage = Boolean(profile?.requires_image);
+      const hasImage   = Boolean(d.image_url);
+      return {
+        guardrails: gr.passed,
+        image:      !needsImage || hasImage,
+        disclosure: gr.rules.find((r) => r.id === "disclaimers_required")?.passed ?? false,
+        ready:      gr.passed && (!needsImage || hasImage),
+      };
+    }
+
+    return (
+      <div className="space-y-5">
+        {isHold && (
+          <div className="flex items-center gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3">
+            <span className="text-amber-300 font-bold text-sm">Emergency Hold Active</span>
+            <p className="text-[11px] text-amber-200">Scheduling and publishing are paused. Change the mode in Settings to resume.</p>
+          </div>
+        )}
+
+        <Panel>
+          <PanelTitle
+            title="Article Queue"
+            help={<PanelHelp
+              title="Article Queue"
+              description="Prepared drafts queued for publication. Scheduled articles are NOT published automatically — this queue shows what is ready and when it should go out. Actual publishing requires the operator to click Mark Published or an autonomous scheduler (not yet active) to execute it."
+              operatorNote="Scheduled publishing execution is not yet automated. Labels show intended publish dates only."
+            />}
+          />
+          <div className="p-4">
+            {queued.length === 0 ? (
+              <div className="rounded-lg border border-slate-800 bg-slate-950/50 p-10 text-center">
+                <p className="text-sm font-semibold text-slate-400">No articles in queue.</p>
+                <p className="mt-1.5 text-[11px] text-slate-600">
+                  Schedule an approved draft from the Draft Editor → Article Queue button, or select a draft below.
+                </p>
+                {mode === "semi_auto" && (
+                  <p className="mt-3 text-[10px] text-amber-300/70">
+                    Semi-Auto mode: scheduled articles still require manual approval before publishing.
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[680px] text-[11px]">
+                  <thead>
+                    <tr className="border-b border-slate-800 bg-slate-950/50">
+                      {["Title","Status","Scheduled","Content Type","Image","Guardrails","Actions"].map((h) => (
+                        <th key={h} className="px-3 py-2 text-left text-[9px] font-bold uppercase tracking-wider text-slate-600">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/50">
+                    {queued.map((d) => {
+                      const r = articleReadiness(d);
+                      return (
+                        <tr key={d.id} className="hover:bg-slate-800/20">
+                          <td className="px-3 py-2.5">
+                            <button type="button" onClick={() => { setSelectedDraftId(d.id); setActiveTab("editor"); }}
+                              className="text-left font-semibold text-slate-100 hover:text-teal-300 max-w-[200px] truncate block">
+                              {d.title}
+                            </button>
+                            {d.slug && <span className="text-[9px] text-slate-600">/{d.slug}</span>}
+                          </td>
+                          <td className="px-3 py-2.5"><StatusBadge status={d.status} /></td>
+                          <td className="px-3 py-2.5 tabular-nums text-slate-400">{fmtDate(d.scheduled_at)}</td>
+                          <td className="px-3 py-2.5 text-slate-500">{titleCase(d.content_type)}</td>
+                          <td className="px-3 py-2.5">
+                            <span className={r.image ? "text-green-400" : "text-amber-400"}>{r.image ? "Ready" : "Missing"}</span>
+                          </td>
+                          <td className="px-3 py-2.5">
+                            <span className={r.guardrails ? "text-green-400" : "text-amber-400"}>{r.guardrails ? "Pass" : "Warning"}</span>
+                          </td>
+                          <td className="px-3 py-2.5">
+                            <div className="flex gap-2">
+                              <button type="button" disabled={d.status !== "approved" || !r.ready || isHold}
+                                onClick={() => {
+                                  const fd = new FormData();
+                                  fd.append("id", d.id);
+                                  startTransition(async () => {
+                                    const res = await markPublishedAction(fd);
+                                    setMessage(res.ok ? "Article published." : (res.error ?? "Failed."));
+                                  });
+                                }}
+                                className="rounded border border-teal-500/40 bg-teal-500/10 px-2 py-1 text-[9px] font-semibold text-teal-200 disabled:opacity-40">
+                                Publish Now
+                              </button>
+                              <form action={async (fd) => {
+                                fd.append("id", d.id);
+                                const res = await unscheduleArticleAction(fd);
+                                setMessage(res.ok ? "Removed from queue." : (res.error ?? "Failed."));
+                              }}>
+                                <button type="submit" className="rounded border border-slate-700 px-2 py-1 text-[9px] text-slate-400 hover:text-red-300">Remove</button>
+                              </form>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </Panel>
+
+        {/* Schedule a draft */}
+        <Panel>
+          <PanelTitle
+            title="Schedule / Prepare a Draft"
+            help={<PanelHelp title="Schedule" description="Set a publish date and SEO metadata for a draft. The queue shows intended dates. Actual publishing is manual until an automated scheduler is configured." />}
+          />
+          <div className="p-4 space-y-3">
+            {readyPool.length === 0 && queued.length === 0 ? (
+              <p className="text-[11px] text-slate-500">No approved drafts available. Approve a draft first.</p>
+            ) : (
+              <form action={async (fd) => {
+                const res = await scheduleArticleAction(fd);
+                setMessage(res.ok ? "Article queued." : (res.error ?? "Failed."));
+              }} className="grid gap-4 sm:grid-cols-2">
+                <div className="sm:col-span-2">
+                  <label>
+                    <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-slate-500">Draft to Schedule</span>
+                    <select name="id" className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-[11px] text-slate-200 outline-none">
+                      <option value="">Select a draft…</option>
+                      {[...readyPool, ...queued.filter((d) => d.status === "approved")].map((d) => (
+                        <option key={d.id} value={d.id}>{d.title} — {titleCase(d.status)}</option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+                <label>
+                  <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-slate-500">Publish Date &amp; Time</span>
+                  <input type="datetime-local" name="scheduled_at"
+                    className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-[11px] text-slate-200 outline-none focus:border-teal-500" />
+                </label>
+                <label>
+                  <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-slate-500">Slug</span>
+                  <input name="slug" placeholder="my-article-slug" className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-[11px] text-slate-200 outline-none focus:border-teal-500" />
+                </label>
+                <label>
+                  <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-slate-500">SEO Title</span>
+                  <input name="seo_title" className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-[11px] text-slate-200 outline-none focus:border-teal-500" />
+                </label>
+                <label>
+                  <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-slate-500">Category</span>
+                  <input name="category" placeholder="Research · Weekly · Record" className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-[11px] text-slate-200 outline-none focus:border-teal-500" />
+                </label>
+                <div className="sm:col-span-2">
+                  <label>
+                    <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-slate-500">SEO Description</span>
+                    <textarea name="seo_description" rows={2} className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-[11px] text-slate-200 outline-none focus:border-teal-500" />
+                  </label>
+                </div>
+                <div className="sm:col-span-2">
+                  <button type="submit" disabled={isHold}
+                    className="rounded-lg border border-teal-500/50 bg-teal-500/15 px-4 py-2 text-[11px] font-bold text-teal-100 hover:bg-teal-500/25 disabled:opacity-40">
+                    Add to Queue
+                  </button>
+                  {isHold && <span className="ml-3 text-[10px] text-amber-300">Blocked — Emergency Hold active.</span>}
+                </div>
+              </form>
+            )}
+            <div className="mt-2 rounded-lg border border-slate-700/40 bg-slate-950/50 p-3 text-[10px] text-slate-600">
+              <p className="font-semibold text-slate-500 mb-1">Scheduling note</p>
+              <p>Scheduled dates are informational labels. Automated publishing execution is not yet active — publishing requires a manual &ldquo;Mark Published&rdquo; click or an autonomous scheduler. Emergency Hold always prevents publication.</p>
+            </div>
+          </div>
+        </Panel>
+      </div>
     );
   }
 

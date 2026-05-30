@@ -250,6 +250,14 @@ export interface AIDraftRow {
   published_at: string | null;
   created_at: string;
   updated_at: string;
+  // Phase 3E: article queue and SEO metadata
+  slug: string | null;
+  seo_title: string | null;
+  seo_description: string | null;
+  category: string | null;
+  scheduled_at: string | null;
+  generation_provider: string | null;
+  generation_model: string | null;
 }
 
 export interface AIDraftAuditEvent {
@@ -343,6 +351,21 @@ export interface AIObservatoryStats {
   rejectedCount: number;
   reportsGenerated: number;
   imagesGenerated: number;
+}
+
+// ─── Usage Events ─────────────────────────────────────────────────────────────
+
+export interface AIUsageEvent {
+  id: string;
+  provider_name: ProviderName;
+  model_name: string;
+  task_type: string;
+  input_tokens: number | null;
+  output_tokens: number | null;
+  image_count: number | null;
+  estimated_cost: number | null;
+  status: "ok" | "error";
+  created_at: string;
 }
 
 // ─── Provider Generation ──────────────────────────────────────────────────────

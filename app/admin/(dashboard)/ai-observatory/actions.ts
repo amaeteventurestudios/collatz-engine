@@ -22,10 +22,22 @@ import {
   logDraftEvent,
   createGeneratedImageRecord,
   saveObservatorySettings,
+  getObservatorySettings,
+  logUsageEvent,
 } from "@/lib/ai-observatory/admin-store";
 import { checkDraftGuardrails } from "@/lib/ai-observatory/guardrails";
 import type { ProviderName, ContentType, NoteType, NoteSeverity, DraftStatus, PublishingMode } from "@/lib/ai-observatory/types";
 import { DEFAULT_DISCLOSURE_TEXT } from "@/lib/ai-observatory/types";
+
+// ─── Emergency Hold guard ─────────────────────────────────────────────────────
+
+async function assertNotEmergencyHold(): Promise<{ blocked: boolean; error?: string }> {
+  const settings = await getObservatorySettings().catch(() => null);
+  if (settings?.publishing_mode === "emergency_hold") {
+    return { blocked: true, error: "Emergency Hold is active. Publishing is paused. Change the mode in AI Observatory → Settings before approving or publishing." };
+  }
+  return { blocked: false };
+}
 
 // ─── Auth guard ───────────────────────────────────────────────────────────────
 
@@ -248,18 +260,36 @@ export async function createBlankDraftAction(formData: FormData): Promise<{ ok: 
 
 export async function approveDraftAction(formData: FormData): Promise<{ ok: boolean; error?: string }> {
   await requireSession();
+
+  // Server-side Emergency Hold enforcement
+  const hold = await assertNotEmergencyHold();
+  if (hold.blocked) return { ok: false, error: hold.error };
+
   const id = formData.get("id") as string;
   if (!id) return { ok: false, error: "Draft ID required." };
   const draft = await getDraftById(id);
   if (!draft) return { ok: false, error: "Draft not found." };
+
   const guardrails = checkDraftGuardrails(draft);
   if (!guardrails.passed) return { ok: false, error: guardrails.summary };
+
   const profiles = await getPublishingProfiles();
   const profile = profiles.find((p) => p.id === draft.publishing_profile_id);
   if (profile?.requires_image && !draft.image_url) {
     return { ok: false, error: "This publishing profile requires an image before approval." };
   }
+
   const result = await updateDraftStatus(id, "approved", { approved_at: new Date().toISOString() });
+
+  // Log guardrail status at time of approval for the audit trail
+  if (result.ok) {
+    await logDraftEvent(id, "status_approved", "Draft approved", {
+      guardrail_summary: guardrails.summary,
+      guardrail_passed: guardrails.passed,
+      profile_name: profile?.name ?? null,
+    });
+  }
+
   revalidatePath("/admin/ai-observatory");
   return result;
 }
@@ -285,6 +315,11 @@ export async function archiveDraftAction(formData: FormData): Promise<{ ok: bool
 
 export async function markPublishedAction(formData: FormData): Promise<{ ok: boolean; error?: string }> {
   await requireSession();
+
+  // Server-side Emergency Hold enforcement
+  const hold = await assertNotEmergencyHold();
+  if (hold.blocked) return { ok: false, error: hold.error };
+
   const id = formData.get("id") as string;
   if (!id) return { ok: false, error: "Draft ID required." };
   const draft = await getDraftById(id);
@@ -332,6 +367,19 @@ export async function generateTextAction(formData: FormData): Promise<{ ok: bool
 
   const encryptedKey = await getAIProviderEncryptedKey(providerName).catch(() => null);
   const result = await generateText({ taskType, prompt }, encryptedKey ?? null, providerName, modelName);
+
+  // Record usage event — never blocks on error
+  await logUsageEvent({
+    provider_name: providerName,
+    model_name: modelName,
+    task_type: taskType,
+    input_tokens: result.inputTokens ?? null,
+    output_tokens: result.outputTokens ?? null,
+    image_count: null,
+    estimated_cost: null,
+    status: result.ok ? "ok" : "error",
+  });
+
   return result;
 }
 
@@ -356,13 +404,30 @@ export async function improveDraftAction(formData: FormData): Promise<{ ok: bool
       `Current markdown:\n${draft.body_markdown ?? ""}`,
     ].join("\n\n"),
   }, encryptedKey ?? null, providerName, modelName);
-  if (!result.ok || !result.text) return { ok: false, error: result.error ?? "No text generated." };
+  if (!result.ok || !result.text) {
+    await logUsageEvent({ provider_name: providerName, model_name: modelName, task_type: "drafts", input_tokens: null, output_tokens: null, image_count: null, estimated_cost: null, status: "error" });
+    return { ok: false, error: result.error ?? "No text generated." };
+  }
+
+  await logUsageEvent({
+    provider_name: providerName,
+    model_name: modelName,
+    task_type: "drafts",
+    input_tokens: result.inputTokens ?? null,
+    output_tokens: result.outputTokens ?? null,
+    image_count: null,
+    estimated_cost: null,
+    status: "ok",
+  });
+
   const guardrails = checkDraftGuardrails({ ...draft, body_markdown: result.text, status: "needs_review" });
   const saved = await upsertDraft({
     body_markdown: result.text,
     body_plain_text: result.text.replace(/[#*_`>\-]/g, "").trim(),
     status: "needs_review",
     guardrail_status: guardrails.summary,
+    generation_provider: result.provider ?? providerName,
+    generation_model: result.model ?? modelName,
   }, draft.id);
   if (saved.ok) await logDraftEvent(draft.id, "text_generated", "Text generated or improved", { provider: result.provider, model: result.model });
   revalidatePath("/admin/ai-observatory");
@@ -382,6 +447,19 @@ export async function generateImageAction(formData: FormData): Promise<{ ok: boo
 
   const encryptedKey = await getAIProviderEncryptedKey("openai").catch(() => null);
   const result = await generateImage({ prompt, width, height, target, draftId: draftId ?? undefined }, encryptedKey ?? null);
+
+  // Record usage event regardless of outcome
+  await logUsageEvent({
+    provider_name: "openai",
+    model_name: result.model ?? "dall-e-3",
+    task_type: "images",
+    input_tokens: null,
+    output_tokens: null,
+    image_count: result.ok ? 1 : 0,
+    estimated_cost: null,
+    status: result.ok ? "ok" : "error",
+  });
+
   if (result.ok && result.imageUrl) {
     await createGeneratedImageRecord({
       draft_id: draftId,
@@ -484,13 +562,68 @@ export async function saveObservatorySettingsAction(formData: FormData): Promise
     ["near_escape_trigger_enabled", "near_escape_trigger_enabled"],
   ];
   for (const [field, key] of booleans) {
-    const raw = formData.get(field);
-    if (raw !== null) updates[key] = raw === "true";
+    // Use getAll() because checkboxes use a hidden "false" field followed by the
+    // checkbox "true" field.  formData.get() returns the FIRST value ("false"),
+    // so we must check whether ANY submitted value for this field is "true".
+    const values = formData.getAll(field) as string[];
+    if (values.length > 0) updates[key] = values.includes("true");
   }
 
   if (Object.keys(updates).length === 0) return { ok: false, error: "No settings to save." };
 
   const result = await saveObservatorySettings(updates);
+  revalidatePath("/admin/ai-observatory");
+  return result;
+}
+
+// ─── Article Queue ────────────────────────────────────────────────────────────
+
+export async function scheduleArticleAction(formData: FormData): Promise<{ ok: boolean; error?: string }> {
+  await requireSession();
+
+  const id = formData.get("id") as string | null;
+  if (!id) return { ok: false, error: "Draft ID required." };
+
+  const scheduledAtRaw = formData.get("scheduled_at") as string | null;
+  const slug = (formData.get("slug") as string | null)?.trim() || null;
+  const seoTitle = (formData.get("seo_title") as string | null)?.trim() || null;
+  const seoDescription = (formData.get("seo_description") as string | null)?.trim() || null;
+  const category = (formData.get("category") as string | null)?.trim() || null;
+
+  const draft = await getDraftById(id);
+  if (!draft) return { ok: false, error: "Draft not found." };
+  if (["archived", "rejected"].includes(draft.status)) {
+    return { ok: false, error: "Archived or rejected drafts cannot be scheduled." };
+  }
+
+  const hold = await assertNotEmergencyHold();
+  if (hold.blocked && scheduledAtRaw?.trim()) return { ok: false, error: hold.error };
+
+  const payload: Record<string, unknown> = {};
+  if (scheduledAtRaw !== null) {
+    payload.scheduled_at = scheduledAtRaw.trim() ? new Date(scheduledAtRaw.trim()).toISOString() : null;
+  }
+  if (slug !== undefined) payload.slug = slug;
+  if (seoTitle !== undefined) payload.seo_title = seoTitle;
+  if (seoDescription !== undefined) payload.seo_description = seoDescription;
+  if (category !== undefined) payload.category = category;
+
+  if (Object.keys(payload).length === 0) return { ok: false, error: "Nothing to update." };
+
+  const result = await upsertDraft(payload, id);
+  if (result.ok && scheduledAtRaw?.trim()) {
+    await logDraftEvent(id, "article_scheduled", "Article scheduled for publication", { scheduled_at: payload.scheduled_at });
+  }
+  revalidatePath("/admin/ai-observatory");
+  return result;
+}
+
+export async function unscheduleArticleAction(formData: FormData): Promise<{ ok: boolean; error?: string }> {
+  await requireSession();
+  const id = formData.get("id") as string | null;
+  if (!id) return { ok: false, error: "Draft ID required." };
+  const result = await upsertDraft({ scheduled_at: null }, id);
+  if (result.ok) await logDraftEvent(id, "article_unscheduled", "Article removed from queue");
   revalidatePath("/admin/ai-observatory");
   return result;
 }

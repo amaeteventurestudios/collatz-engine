@@ -39,6 +39,102 @@ interface Props {
   providerCapabilities: Record<ProviderName, ProviderCapabilities>;
 }
 
+// ── Model catalogue per provider ──────────────────────────────────────────────
+
+const MODEL_OPTIONS: Record<string, Array<{ value: string; label: string }>> = {
+  anthropic: [
+    { value: "claude-opus-4-8",           label: "Claude Opus 4.8 (best quality)" },
+    { value: "claude-sonnet-4-6",         label: "Claude Sonnet 4.6 (balanced)"   },
+    { value: "claude-haiku-4-5-20251001", label: "Claude Haiku 4.5 (fast)"        },
+  ],
+  openai: [
+    { value: "gpt-4o",       label: "GPT-4o (best quality)" },
+    { value: "gpt-4o-mini",  label: "GPT-4o Mini (fast)"    },
+    { value: "gpt-4-turbo",  label: "GPT-4 Turbo"           },
+    { value: "dall-e-3",     label: "DALL-E 3 (images only)" },
+  ],
+  openrouter: [
+    { value: "openai/gpt-4o",               label: "GPT-4o via OpenRouter"    },
+    { value: "anthropic/claude-opus-4-8",   label: "Claude Opus via OpenRouter"},
+    { value: "google/gemini-1.5-pro",       label: "Gemini 1.5 Pro via Router" },
+  ],
+  gemini: [
+    { value: "gemini-1.5-pro",   label: "Gemini 1.5 Pro"   },
+    { value: "gemini-1.5-flash", label: "Gemini 1.5 Flash"  },
+    { value: "gemini-2.0-flash", label: "Gemini 2.0 Flash"  },
+  ],
+};
+
+function ModelRow({ taskType, label, setting, onSave }: {
+  taskType: string;
+  label: string;
+  setting: { provider_name: string; model_name: string; temperature: number; max_tokens: number } | undefined;
+  onSave: (result: { ok: boolean; error?: string }) => void;
+}) {
+  const [selectedProvider, setSelectedProvider] = useState(setting?.provider_name ?? "anthropic");
+  const modelOptions = MODEL_OPTIONS[selectedProvider] ?? [];
+  const defaultModel = setting?.model_name ?? modelOptions[0]?.value ?? "";
+  // If saved model is not in the dropdown for the current provider, keep it as a selectable option
+  const modelInList = modelOptions.some((m) => m.value === defaultModel);
+
+  return (
+    <form
+      action={async (fd) => {
+        fd.append("task_type", taskType);
+        const r = await saveModelSettingAction(fd);
+        onSave(r);
+      }}
+      className="rounded-xl border border-slate-800 bg-slate-900 p-4"
+    >
+      <div className="flex flex-wrap items-start gap-4">
+        <p className="w-32 shrink-0 pt-1 text-[11px] font-semibold text-slate-300">{label}</p>
+        <div className="flex flex-1 flex-wrap gap-3">
+          <div className="flex-1 min-w-28">
+            <FieldLabel>Provider</FieldLabel>
+            <select
+              name="provider_name"
+              value={selectedProvider}
+              onChange={(e) => setSelectedProvider(e.target.value)}
+              className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-[11px] text-slate-300 outline-none focus:border-teal-600"
+            >
+              <option value="anthropic">Anthropic</option>
+              <option value="openai">OpenAI</option>
+              <option value="openrouter">OpenRouter</option>
+              <option value="gemini">Gemini</option>
+            </select>
+          </div>
+          <div className="flex-1 min-w-40">
+            <FieldLabel>Model</FieldLabel>
+            <select
+              name="model_name"
+              defaultValue={defaultModel}
+              className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-[11px] text-slate-300 outline-none focus:border-teal-600"
+            >
+              {!modelInList && defaultModel && (
+                <option value={defaultModel}>{defaultModel} (saved)</option>
+              )}
+              {modelOptions.map((m) => (
+                <option key={m.value} value={m.value}>{m.label}</option>
+              ))}
+            </select>
+          </div>
+          <div className="w-24">
+            <FieldLabel>Temperature</FieldLabel>
+            <Input name="temperature" defaultValue={String(setting?.temperature ?? 0.5)} type="number" />
+          </div>
+          <div className="w-24">
+            <FieldLabel>Max tokens</FieldLabel>
+            <Input name="max_tokens" defaultValue={String(setting?.max_tokens ?? 2048)} type="number" />
+          </div>
+        </div>
+        <button type="submit" className="rounded-lg border border-teal-700 bg-teal-950/20 px-3 py-2 text-[11px] font-semibold text-teal-400 hover:bg-teal-950 transition-colors">
+          Save
+        </button>
+      </div>
+    </form>
+  );
+}
+
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 function TabBtn({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
@@ -324,61 +420,22 @@ export function AIStudioClient({
               />
             </div>
             {[
-              { type: "notes",     label: "AI Notes" },
-              { type: "drafts",    label: "Blog / Report Drafts" },
-              { type: "reports",   label: "Full Reports" },
-              { type: "social",    label: "Social Posts" },
-              { type: "images",    label: "Image Generation" },
-              { type: "summaries", label: "Summaries" },
-              { type: "headlines", label: "Headlines" },
-            ].map(({ type, label }) => {
-              const setting = modelSettings.find((m) => m.task_type === type);
-              return (
-                <form
-                  key={type}
-                  action={async (fd) => {
-                    fd.append("task_type", type);
-                    const r = await saveModelSettingAction(fd);
-                    setSaveResult(r);
-                  }}
-                  className="rounded-xl border border-slate-800 bg-slate-900 p-4"
-                >
-                  <div className="flex flex-wrap items-start gap-4">
-                    <p className="w-32 shrink-0 pt-1 text-[11px] font-semibold text-slate-300">{label}</p>
-                    <div className="flex flex-1 flex-wrap gap-3">
-                      <div className="flex-1 min-w-28">
-                        <FieldLabel>Provider</FieldLabel>
-                        <select
-                          name="provider_name"
-                          defaultValue={setting?.provider_name ?? "anthropic"}
-                          className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-[11px] text-slate-300 outline-none focus:border-teal-600"
-                        >
-                          <option value="anthropic">Anthropic</option>
-                          <option value="openai">OpenAI</option>
-                          <option value="openrouter">OpenRouter</option>
-                          <option value="gemini">Gemini</option>
-                        </select>
-                      </div>
-                      <div className="flex-1 min-w-40">
-                        <FieldLabel>Model name</FieldLabel>
-                        <Input name="model_name" defaultValue={setting?.model_name ?? ""} placeholder="e.g. claude-opus-4-8" />
-                      </div>
-                      <div className="w-24">
-                        <FieldLabel>Temperature</FieldLabel>
-                        <Input name="temperature" defaultValue={String(setting?.temperature ?? 0.5)} type="number" />
-                      </div>
-                      <div className="w-24">
-                        <FieldLabel>Max tokens</FieldLabel>
-                        <Input name="max_tokens" defaultValue={String(setting?.max_tokens ?? 2048)} type="number" />
-                      </div>
-                    </div>
-                    <button type="submit" className="rounded-lg border border-teal-700 bg-teal-950/20 px-3 py-2 text-[11px] font-semibold text-teal-400 hover:bg-teal-950 transition-colors">
-                      Save
-                    </button>
-                  </div>
-                </form>
-              );
-            })}
+              { type: "notes",     label: "AI Notes"               },
+              { type: "drafts",    label: "Blog / Report Drafts"   },
+              { type: "reports",   label: "Full Reports"           },
+              { type: "social",    label: "Social Posts"           },
+              { type: "images",    label: "Image Generation"       },
+              { type: "summaries", label: "Summaries"              },
+              { type: "headlines", label: "Headlines"              },
+            ].map(({ type, label }) => (
+              <ModelRow
+                key={type}
+                taskType={type}
+                label={label}
+                setting={modelSettings.find((m) => m.task_type === type)}
+                onSave={setSaveResult}
+              />
+            ))}
             {saveResult && <StatusMsg result={saveResult} />}
           </div>
         )}
