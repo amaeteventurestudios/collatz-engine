@@ -12,6 +12,7 @@ import type {
   AIDraftAuditEvent,
   AIGeneratedImage,
   AIObservatoryStats,
+  AIObservatorySettings,
   ProviderName,
   DraftStatus,
 } from "./types";
@@ -494,4 +495,58 @@ export async function createGeneratedImageRecord(
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : "Failed to save generated image." };
   }
+}
+
+// ─── Observatory Settings ─────────────────────────────────────────────────────
+
+export async function getObservatorySettings(): Promise<AIObservatorySettings | null> {
+  const client = getClient();
+  if (!client) return null;
+  try {
+    const { data, error } = await client
+      .from("ai_observatory_settings")
+      .select("*")
+      .limit(1)
+      .maybeSingle();
+    if (error || !data) return null;
+    return data as AIObservatorySettings;
+  } catch { return null; }
+}
+
+export async function saveObservatorySettings(
+  settings: Partial<Omit<AIObservatorySettings, "id" | "created_at">>,
+): Promise<{ ok: boolean; error?: string }> {
+  const client = getClient();
+  if (!client) return serviceRoleError();
+  try {
+    const payload = { ...settings, updated_at: new Date().toISOString() };
+    const { data: existing } = await client
+      .from("ai_observatory_settings")
+      .select("id")
+      .limit(1)
+      .maybeSingle();
+    const { error } = existing
+      ? await client.from("ai_observatory_settings").update(payload).eq("id", (existing as { id: string }).id)
+      : await client.from("ai_observatory_settings").insert({ ...payload, created_at: new Date().toISOString() });
+    if (error) return { ok: false, error: classifyDbError(error) };
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: classifyDbError(err) };
+  }
+}
+
+// ─── Recent Activity ──────────────────────────────────────────────────────────
+
+export async function getRecentActivityEvents(limit = 20): Promise<AIDraftAuditEvent[]> {
+  const client = getClient();
+  if (!client) return [];
+  try {
+    const { data, error } = await client
+      .from("ai_draft_audit_events")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(limit);
+    if (error || isMissingTable(error)) return [];
+    return (data ?? []) as AIDraftAuditEvent[];
+  } catch { return []; }
 }

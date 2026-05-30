@@ -280,6 +280,45 @@ export interface AIGeneratedImage {
   updated_at: string;
 }
 
+// ─── Observatory Settings ─────────────────────────────────────────────────────
+
+export type PublishingMode = "manual" | "semi_auto" | "autonomous" | "emergency_hold";
+
+export interface AIObservatorySettings {
+  id: string;
+  publishing_mode: PublishingMode;
+  disclosure_text: string;
+  auto_topic_detection_enabled: boolean;
+  auto_draft_generation_enabled: boolean;
+  auto_image_generation_enabled: boolean;
+  auto_publish_enabled: boolean;
+  max_auto_posts_per_day: number;
+  weekly_report_enabled: boolean;
+  record_trigger_enabled: boolean;
+  near_escape_trigger_enabled: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export const DEFAULT_DISCLOSURE_TEXT =
+  "This report was generated automatically by The Collatz Engine from verified computation data. It does not claim to prove the Collatz Conjecture.";
+
+export const SHORT_DISCLOSURE_TEXT =
+  "Generated automatically from verified Collatz Engine data. No proof claim is made.";
+
+export const DEFAULT_OBSERVATORY_SETTINGS: Omit<AIObservatorySettings, "id" | "created_at" | "updated_at"> = {
+  publishing_mode: "semi_auto",
+  disclosure_text: DEFAULT_DISCLOSURE_TEXT,
+  auto_topic_detection_enabled: true,
+  auto_draft_generation_enabled: false,
+  auto_image_generation_enabled: false,
+  auto_publish_enabled: false,
+  max_auto_posts_per_day: 1,
+  weekly_report_enabled: true,
+  record_trigger_enabled: true,
+  near_escape_trigger_enabled: true,
+};
+
 // ─── Guardrails ───────────────────────────────────────────────────────────────
 
 export type GuardrailEnforcement = "enforced" | "configured" | "manual" | "planned";

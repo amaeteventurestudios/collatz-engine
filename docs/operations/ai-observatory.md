@@ -2,37 +2,52 @@
 
 ## Purpose
 
-The AI Observatory is an admin-controlled publishing system for generating, reviewing, and exporting AI-assisted insights from verified Collatz Engine computation data.
+The AI Observatory is an autonomous content desk for generating, reviewing, and publishing AI-assisted insights from verified Collatz Engine computation data.
 
-**No content auto-publishes. Every piece of content requires explicit human approval.**
+In the default `semi_auto` mode, AI detects topics and creates drafts, but a human must approve before anything appears publicly. In `autonomous` mode, content can publish automatically if all guardrails pass.
 
 ---
 
 ## Workflow
 
 ```
-Engine Data → AI Note → AI Draft → Human Review → Approved → Export / Publish
+Engine Data → Content Radar → Create Draft → Guardrail Check → Approve → Public Observatory
 ```
 
-1. Engine events generate AI Notes (observations from verified data)
-2. Notes can be expanded into Drafts via the draft queue
-3. Drafts go through human review (edit, approve, or reject)
-4. Only approved drafts appear on the public Observatory
-5. Exports (Markdown, plain text, HTML) are manual
+### Manual / Semi-Auto mode
+1. Content Radar scans live engine data and surfaces publishable topics
+2. Operator clicks "Create Draft" from a topic card
+3. Draft is populated with required disclosure text
+4. Human edits, approves, and exports
+
+### Autonomous mode
+1. Content Radar detects topics automatically
+2. System creates drafts, generates images (if configured), runs guardrail checks
+3. If all hard guardrails pass, draft is published to the public Observatory
+4. Human reviews periodically and can revert/reject at any time
 
 ---
 
-## Database Migration
+## Database Migrations
 
-Run the migration in the Supabase SQL Editor:
+Run all migrations in order in the Supabase SQL Editor:
 
 ```sql
--- supabase/phase-3a-ai-observatory.sql
--- supabase/phase-3b-ai-draft-workflow.sql
+-- Phase 3A: Core observatory tables
+supabase/phase-3a-ai-observatory.sql
+
+-- Phase 3B: Draft workflow and audit events
+supabase/phase-3b-ai-draft-workflow.sql
+
+-- Phase 3C: Service-role grants and provider RLS
+supabase/phase-3c-ai-provider-permissions.sql
+
+-- Phase 3D: Autonomous observatory settings
+supabase/phase-3d-autonomous-observatory.sql
 ```
 
 Tables created:
-- `ai_providers` — provider API key configuration (encrypted)
+- `ai_providers` — provider API key configuration (encrypted, service-role only)
 - `ai_model_settings` — per-task model selection
 - `ai_brand_voice_profiles` — writing voice and style
 - `ai_prompt_templates` — editable generation templates
@@ -43,8 +58,7 @@ Tables created:
 - `ai_generated_images` — image generation records
 - `ai_usage_events` — usage and cost tracking (future)
 - `ai_draft_audit_events` — draft workflow history (Phase 3B)
-
-Phase 3B also adds draft `excerpt`, `tags`, and export metadata fields.
+- `ai_observatory_settings` — publishing mode and disclosure text (Phase 3D)
 
 ---
 
@@ -347,3 +361,122 @@ If provider buttons are disabled:
 5. Confirm the selected task model uses a configured provider.
 
 Never log or expose full API keys. The browser should only receive masked key status.
+
+---
+
+## Content Radar
+
+The Content Radar is a server-side rule engine that scans live engine state, existing drafts, and AI notes to surface publishable topic suggestions. It runs on every page load — no separate cron is needed.
+
+### Topic sources
+| Category | Trigger |
+|---|---|
+| Record | `longestSteps` or `highestPeak` updated, no matching draft exists |
+| Progress | No weekly_report draft exists, engine has significant coverage |
+| Near-Escape | `ai_notes` row with `note_type = near_escape` and `status = new` |
+| Infrastructure | No integrity/trust draft exists, engine is running |
+| Education | No educational draft exists |
+| Visual | No visual-studio feature draft exists |
+
+Topics are computed without AI calls — all logic is rule-based from real data. Topics disappear once a matching draft is created.
+
+### Topic detection does not:
+- Invent engine events
+- Fabricate numbers
+- Claim the conjecture is solved
+- Create topics when data is insufficient (empty states shown instead)
+
+### Creating a draft from a topic
+1. Click a topic card in Content Radar
+2. Select an output format (Blog Post, LinkedIn Post, etc.)
+3. Click "Create Draft from this topic"
+4. Draft is created pre-seeded with the required disclosure text
+5. Status is set to `draft` by default regardless of mode
+
+---
+
+## Publishing Modes
+
+The publishing mode is stored in `ai_observatory_settings.publishing_mode` and can be changed from the Settings tab.
+
+### Manual
+AI can create drafts only. Human must approve and export everything explicitly. Default for new installs.
+
+### Semi-Auto (default)
+AI automatically detects topics and creates drafts. Human must review and approve before any content appears publicly.
+
+### Autonomous
+AI detects topics, creates drafts, runs guardrail checks, and publishes to the public Observatory if all hard guardrails pass. Human reviews periodically. External platform publishing (Ghost, LinkedIn, X) remains manual export.
+
+### Emergency Hold
+Publishing is fully paused. AI may still create internal drafts and notes. Nothing can become public until the mode is changed.
+
+To disable autonomous publishing immediately:
+1. Go to Settings tab in AI Observatory
+2. Set mode to `Emergency Hold` or `Manual`
+3. Save settings
+
+---
+
+## Required Disclosure Text
+
+Every autonomously generated report or post must include this exact text:
+
+> This report was generated automatically by The Collatz Engine from verified computation data. It does not claim to prove the Collatz Conjecture.
+
+For short social formats (character-limited platforms only):
+
+> Generated automatically from verified Collatz Engine data. No proof claim is made.
+
+The disclosure text is stored in `ai_observatory_settings.disclosure_text` and is pre-filled in every draft created from Content Radar topics. Do not remove it during editing without adding an equivalent disclaimer.
+
+---
+
+## Guardrail Publishing Rules
+
+The following conditions block publishing regardless of mode:
+
+| Condition | Blocks |
+|---|---|
+| Proof claim detected (`no_solution_claims`) | Approval + publish |
+| Unsupported mathematical claim (`no_unsupported_claims`) | Approval + publish |
+| Source data missing (`source_data_attached`) | Approval |
+| Required image missing for profile (`requires_image`) | Approval |
+| Disclosure text missing (`disclaimers_required`) | Warning (soft) |
+| Draft not approved (`approval_before_publish`) | Publish |
+
+In autonomous mode, all hard guardrail failures prevent publishing and the draft remains in `needs_review` status for human review.
+
+---
+
+## Public Observatory Behavior
+
+The public `/observatory` page shows only:
+- Drafts with `status = approved` or `status = published`
+- Content that passed all hard guardrails before approval
+- The required disclosure text (displayed per article)
+
+The public page does **not** show:
+- Drafts
+- Rejected or archived content
+- Internal AI notes
+- Source data JSON
+- API keys, masked or otherwise
+
+---
+
+## Image Generation
+
+Images are generated via OpenAI DALL-E 3. The image prompt follows the Collatz Engine visual style:
+- Dark scientific observatory aesthetic
+- Teal/cyan trajectory graphs on dark backgrounds
+- Mission-control mathematical telemetry
+- No "conjecture solved" imagery
+- No fake theorem announcements
+
+If no image provider is configured, a polished placeholder is shown instead. The placeholder does not pretend to be a generated image.
+
+DALL-E size mapping (API only accepts three sizes):
+- Landscape → 1792×1024
+- Portrait → 1024×1792
+- Square → 1024×1024

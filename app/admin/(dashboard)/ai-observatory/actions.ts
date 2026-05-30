@@ -21,9 +21,11 @@ import {
   getPublishingProfiles,
   logDraftEvent,
   createGeneratedImageRecord,
+  saveObservatorySettings,
 } from "@/lib/ai-observatory/admin-store";
 import { checkDraftGuardrails } from "@/lib/ai-observatory/guardrails";
-import type { ProviderName, ContentType, NoteType, NoteSeverity, DraftStatus } from "@/lib/ai-observatory/types";
+import type { ProviderName, ContentType, NoteType, NoteSeverity, DraftStatus, PublishingMode } from "@/lib/ai-observatory/types";
+import { DEFAULT_DISCLOSURE_TEXT } from "@/lib/ai-observatory/types";
 
 // ─── Auth guard ───────────────────────────────────────────────────────────────
 
@@ -403,6 +405,92 @@ export async function updateNoteStatusAction(formData: FormData): Promise<{ ok: 
   const status = formData.get("status") as string;
   if (!id || !status) return { ok: false, error: "Note ID and status are required." };
   const result = await updateAINoteStatus(id, status);
+  revalidatePath("/admin/ai-observatory");
+  return result;
+}
+
+// ─── Content Radar ────────────────────────────────────────────────────────────
+
+export async function createDraftFromTopicAction(formData: FormData): Promise<{ ok: boolean; id?: string; error?: string }> {
+  await requireSession();
+
+  const title = formData.get("title") as string | null;
+  const contentType = (formData.get("content_type") as ContentType | null) ?? "blog_post";
+  const sourceDataRaw = formData.get("source_data") as string | null;
+  const publishingProfileId = formData.get("publishing_profile_id") as string | null;
+  const publishingMode = (formData.get("publishing_mode") as PublishingMode | null) ?? "semi_auto";
+  const disclosureText = (formData.get("disclosure_text") as string | null) ?? DEFAULT_DISCLOSURE_TEXT;
+
+  if (!title?.trim()) return { ok: false, error: "Topic title is required." };
+
+  let sourceData: Record<string, unknown> = {};
+  try {
+    if (sourceDataRaw) sourceData = JSON.parse(sourceDataRaw) as Record<string, unknown>;
+  } catch { /* ignore malformed JSON */ }
+
+  // Seed the draft body with the required disclosure so it is never missing.
+  const bodyMarkdown =
+    `# ${title.trim()}\n\n` +
+    `*${disclosureText}*\n\n` +
+    `<!-- Add your content here -->\n`;
+
+  const initialStatus = publishingMode === "emergency_hold" ? "draft" : "draft";
+
+  const result = await upsertDraft({
+    title: title.trim(),
+    content_type: contentType,
+    source_data: sourceData,
+    publishing_profile_id: publishingProfileId || null,
+    status: initialStatus,
+    body_markdown: bodyMarkdown,
+    guardrail_status: "Not checked yet.",
+  });
+
+  if (result.ok && result.id) {
+    await logDraftEvent(result.id, "draft_created", "Draft created from Content Radar", {
+      source: "content_radar",
+      publishing_mode: publishingMode,
+    });
+  }
+
+  revalidatePath("/admin/ai-observatory");
+  return result;
+}
+
+// ─── Observatory Settings ─────────────────────────────────────────────────────
+
+export async function saveObservatorySettingsAction(formData: FormData): Promise<{ ok: boolean; error?: string }> {
+  await requireSession();
+
+  const mode = formData.get("publishing_mode") as PublishingMode | null;
+  const disclosureText = formData.get("disclosure_text") as string | null;
+  const maxPostsRaw = formData.get("max_auto_posts_per_day") as string | null;
+
+  const updates: Record<string, unknown> = {};
+  if (mode) updates.publishing_mode = mode;
+  if (disclosureText?.trim()) updates.disclosure_text = disclosureText.trim();
+  if (maxPostsRaw) {
+    const parsed = parseInt(maxPostsRaw, 10);
+    if (!Number.isNaN(parsed) && parsed >= 0 && parsed <= 10) updates.max_auto_posts_per_day = parsed;
+  }
+
+  const booleans: Array<[string, string]> = [
+    ["auto_topic_detection_enabled", "auto_topic_detection_enabled"],
+    ["auto_draft_generation_enabled", "auto_draft_generation_enabled"],
+    ["auto_image_generation_enabled", "auto_image_generation_enabled"],
+    ["auto_publish_enabled", "auto_publish_enabled"],
+    ["weekly_report_enabled", "weekly_report_enabled"],
+    ["record_trigger_enabled", "record_trigger_enabled"],
+    ["near_escape_trigger_enabled", "near_escape_trigger_enabled"],
+  ];
+  for (const [field, key] of booleans) {
+    const raw = formData.get(field);
+    if (raw !== null) updates[key] = raw === "true";
+  }
+
+  if (Object.keys(updates).length === 0) return { ok: false, error: "No settings to save." };
+
+  const result = await saveObservatorySettings(updates);
   revalidatePath("/admin/ai-observatory");
   return result;
 }
