@@ -1,4 +1,25 @@
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@supabase/supabase-js";
+
+/**
+ * Service-role client for runtime-config reads.
+ * Uses SUPABASE_SERVICE_ROLE_KEY when available (worker/server context),
+ * falls back to anon key (local dev / public reads).
+ * Not marked server-only so worker scripts (tsx CLI) can import it.
+ */
+function getConfigClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const key = serviceKey ?? anonKey;
+  if (!url || !key) return null;
+  if (!serviceKey) {
+    console.warn(
+      "[Collatz RuntimeConfig] SUPABASE_SERVICE_ROLE_KEY not set — using anon key. " +
+        "RLS policies may prevent reading runtime config.",
+    );
+  }
+  return createClient(url, key, { auth: { persistSession: false } });
+}
 
 export interface RuntimeConfig {
   mode: string;
@@ -118,6 +139,8 @@ function rowToConfig(row: Record<string, unknown>): RuntimeConfig {
 
 /**
  * Read runtime config from Supabase with 60s in-process cache.
+ * Uses service-role client when SUPABASE_SERVICE_ROLE_KEY is available so
+ * RLS policies on collatz_engine_runtime_config do not block the read.
  * Falls back to env vars, then to recovery defaults.
  * Never throws — always returns a safe config.
  */
@@ -127,7 +150,11 @@ export async function getRuntimeConfig(): Promise<RuntimeConfig> {
     return cachedConfig;
   }
 
-  if (!supabase) {
+  const client = getConfigClient();
+  if (!client) {
+    console.warn(
+      "[Collatz RuntimeConfig] No Supabase client available — falling back to env/recovery defaults.",
+    );
     const cfg = envDefaults();
     cachedConfig = cfg;
     cachedAt = now;
@@ -135,14 +162,16 @@ export async function getRuntimeConfig(): Promise<RuntimeConfig> {
   }
 
   try {
-    const { data, error } = await supabase
+    const { data, error } = await client
       .from("collatz_engine_runtime_config")
       .select("*")
       .eq("id", "main")
       .single();
 
     if (error || !data) {
-      // Table might not exist yet — fall back to env defaults
+      console.warn(
+        `[Collatz RuntimeConfig] DB read failed (${error?.code ?? "no data"}: ${error?.message ?? "empty result"}) — falling back to env/recovery defaults.`,
+      );
       const cfg = envDefaults();
       cachedConfig = cfg;
       cachedAt = now;
@@ -153,7 +182,11 @@ export async function getRuntimeConfig(): Promise<RuntimeConfig> {
     cachedConfig = cfg;
     cachedAt = now;
     return cfg;
-  } catch {
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn(
+      `[Collatz RuntimeConfig] Unexpected error fetching config: ${msg} — falling back to env/recovery defaults.`,
+    );
     const cfg = envDefaults();
     cachedConfig = cfg;
     cachedAt = now;
@@ -173,11 +206,11 @@ export function invalidateRuntimeConfigCache(): void {
  * Fails silently — never blocks the main batch loop.
  */
 export async function pruneResultsIfNeeded(keepRecentResults: number): Promise<void> {
-  if (!supabase) return;
+  const client = getConfigClient();
+  if (!client) return;
   try {
-    await supabase.rpc("prune_results_to_limit", { p_keep: keepRecentResults });
+    await client.rpc("prune_results_to_limit", { p_keep: keepRecentResults });
   } catch {
-    // Non-fatal — log to console only
     console.warn("[Collatz Worker] prune_results_to_limit failed (non-fatal)");
   }
 }
