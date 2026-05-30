@@ -322,6 +322,7 @@ export async function preserveAllTimeRecordCandidates(
   batchEnd?: number,
 ): Promise<void> {
   if (!supabase || rows.length === 0) return;
+  const client = supabase;
 
   const preserveCategory = async (category: AllTimeRecordCategory) => {
     const candidates = topRecordCandidates(rows, category).map((row) => ({
@@ -332,7 +333,7 @@ export async function preserveAllTimeRecordCandidates(
 
     if (candidates.length === 0) return;
 
-    const { error } = await supabase.rpc(
+    const { error } = await client.rpc(
       "preserve_collatz_all_time_record_candidates",
       {
         p_record_category: category,
