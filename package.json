@@ -19,7 +19,8 @@
     "collatz:cleanup": "tsx scripts/cleanup-collatz-storage.ts",
     "collatz:verify-sequential": "tsx scripts/verify-sequential.ts",
     "collatz:verify-worker-lock": "tsx scripts/verify-worker-lock.ts",
-    "collatz:repair-duplicate-worker-incident": "tsx scripts/repair-duplicate-worker-incident.ts"
+    "collatz:repair-duplicate-worker-incident": "tsx scripts/repair-duplicate-worker-incident.ts",
+    "observatory:verify-settings": "tsx scripts/verify-ai-observatory-settings.ts"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.7",

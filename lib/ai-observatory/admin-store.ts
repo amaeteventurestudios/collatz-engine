@@ -56,12 +56,37 @@ function classifyDbError(err: unknown): string {
   return msg || "Unknown database error.";
 }
 
+function classifySettingsError(err: unknown): string {
+  const msg = String((err as { message?: string })?.message ?? err);
+  if (msg.includes("permission denied")) {
+    return (
+      "Permission denied for ai_observatory_settings. " +
+      "Run supabase/phase-3f-settings-fix.sql and ensure SUPABASE_SERVICE_ROLE_KEY is set."
+    );
+  }
+  if (isMissingTable(err)) {
+    return (
+      "Observatory settings table not found. " +
+      "Run supabase/phase-3f-settings-fix.sql in the Supabase SQL Editor, then refresh."
+    );
+  }
+  return msg || "Unknown error saving settings.";
+}
+
 // ─── Graceful table-missing helper ────────────────────────────────────────────
 
 function isMissingTable(err: unknown): boolean {
   if (!err) return false;
   const msg = String((err as { message?: string })?.message ?? err);
-  return msg.includes("does not exist") || msg.includes("relation") || msg.includes("42P01");
+  // PostgreSQL error code 42P01 = undefined_table
+  if (msg.includes("42P01")) return true;
+  // Standard Postgres / Supabase messages
+  if (msg.includes("does not exist")) return true;
+  // PostgREST schema-cache error (table created but cache not refreshed,
+  // OR table never created): "Could not find the table 'public.X' in the schema cache"
+  if (msg.includes("schema cache")) return true;
+  if (msg.includes("Could not find the table")) return true;
+  return false;
 }
 
 // ─── Stats ────────────────────────────────────────────────────────────────────
@@ -500,6 +525,7 @@ export async function createGeneratedImageRecord(
 
 // ─── Observatory Settings ─────────────────────────────────────────────────────
 
+/** Returns null when table is missing or settings row not yet created. Never throws. */
 export async function getObservatorySettings(): Promise<AIObservatorySettings | null> {
   const client = getClient();
   if (!client) return null;
@@ -509,9 +535,25 @@ export async function getObservatorySettings(): Promise<AIObservatorySettings | 
       .select("*")
       .limit(1)
       .maybeSingle();
+    // Silently return null for missing table — callers use DEFAULT_OBSERVATORY_SETTINGS
     if (error || !data) return null;
     return data as AIObservatorySettings;
   } catch { return null; }
+}
+
+/** Returns true when the settings table exists, is cached in PostgREST, and is readable. */
+export async function checkSettingsTableReady(): Promise<boolean> {
+  const client = getClient();
+  if (!client) return false;
+  try {
+    // Use a real SELECT (not HEAD) so PostgREST must look up the table in its
+    // schema cache.  A stale cache returns an error even if the table exists.
+    const { error } = await client
+      .from("ai_observatory_settings")
+      .select("id")
+      .limit(0);
+    return !error;
+  } catch { return false; }
 }
 
 export async function saveObservatorySettings(
@@ -521,18 +563,37 @@ export async function saveObservatorySettings(
   if (!client) return serviceRoleError();
   try {
     const payload = { ...settings, updated_at: new Date().toISOString() };
-    const { data: existing } = await client
+
+    // Explicit SELECT to find the existing row — capture the error this time so
+    // a missing table is detected before we attempt an INSERT.
+    const { data: existing, error: selectError } = await client
       .from("ai_observatory_settings")
       .select("id")
       .limit(1)
       .maybeSingle();
-    const { error } = existing
-      ? await client.from("ai_observatory_settings").update(payload).eq("id", (existing as { id: string }).id)
-      : await client.from("ai_observatory_settings").insert({ ...payload, created_at: new Date().toISOString() });
-    if (error) return { ok: false, error: classifyDbError(error) };
+
+    if (selectError && isMissingTable(selectError)) {
+      return {
+        ok: false,
+        error:
+          "Observatory settings table not found. " +
+          "Run supabase/phase-3f-settings-fix.sql in the Supabase SQL Editor, then refresh this page.",
+      };
+    }
+
+    const { error: writeError } = existing
+      ? await client
+          .from("ai_observatory_settings")
+          .update(payload)
+          .eq("id", (existing as { id: string }).id)
+      : await client
+          .from("ai_observatory_settings")
+          .insert({ ...payload, created_at: new Date().toISOString() });
+
+    if (writeError) return { ok: false, error: classifySettingsError(writeError) };
     return { ok: true };
   } catch (err) {
-    return { ok: false, error: classifyDbError(err) };
+    return { ok: false, error: classifySettingsError(err) };
   }
 }
 

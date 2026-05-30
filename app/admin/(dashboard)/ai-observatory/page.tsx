@@ -11,6 +11,7 @@ import {
   getPublishingProfiles,
   getObservatorySettings,
   getRecentActivityEvents,
+  checkSettingsTableReady,
 } from "@/lib/ai-observatory/admin-store";
 import { isEncryptionConfigured } from "@/lib/ai-observatory/encryption";
 import { PROVIDER_CAPABILITIES, DEFAULT_OBSERVATORY_SETTINGS } from "@/lib/ai-observatory/types";
@@ -36,6 +37,7 @@ export default async function AIObservatoryPage() {
     workerLockResult,
     observatorySettings,
     recentActivity,
+    settingsTableReady,
   ] = await Promise.all([
     getAIObservatoryStats(),
     getAllDrafts(100),
@@ -51,6 +53,7 @@ export default async function AIObservatoryPage() {
     getWorkerLockState(),
     getObservatorySettings(),
     getRecentActivityEvents(25),
+    checkSettingsTableReady(),
   ]);
 
   const engineState = engineResult.data ?? null;
@@ -84,6 +87,7 @@ export default async function AIObservatoryPage() {
       providerCapabilities={PROVIDER_CAPABILITIES}
       engineState={engineState}
       observatorySettings={settings}
+      settingsTableReady={settingsTableReady}
       topicSuggestions={topicSuggestions}
       recentActivity={recentActivity}
     />

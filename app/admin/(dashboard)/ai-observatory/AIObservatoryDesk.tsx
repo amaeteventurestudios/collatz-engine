@@ -92,6 +92,8 @@ interface Props {
   providerCapabilities: Record<ProviderName, ProviderCapabilities>;
   engineState: EngineAdminState | null;
   observatorySettings: AIObservatorySettings;
+  /** True when ai_observatory_settings table exists and is accessible. */
+  settingsTableReady: boolean;
   topicSuggestions: TopicSeed[];
   recentActivity: AIDraftAuditEvent[];
 }
@@ -306,7 +308,7 @@ export function AIObservatoryDesk({
   stats, drafts, notes, providers, modelSettings, brandVoices,
   templates, imagePresets, publishingProfiles, encryptionReady,
   tablesReady, providerCapabilities,
-  engineState, observatorySettings, topicSuggestions, recentActivity,
+  engineState, observatorySettings, settingsTableReady, topicSuggestions, recentActivity,
 }: Props) {
   const [activeTab,       setActiveTab]       = useState<MainTab>("radar");
   const [selectedDraftId, setSelectedDraftId] = useState(drafts[0]?.id ?? "");
@@ -1718,7 +1720,32 @@ export function AIObservatoryDesk({
   function renderSettings() {
     const s = observatorySettings;
     return (
-      <div className="grid gap-5 xl:grid-cols-[1fr_480px]">
+      <div className="space-y-4">
+        {/* Migration banner — shown when the settings table hasn't been created yet */}
+        {!settingsTableReady && (
+          <div className="rounded-xl border border-amber-500/30 bg-amber-950/15 p-4 space-y-2">
+            <p className="text-sm font-bold text-amber-300">Settings table not found</p>
+            <p className="text-[11px] leading-relaxed text-amber-200">
+              The <code className="rounded bg-amber-900/40 px-1 py-0.5 text-amber-100">ai_observatory_settings</code> table
+              does not exist in your Supabase project. Settings cannot be saved until you run the migration.
+            </p>
+            <div className="rounded-lg border border-amber-700/40 bg-amber-950/30 px-3 py-2">
+              <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-amber-400">How to fix:</p>
+              <ol className="list-decimal list-inside space-y-1 text-[11px] text-amber-200">
+                <li>Open the Supabase SQL Editor for your project.</li>
+                <li>Paste and run <code className="text-amber-100">supabase/phase-3f-settings-fix.sql</code> from this repository.</li>
+                <li>Refresh this page after the migration completes.</li>
+              </ol>
+            </div>
+            <p className="text-[10px] text-amber-400/70 italic">
+              If the table was recently created but you still see this banner, the PostgREST schema cache may not have refreshed yet.
+              The migration SQL ends with <code className="text-amber-100">NOTIFY pgrst, &apos;reload schema&apos;</code> which forces a cache refresh.
+              You can also wait up to 60 seconds for the automatic refresh, then reload this page.
+            </p>
+          </div>
+        )}
+
+        <div className="grid gap-5 xl:grid-cols-[1fr_480px]">
         <form action={async (fd) => {
           const r = await saveObservatorySettingsAction(fd);
           setMessage(r.ok ? "Settings saved." : (r.error ?? "Failed to save settings."));
@@ -1844,6 +1871,7 @@ export function AIObservatoryDesk({
             </div>
           </Panel>
         </div>
+      </div>
       </div>
     );
   }
