@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { PanelHelp } from "@/components/ui/PanelHelp";
 import { formatSteps } from "@/lib/collatz/format";
 import type { CollatzResult } from "@/lib/collatz/types";
+import type { DisplayMode } from "@/components/home/CollatzVisualizationProvider";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 //
@@ -40,10 +41,19 @@ function yCumulative(count: number, maxCount: number): number {
 
 interface Props {
   result: CollatzResult;
+  mode: DisplayMode;
+  displayLabel: string;
+  isEstimated?: boolean;
   loading?: boolean;
 }
 
-export function OddEvenTransitionGraph({ result, loading }: Props) {
+export function OddEvenTransitionGraph({
+  result,
+  mode,
+  displayLabel,
+  isEstimated = false,
+  loading,
+}: Props) {
   const seq = result.full_sequence;
   const isEmpty = seq.length < 2 || result.start_number === 0n;
 
@@ -131,6 +141,14 @@ export function OddEvenTransitionGraph({ result, loading }: Props) {
     { label: "Longest odd run", value: longestOddRun > 0 ? longestOddRun.toString() : "Pending", cls: "bg-violet-500/10 text-violet-700 dark:text-violet-300" },
     { label: "Longest even run", value: longestEvenRun > 0 ? longestEvenRun.toString() : "Pending", cls: "bg-sky-500/10 text-sky-700 dark:text-sky-300" },
   ];
+  const title = mode === "estimated_live"
+    ? "Estimated Live Odd/Even Transition Graph"
+    : mode === "latest_verified"
+      ? "Latest Verified Odd/Even Transition Graph"
+      : "Record Odd/Even Transition Graph";
+  const subtitle = mode === "estimated_live"
+    ? "Generated locally from the estimated engine position."
+    : "Generated locally from the selected backend-verified starting number.";
 
   // Chart axis ticks
   const chartGridLines = useMemo(() => {
@@ -149,7 +167,12 @@ export function OddEvenTransitionGraph({ result, loading }: Props) {
           <div className="mb-5 flex flex-col items-center gap-3 text-center sm:flex-row sm:items-start sm:justify-between sm:text-left">
             <div className="max-w-2xl">
               <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
-                <p className="section-heading">Odd/Even Transition Graph</p>
+                <p className="section-heading">{title}</p>
+                {isEstimated && (
+                  <span className="rounded-full bg-cyan-500/15 px-2.5 py-1 font-mono text-[10px] font-semibold text-cyan-600 dark:text-cyan-400">
+                    {displayLabel}
+                  </span>
+                )}
                 <PanelHelp
                   title="Odd/Even Transition Graph"
                   description="Shows the rhythm between odd and even steps. Odd values expand through 3n + 1, while even values contract through division by 2."
@@ -157,7 +180,7 @@ export function OddEvenTransitionGraph({ result, loading }: Props) {
                 />
               </div>
               <p className="mt-1 text-xs text-slate-400 dark:text-slate-400">
-                Shows the expansion-contraction rhythm inside the active trajectory.
+                {subtitle}
               </p>
             </div>
             <span className={`rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-400 dark:bg-slate-800 dark:text-slate-500 sm:self-start ${loading ? "" : "invisible"}`}>

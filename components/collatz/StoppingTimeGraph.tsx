@@ -4,7 +4,8 @@ import { useMemo } from "react";
 import { PanelHelp } from "@/components/ui/PanelHelp";
 import { formatLargeNumber, formatLargeNumberTitle } from "@/lib/collatz/format";
 import { EVENT_COLORS } from "@/lib/collatz/event-visuals";
-import type { AnalyticsChartRow, AnalyticsRecordRow } from "@/hooks/useCollatzAnalyticsData";
+import type { DisplayMode } from "@/components/home/CollatzVisualizationProvider";
+import type { VisualizationWindowRow } from "@/hooks/useEstimatedLiveCollatz";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -12,7 +13,7 @@ const SVG_W = 600;
 const SVG_H = 200;
 const Y_BOTTOM = 185;
 const Y_RANGE = 158;
-const PAD_L = 2;
+const PAD_L = 52;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -28,12 +29,20 @@ function xScale(n: number, minN: number, rangeN: number): number {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 interface Props {
-  results: AnalyticsChartRow[];
-  topBySteps: AnalyticsRecordRow[];
+  results: VisualizationWindowRow[];
+  mode: DisplayMode;
+  displayLabel: string;
+  isEstimated?: boolean;
   loading?: boolean;
 }
 
-export function StoppingTimeGraph({ results, topBySteps, loading }: Props) {
+export function StoppingTimeGraph({
+  results,
+  mode,
+  displayLabel,
+  isEstimated = false,
+  loading,
+}: Props) {
   const isEmpty = results.length < 2;
 
   const { points, minN, maxN, maxSteps } = useMemo(() => {
@@ -56,16 +65,30 @@ export function StoppingTimeGraph({ results, topBySteps, loading }: Props) {
     return { points: pts, minN, maxN, maxSteps };
   }, [results]);
 
-  const topRecord = topBySteps[0] ?? null;
+  const previewTopBySteps = useMemo(
+    () => [...results].sort((a, b) => b.steps - a.steps).slice(0, 5),
+    [results],
+  );
+  const topRecord = previewTopBySteps[0] ?? null;
+  const title =
+    mode === "estimated_live"
+      ? "Estimated Live Stopping-Time Window"
+      : mode === "latest_verified"
+        ? "Latest Verified Stopping-Time Window"
+        : "Record Neighborhood Stopping-Time Window";
+  const helperCopy =
+    mode === "estimated_live"
+      ? "Browser-generated preview around the estimated engine position. Not an official catalog record."
+      : "Browser-generated preview around the selected backend-verified position. Official records remain separate.";
 
   const chips = [
     {
-      label: "Longest Trajectory",
+      label: mode === "estimated_live" ? "Longest trajectory in preview" : "Longest trajectory in window",
       value: topRecord ? topRecord.steps.toLocaleString("en-US") + " steps" : "Pending",
       title: "",
     },
     {
-      label: "Produced by n =",
+      label: mode === "estimated_live" ? "Produced by n ≈" : "Produced by n =",
       value: topRecord ? topRecord.n.toLocaleString("en-US") : "Pending",
       title: "",
     },
@@ -75,7 +98,7 @@ export function StoppingTimeGraph({ results, topBySteps, loading }: Props) {
       title: topRecord ? formatLargeNumberTitle(topRecord.peak) : "",
     },
     {
-      label: "Numbers charted",
+      label: mode === "estimated_live" ? "Numbers previewed" : "Numbers charted",
       value: results.length.toLocaleString("en-US"),
       title: "",
     },
@@ -91,21 +114,21 @@ export function StoppingTimeGraph({ results, topBySteps, loading }: Props) {
     });
   }, [maxSteps]);
 
-  // Top 5 record highlight positions
+  // Top 5 preview highlight positions
   const recordDots = useMemo(() => {
-    if (results.length < 2 || topBySteps.length === 0) return [];
+    if (results.length < 2 || previewTopBySteps.length === 0) return [];
     const minN = results[0].n;
     const maxN = results[results.length - 1].n;
     const rangeN = maxN - minN;
 
-    return topBySteps.slice(0, 5).map((r) => ({
+    return previewTopBySteps.map((r) => ({
       x: xScale(r.n, minN, rangeN),
       y: yLinear(r.steps, maxSteps),
       steps: r.steps,
       n: r.n,
       peak: r.peak,
     }));
-  }, [results, topBySteps, maxSteps]);
+  }, [results, previewTopBySteps, maxSteps]);
 
   return (
     <section className="live-stable scroll-mt-20 px-4 pb-10 sm:pb-14">
@@ -115,7 +138,12 @@ export function StoppingTimeGraph({ results, topBySteps, loading }: Props) {
           <div className="mb-5 flex flex-col items-center gap-3 text-center sm:flex-row sm:items-start sm:justify-between sm:text-left">
             <div className="max-w-2xl">
               <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
-                <p className="section-heading">Stopping Time Graph</p>
+                <p className="section-heading">{title}</p>
+                {isEstimated && (
+                  <span className="rounded-full bg-cyan-500/15 px-2.5 py-1 font-mono text-[10px] font-semibold text-cyan-600 dark:text-cyan-400">
+                    {displayLabel}
+                  </span>
+                )}
                 <PanelHelp
                   title="Stopping Time Graph"
                   description="Tracks how many steps each tested number takes to reach 1. Taller points represent numbers with longer trajectories through the Collatz process."
@@ -123,7 +151,7 @@ export function StoppingTimeGraph({ results, topBySteps, loading }: Props) {
                 />
               </div>
               <p className="mt-1 text-xs text-slate-400 dark:text-slate-400">
-                Tracks how many steps each number takes to reach 1.
+                {helperCopy}
               </p>
             </div>
             <span className={`rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-400 dark:bg-slate-800 dark:text-slate-500 sm:self-start ${loading ? "" : "invisible"}`}>
@@ -153,7 +181,7 @@ export function StoppingTimeGraph({ results, topBySteps, loading }: Props) {
           {isEmpty ? (
             <div className="placeholder-panel">
               <p className="text-center text-sm text-slate-400 dark:text-slate-500">
-                Records will appear as the engine advances and results are persisted.
+                Stopping-time preview data will appear once the selected starting window is available.
               </p>
             </div>
           ) : (
@@ -166,10 +194,11 @@ export function StoppingTimeGraph({ results, topBySteps, loading }: Props) {
                 aria-label={`Stopping time graph, ${results.length} numbers charted, longest trajectory ${topRecord?.steps.toLocaleString("en-US") ?? "pending"} steps`}
               >
                 {/* Grid lines */}
+                <line x1={PAD_L} y1="0" x2={PAD_L} y2={Y_BOTTOM} stroke="currentColor" strokeOpacity="0.06" strokeWidth="1" />
                 {gridLines.map(({ v, y, label }) => (
                   <g key={v}>
                     <line
-                      x1="0"
+                      x1={PAD_L}
                       y1={y}
                       x2={SVG_W}
                       y2={y}
@@ -177,12 +206,12 @@ export function StoppingTimeGraph({ results, topBySteps, loading }: Props) {
                       strokeOpacity="0.07"
                       strokeWidth="1"
                     />
-                    <text x="4" y={y + 4} fontSize="7.5" fill="currentColor" opacity="0.4">
+                    <text x={PAD_L - 3} y={y + 4} fontSize="7.5" fill="currentColor" opacity="0.4" textAnchor="end">
                       {label}
                     </text>
                   </g>
                 ))}
-                <text x="4" y="11" fontSize="7" fill="currentColor" opacity="0.35">
+                <text x={PAD_L - 3} y="11" fontSize="7" fill="currentColor" opacity="0.35" textAnchor="end">
                   Steps to 1
                 </text>
 
@@ -256,7 +285,7 @@ export function StoppingTimeGraph({ results, topBySteps, loading }: Props) {
           <div className="mt-4 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 border-t border-slate-200 pt-4 text-center dark:border-slate-800 sm:justify-start sm:text-left">
             {[
               { color: "bg-teal-400", label: "Steps to 1 per starting number" },
-              { color: EVENT_COLORS.violet.dot, label: "Longest trajectory records" },
+              { color: EVENT_COLORS.violet.dot, label: mode === "estimated_live" ? "Longest trajectories in preview" : "Longest trajectories in selected window" },
             ].map((item) => (
               <div key={item.label} className="flex items-center justify-center gap-2 sm:justify-start">
                 <span className={`h-2.5 w-2.5 flex-shrink-0 rounded-sm ${item.color}`} />

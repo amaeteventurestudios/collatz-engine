@@ -1,9 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useDashboardData } from "@/hooks/useDashboardData";
-import type { DashboardNearEscape } from "@/app/api/collatz/dashboard/route";
-import { computeCollatzSummary } from "@/lib/collatz/engine";
+import { useMemo, useState } from "react";
+import { useCollatzVisualization } from "@/components/home/CollatzVisualizationProvider";
 import { Modal } from "@/components/ui/Modal";
 import { PanelHelp } from "@/components/ui/PanelHelp";
 import { formatLargeNumberTitle } from "@/lib/collatz/format";
@@ -18,37 +16,21 @@ const SPARKLINE_SAMPLES = 80;
 type LiveFlag = "high_peak_ratio" | "long_path";
 type SortTab = "peak_ratio" | "long_path" | "all";
 
-// Local shape that mirrors DashboardNearEscape with a typed flags array
+// Local preview shape generated from browser-side Collatz summaries.
 interface Candidate {
   n: number;
   steps: number;
   peak: number;
   ratio: number;
+  oddStepCount: number;
+  evenStepCount: number;
+  firstDescentStep: number | null;
+  oddStepDensity: number;
   flags: LiveFlag[];
   createdAt: string | null;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function fromDashboard(row: DashboardNearEscape): Candidate {
-  return {
-    n: row.n,
-    steps: row.steps,
-    peak: row.peak,
-    ratio: row.peakRatio,
-    flags: row.flags.filter((f): f is LiveFlag =>
-      f === "high_peak_ratio" || f === "long_path",
-    ),
-    createdAt: null,
-  };
-}
-
-function formatAge(date: Date | null, now: Date): string {
-  if (!date) return "not yet refreshed";
-  const seconds = Math.max(0, Math.floor((now.getTime() - date.getTime()) / 1000));
-  if (seconds < 60) return `${seconds}s ago`;
-  return `${Math.floor(seconds / 60)}m ago`;
-}
 
 function fmtCompact(n: number): string {
   if (n >= 1e12) return `${(n / 1e12).toFixed(2)}T`;
@@ -233,6 +215,18 @@ function FeaturedCard({ candidate, rank }: { candidate: Candidate; rank: number 
             {fmtCompact(candidate.peak)}
           </p>
         </div>
+        <div>
+          <p className="text-[9px] font-semibold uppercase tracking-wider text-slate-500">Odd Density</p>
+          <p className="mt-0.5 font-mono text-base font-bold text-violet-300" title={`${candidate.oddStepCount} odd · ${candidate.evenStepCount} even`}>
+            {(candidate.oddStepDensity * 100).toFixed(1)}%
+          </p>
+        </div>
+        <div>
+          <p className="text-[9px] font-semibold uppercase tracking-wider text-slate-500">First Descent</p>
+          <p className="mt-0.5 font-mono text-base font-bold text-slate-200">
+            {candidate.firstDescentStep != null ? candidate.firstDescentStep.toLocaleString("en-US") : "Pending"}
+          </p>
+        </div>
       </div>
 
       {/* Y-axis labels hint for graph (right side) */}
@@ -349,8 +343,26 @@ function RankedRow({ candidate, rank }: { candidate: Candidate; rank: number }) 
         </span>
       </td>
       <td className="px-3 py-2.5">
+        <span
+          className="font-mono text-sm font-semibold text-violet-300 tabular-nums"
+          title={`${candidate.oddStepCount.toLocaleString("en-US")} odd steps · ${candidate.evenStepCount.toLocaleString("en-US")} even steps`}
+        >
+          {(candidate.oddStepDensity * 100).toFixed(1)}%
+        </span>
+      </td>
+      <td className="px-3 py-2.5">
+        <span className="font-mono text-sm text-slate-300 tabular-nums">
+          {candidate.firstDescentStep != null
+            ? candidate.firstDescentStep.toLocaleString("en-US")
+            : "Pending"}
+        </span>
+      </td>
+      <td className="px-3 py-2.5">
         <div className="flex flex-wrap gap-1">
           {candidate.flags.map((f) => <FlagPill key={f} flag={f} />)}
+          {candidate.flags.length === 0 && (
+            <span className="text-[10px] text-slate-600">Preview</span>
+          )}
         </div>
       </td>
       <td className="px-3 py-2.5">
@@ -364,111 +376,38 @@ function RankedRow({ candidate, rank }: { candidate: Candidate; rank: number }) 
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-// ── Browser-side candidate generation ────────────────────────────────────────
-// Computes Collatz summaries for a small window around the estimated engine
-// position. Display-only — never written to Supabase, never used for records.
-
-const BROWSER_WINDOW = 12; // numbers before + after estimated position
-const BROWSER_REFRESH_MS = 10_000;
-
-function computeBrowserCandidates(estimatedN: number): Candidate[] {
-  if (estimatedN <= 1) return [];
-  const start = Math.max(2, estimatedN - BROWSER_WINDOW);
-  const end = estimatedN + BROWSER_WINDOW;
-  const candidates: Candidate[] = [];
-  for (let n = start; n <= end; n++) {
-    try {
-      const s = computeCollatzSummary(n);
-      const peak = Number(s.peak_value);
-      const ratio = n > 0 ? peak / n : 0;
-      const flags: LiveFlag[] = [];
-      if (ratio > 50) flags.push("high_peak_ratio");
-      if (s.steps_to_1 > 150) flags.push("long_path");
-      candidates.push({ n, steps: s.steps_to_1, peak, ratio, flags, createdAt: null });
-    } catch {
-      // skip problematic values
-    }
-  }
-  return candidates.sort((a, b) => b.ratio - a.ratio).slice(0, 5);
-}
-
 export function NearEscapeCandidates() {
-  const { data } = useDashboardData();
+  const {
+    mode,
+    result,
+    label,
+    estimatedN,
+    nearEscapeCandidates,
+  } = useCollatzVisualization();
   const [tab, setTab] = useState<SortTab>("peak_ratio");
   const [modalOpen, setModalOpen] = useState(false);
-  const [now, setNow] = useState(() => new Date());
-  const [browserCandidates, setBrowserCandidates] = useState<Candidate[]>([]);
-  const [browserRefreshedAt, setBrowserRefreshedAt] = useState<Date | null>(null);
-  const [lastBrowserN, setLastBrowserN] = useState<number>(0);
-
-  // Clock for refreshed-label display
-  useEffect(() => {
-    const id = window.setInterval(() => setNow(new Date()), 10_000);
-    return () => window.clearInterval(id);
-  }, []);
-
-  // Estimation params ref — keeps interval callback current without re-creating it
-  const estimateRef = useRef({
-    backendN: 0,
-    rate: 0 as number | null | undefined,
-    generatedAt: null as Date | null,
-    running: false,
-  });
-
-  // Keep ref in sync with latest dashboard data
-  const backendN = Number(
-    data?.engineState?.current_number ??
-    (Number(data?.engineState?.last_checked_number ?? 0) + 1),
-  );
-  const rate = data?.engineState?.numbers_per_second;
-  const generatedAtStr = data?.generatedAt ?? null;
-  const generatedAt = useMemo(
-    () => (generatedAtStr ? new Date(generatedAtStr) : null),
-    [generatedAtStr],
-  );
-  const engineRunning = data?.engineState?.current_status === "running";
-
-  useEffect(() => {
-    estimateRef.current = {
-      backendN,
-      rate,
-      generatedAt,
-      running: engineRunning,
-    };
-  }, [backendN, rate, generatedAt, engineRunning]);
-
-  // 10-second interval generates browser candidates from estimated position
-  useEffect(() => {
-    function refresh() {
-      const { backendN: base, rate: r, generatedAt: ga, running } = estimateRef.current;
-      let estimatedN = base;
-      if (running && r && r > 0 && ga) {
-        const elapsed = Math.max(0, (Date.now() - ga.getTime()) / 1000);
-        estimatedN = Math.round(base + r * elapsed);
-      }
-      if (estimatedN <= 1) return;
-      const candidates = computeBrowserCandidates(estimatedN);
-      setBrowserCandidates(candidates);
-      setBrowserRefreshedAt(new Date());
-      setLastBrowserN(estimatedN);
-    }
-    refresh();
-    const id = window.setInterval(refresh, BROWSER_REFRESH_MS);
-    return () => window.clearInterval(id);
-  }, []); // reads from ref
-
-  const lastRefreshedAt = data ? new Date(data.generatedAt) : null;
-
-  // Use dashboard candidates when available; fall back to browser-generated ones
-  const dashboardCandidates = useMemo(
-    () => (data?.nearEscapes ?? []).map(fromDashboard),
-    [data],
-  );
-  const isEstimatedDisplay = dashboardCandidates.length === 0;
-
-  const allCandidates = useMemo(
-    () => (isEstimatedDisplay ? browserCandidates : dashboardCandidates),
-    [isEstimatedDisplay, browserCandidates, dashboardCandidates],
+  const sourceN = mode === "estimated_live" ? estimatedN : Number(result.start_number);
+  const isEstimatedDisplay = mode === "estimated_live";
+  const allCandidates = useMemo<Candidate[]>(
+    () =>
+      nearEscapeCandidates.map((candidate) => {
+        const flags: LiveFlag[] = [];
+        if (candidate.peakRatio > 50) flags.push("high_peak_ratio");
+        if (candidate.steps > 150) flags.push("long_path");
+        return {
+          n: candidate.n,
+          steps: candidate.steps,
+          peak: candidate.peak,
+          ratio: candidate.peakRatio,
+          oddStepCount: candidate.oddStepCount,
+          evenStepCount: candidate.evenStepCount,
+          firstDescentStep: candidate.firstDescentStep,
+          oddStepDensity: candidate.oddStepDensity,
+          flags,
+          createdAt: null,
+        };
+      }),
+    [nearEscapeCandidates],
   );
   const peakCandidates = useMemo(
     () => [...allCandidates].sort((a, b) => b.ratio - a.ratio),
@@ -497,13 +436,9 @@ export function NearEscapeCandidates() {
     peakCandidates.length > 0
       ? peakCandidates.reduce((s, c) => s + c.ratio, 0) / peakCandidates.length
       : 0;
-  // All verified numbers in the Collatz catalog reach 1 by definition
-  const allReachOne = true;
   const rangeInfo = getRangeInfo(allCandidates);
-  const refreshedLabel = formatAge(isEstimatedDisplay ? browserRefreshedAt : lastRefreshedAt, now);
   const hasCandidates = peakCandidates.length > 0;
-  // Don't show "View all" modal for browser-generated estimated candidates (only 5 max)
-  const hasMore = !isEstimatedDisplay && allForModal.length > TOP_DISPLAY;
+  const hasMore = allForModal.length > TOP_DISPLAY;
 
   return (
     <section id="near-escape" className="live-stable scroll-mt-20 px-4 pb-10 sm:pb-14">
@@ -517,32 +452,30 @@ export function NearEscapeCandidates() {
                 <h2 className="text-base font-bold text-slate-50 tracking-tight">
                   {isEstimatedDisplay
                     ? "Estimated Live Near-Escape Candidates"
-                    : "Near-Escape Candidates"}
+                    : "Near-Escape Candidate Preview"}
                 </h2>
-                {isEstimatedDisplay && (
-                  <span className="rounded-full bg-cyan-500/15 px-2.5 py-1 font-mono text-[10px] font-semibold text-cyan-400">
-                    Visualization Only
-                  </span>
-                )}
+                <span className="rounded-full bg-cyan-500/15 px-2.5 py-1 font-mono text-[10px] font-semibold text-cyan-400">
+                  Visualization Only
+                </span>
                 <PanelHelp
                   title="Near-Escape Candidates"
                   description={
                     isEstimatedDisplay
                       ? "Generated locally from the estimated engine position. These are live visualization candidates, not verified catalog records. No database query is made for this panel."
-                      : "Highlights numbers that climb unusually high or take unusually long before reaching 1. This is a visualization label only, not a mathematical claim."
+                      : "Generated locally around the selected backend-verified starting number. These preview candidates are not official catalog records."
                   }
                   align="left"
                 />
               </div>
-              {isEstimatedDisplay && lastBrowserN > 0 && (
-                <p className="mt-1 text-[11px] text-cyan-600 dark:text-cyan-500">
-                  Generated locally from the estimated engine position. These are live visualization candidates, not verified catalog records.
-                </p>
-              )}
+              <p className="mt-1 text-[11px] text-cyan-600 dark:text-cyan-500">
+                {isEstimatedDisplay
+                  ? "Generated locally from the estimated engine position. These are live visualization candidates, not verified catalog records."
+                  : "Generated locally around the selected backend-verified n. These are preview candidates, not official catalog records."}
+              </p>
               <p className="mt-1 text-xs text-slate-400">
                 {isEstimatedDisplay
-                  ? `Browser-computed window around estimated n=~${lastBrowserN > 0 ? lastBrowserN.toLocaleString("en-US") : "…"}`
-                  : "Numbers with unusually high peak ratios or long trajectories from the live catalog"}
+                  ? `Browser-computed window around estimated n=~${sourceN > 0 ? sourceN.toLocaleString("en-US") : "..."}`
+                  : `Browser-computed preview around ${label}`}
               </p>
               <div className="mt-1.5 flex min-h-[2.5rem] flex-wrap items-center justify-center gap-2 text-[10px] text-slate-500 sm:justify-start">
                 <span className="flex items-center justify-center gap-1">
@@ -550,9 +483,7 @@ export function NearEscapeCandidates() {
                   {isEstimatedDisplay ? "ESTIMATED" : "LIVE"}
                 </span>
                 <span>·</span>
-                <span>Refreshed {refreshedLabel}</span>
-                <span>·</span>
-                <span>Refresh cadence: {isEstimatedDisplay ? "10s" : "10s"}</span>
+                <span>Refresh cadence: 15s</span>
                 <span>·</span>
                 <span>
                   Ranked by: <span className="text-teal-400">
@@ -563,7 +494,7 @@ export function NearEscapeCandidates() {
                   <>
                     <span>·</span>
                     <span className="text-slate-400">
-                      Catalog range: n = {rangeInfo.min.toLocaleString("en-US")} to {rangeInfo.max.toLocaleString("en-US")}
+                      Preview range: n = {rangeInfo.min.toLocaleString("en-US")} to {rangeInfo.max.toLocaleString("en-US")}
                     </span>
                   </>
                 )}
@@ -586,7 +517,7 @@ export function NearEscapeCandidates() {
                 icon="◈"
                 label="Candidates Found"
                 value={allCandidates.length.toString()}
-                sub="Live verified"
+                sub="Visualization only"
                 accent="text-teal-400"
               />
               <StatCard
@@ -612,16 +543,16 @@ export function NearEscapeCandidates() {
               />
               <StatCard
                 icon="✓"
-                label="All Verified Reach"
+                label="Computed Reach"
                 value="1"
-                sub="By Collatz rule"
+                sub="Local trajectories"
                 accent="text-emerald-400"
               />
               <StatCard
                 icon="◷"
-                label="Last Full Scan"
-                value={lastRefreshedAt ? lastRefreshedAt.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }) : "—"}
-                sub={lastRefreshedAt ? lastRefreshedAt.toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "Pending"}
+                label="Preview Refresh"
+                value="15s"
+                sub="Browser-side"
                 accent="text-amber-400"
               />
             </div>
@@ -691,6 +622,8 @@ export function NearEscapeCandidates() {
                         { label: "Steps to 1", hint: "Trajectory length" },
                         { label: "Peak Ratio", hint: "Peak ÷ n" },
                         { label: "Peak Value", hint: "Highest value reached" },
+                        { label: "Odd Density", hint: "Odd steps ÷ total" },
+                        { label: "First Descent", hint: "First step below n" },
                         { label: "Flags", hint: "Why flagged" },
                         { label: "Trajectory Preview", hint: "Log scale (sampled)" },
                       ].map((col) => (
@@ -707,7 +640,7 @@ export function NearEscapeCandidates() {
                     ))}
                     {Array.from({ length: placeholderRows }).map((_, i) => (
                       <tr key={`candidate-placeholder-${i}`} aria-hidden="true" className="border-b border-slate-800/60">
-                        {Array.from({ length: 7 }).map((__, cell) => (
+                        {Array.from({ length: 9 }).map((__, cell) => (
                           <td key={cell} className="px-3 py-2.5 text-transparent">
                             -
                           </td>
@@ -721,9 +654,9 @@ export function NearEscapeCandidates() {
           ) : (
             <div className="flex flex-col items-center justify-center rounded-xl border border-slate-800 px-4 py-14 text-center">
               <span className="text-3xl text-slate-700">◇</span>
-              <p className="mt-3 text-sm font-semibold text-slate-500">Awaiting dataset growth</p>
+              <p className="mt-3 text-sm font-semibold text-slate-500">Waiting for estimated position</p>
               <p className="mt-1.5 max-w-sm text-xs leading-relaxed text-slate-600">
-                Near-escape candidates will appear here as the engine catalogs more trajectories.
+                Browser-generated candidates will appear as soon as a valid visualization source is available.
               </p>
             </div>
           )}
@@ -739,11 +672,11 @@ export function NearEscapeCandidates() {
             <p className="text-center text-[10px] text-slate-500">
               {hasCandidates
                 ? isEstimatedDisplay
-                  ? `Estimated candidates from browser-computed window around n=~${lastBrowserN.toLocaleString("en-US")}. Visualization only — not catalog-verified.`
-                  : `Showing top ${tableRows.length} of ${allCandidates.length} candidates by ${tab === "long_path" ? "path length" : "peak ratio"} from the live verified catalog.${allReachOne ? " All displayed candidates reach 1." : ""}`
+                  ? `Estimated candidates from browser-computed window around n=~${sourceN.toLocaleString("en-US")}. Visualization only; not catalog-verified.`
+                  : `Showing top ${tableRows.length} of ${allCandidates.length} browser preview candidates by ${tab === "long_path" ? "path length" : "peak ratio"} around ${label}.`
                 : isEstimatedDisplay
                   ? "Waiting for estimated engine position. No database query is being made for this panel."
-                  : "Candidates flagged by peak ratio > 50× or trajectory length > 150 steps"}
+                  : "Waiting for selected visualization source. No catalog-record claim is being made here."}
             </p>
             <p className="text-[10px] text-slate-500">
               <span className="flex items-center justify-center gap-1.5">
@@ -765,20 +698,20 @@ export function NearEscapeCandidates() {
         <div>
           <div className="mb-4 rounded-xl border border-slate-700 bg-slate-900/70 p-4">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-              Live ranked sample
+              Browser-ranked sample
             </p>
             <p className="mt-2 text-sm leading-relaxed text-slate-300">
-              {allForModal.length} candidates from the latest peak sample · refreshed {refreshedLabel} · sorted by computed peak ratio.
+              {allForModal.length} candidates from the current preview window · sorted by computed peak ratio.
             </p>
             <p className="mt-2 text-xs leading-relaxed text-slate-500">
-              Near-escape is a visualization label only. All verified numbers reach 1.
+              Near-escape is a visualization label only. These rows are locally generated and not official catalog records.
             </p>
           </div>
           <div className="overflow-y-auto rounded-xl border border-slate-700" style={{ maxHeight: 440 }}>
             <table className="min-w-full text-xs">
               <thead className="sticky top-0 z-10">
                 <tr className="border-b border-slate-700 bg-slate-800">
-                  {["n", "Steps", "Peak", "Ratio", "Flags"].map((h) => (
+                  {["n", "Steps", "Peak", "Ratio", "Odd density", "First descent", "Flags"].map((h) => (
                     <th key={h} className="px-3 py-2.5 text-left font-semibold uppercase tracking-wider text-slate-400">
                       {h}
                     </th>
@@ -796,9 +729,16 @@ export function NearEscapeCandidates() {
                       {fmtCompact(c.peak)}
                     </td>
                     <td className="px-3 py-2 font-mono font-bold text-orange-400">×{c.ratio.toFixed(0)}</td>
+                    <td className="px-3 py-2 font-mono text-violet-300">{(c.oddStepDensity * 100).toFixed(1)}%</td>
+                    <td className="px-3 py-2 font-mono text-slate-300">
+                      {c.firstDescentStep != null ? c.firstDescentStep.toLocaleString("en-US") : "Pending"}
+                    </td>
                     <td className="px-3 py-2">
                       <div className="flex flex-wrap gap-1">
                         {c.flags.map((f) => <FlagPill key={f} flag={f} />)}
+                        {c.flags.length === 0 && (
+                          <span className="text-[10px] text-slate-600">Preview</span>
+                        )}
                       </div>
                     </td>
                   </tr>

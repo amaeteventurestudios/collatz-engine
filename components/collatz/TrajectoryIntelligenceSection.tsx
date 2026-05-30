@@ -1,7 +1,6 @@
 "use client";
 
-import { useCollatzSelectedTrajectory } from "@/hooks/useCollatzSelectedTrajectory";
-import { useCollatzAnalyticsData } from "@/hooks/useCollatzAnalyticsData";
+import { useCollatzVisualization } from "@/components/home/CollatzVisualizationProvider";
 import { LiveDescentProfile } from "@/components/collatz/LiveDescentProfile";
 import { PeakGrowthGraph } from "@/components/collatz/PeakGrowthGraph";
 import { StoppingTimeGraph } from "@/components/collatz/StoppingTimeGraph";
@@ -12,34 +11,55 @@ import {
 } from "@/components/collatz/RecordBreakerTimeline";
 
 export function TrajectoryIntelligenceSection() {
-  const { result, loading: trajectoryLoading } = useCollatzSelectedTrajectory();
-
   const {
-    chartResults,
+    mode,
+    result,
+    label,
+    helperCopy,
+    isEstimated,
+    peakGrowthWindow,
+    stoppingTimeWindow,
     topBySteps,
     topByPeak,
-    loading: analyticsLoading,
-  } = useCollatzAnalyticsData(500, 25);
+    loading,
+  } = useCollatzVisualization();
 
   return (
     <>
-      <LiveDescentProfile result={result} loading={trajectoryLoading} />
+      <LiveDescentProfile
+        result={result}
+        mode={mode}
+        displayLabel={label}
+        helperCopy={helperCopy}
+        isEstimated={isEstimated}
+        loading={loading}
+      />
       <PeakGrowthGraph
-        results={chartResults}
-        topByPeak={topByPeak}
-        loading={analyticsLoading}
+        results={peakGrowthWindow}
+        mode={mode}
+        displayLabel={label}
+        isEstimated={isEstimated}
+        loading={loading}
       />
       <StoppingTimeGraph
-        results={chartResults}
-        topBySteps={topBySteps}
-        loading={analyticsLoading}
+        results={stoppingTimeWindow}
+        mode={mode}
+        displayLabel={label}
+        isEstimated={isEstimated}
+        loading={loading}
       />
-      <OddEvenTransitionGraph result={result} loading={trajectoryLoading} />
+      <OddEvenTransitionGraph
+        result={result}
+        mode={mode}
+        displayLabel={label}
+        isEstimated={isEstimated}
+        loading={loading}
+      />
       <AllTimeEngineRecords />
       <RecordLeaderboards
         topBySteps={topBySteps}
         topByPeak={topByPeak}
-        loading={analyticsLoading}
+        loading={loading}
       />
 
       {/* Section integrity note */}

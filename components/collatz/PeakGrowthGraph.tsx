@@ -4,7 +4,8 @@ import { useMemo } from "react";
 import { PanelHelp } from "@/components/ui/PanelHelp";
 import { formatLargeNumber, formatLargeNumberTitle } from "@/lib/collatz/format";
 import { EVENT_COLORS } from "@/lib/collatz/event-visuals";
-import type { AnalyticsChartRow, AnalyticsRecordRow } from "@/hooks/useCollatzAnalyticsData";
+import type { DisplayMode } from "@/components/home/CollatzVisualizationProvider";
+import type { VisualizationWindowRow } from "@/hooks/useEstimatedLiveCollatz";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -12,7 +13,7 @@ const SVG_W = 600;
 const SVG_H = 200;
 const Y_BOTTOM = 185;
 const Y_RANGE = 158;
-const PAD_L = 40; // left margin reserves space for y-axis labels
+const PAD_L = 52; // left margin reserves space for y-axis labels
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -32,12 +33,20 @@ function xScale(n: number, minN: number, rangeN: number): number {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 interface Props {
-  results: AnalyticsChartRow[];
-  topByPeak: AnalyticsRecordRow[];
+  results: VisualizationWindowRow[];
+  mode: DisplayMode;
+  displayLabel: string;
+  isEstimated?: boolean;
   loading?: boolean;
 }
 
-export function PeakGrowthGraph({ results, topByPeak, loading }: Props) {
+export function PeakGrowthGraph({
+  results,
+  mode,
+  displayLabel,
+  isEstimated = false,
+  loading,
+}: Props) {
   const isEmpty = results.length < 2;
 
   const { points, minN, maxN, maxPeak, logMaxPeak } = useMemo(() => {
@@ -61,41 +70,55 @@ export function PeakGrowthGraph({ results, topByPeak, loading }: Props) {
     return { points: pts, minN, maxN, maxPeak, logMaxPeak };
   }, [results]);
 
-  const topPeakRecord = topByPeak[0] ?? null;
+  const previewTopByPeak = useMemo(
+    () => [...results].sort((a, b) => b.peak - a.peak).slice(0, 5),
+    [results],
+  );
+  const topPeakRecord = previewTopByPeak[0] ?? null;
+  const title =
+    mode === "estimated_live"
+      ? "Estimated Live Peak Window"
+      : mode === "latest_verified"
+        ? "Latest Verified Peak Window"
+        : "Record Neighborhood Peak Window";
+  const helperCopy =
+    mode === "estimated_live"
+      ? "Browser-generated preview around the estimated engine position. Not an official catalog record."
+      : "Browser-generated preview around the selected backend-verified position. Official records remain separate.";
 
   const chips = [
     {
-      label: "Highest Peak",
+      label: mode === "estimated_live" ? "Highest Peak in Preview" : "Highest Peak in Window",
       value: topPeakRecord ? formatLargeNumber(topPeakRecord.peak) : "Pending",
       title: topPeakRecord ? formatLargeNumberTitle(topPeakRecord.peak) : "",
     },
     {
-      label: "Produced by n =",
+      label: mode === "estimated_live" ? "Produced by n ≈" : "Produced by n =",
       value: topPeakRecord ? topPeakRecord.n.toLocaleString("en-US") : "Pending",
       title: "",
     },
     {
-      label: "Numbers charted",
+      label: mode === "estimated_live" ? "Numbers Previewed" : "Numbers charted",
       value: results.length.toLocaleString("en-US"),
       title: "",
     },
   ];
 
-  // Top 5 record highlight positions
+  // Top 5 preview highlight positions
   const recordDots = useMemo(() => {
-    if (results.length < 2 || topByPeak.length === 0) return [];
+    if (results.length < 2 || previewTopByPeak.length === 0) return [];
     const minN = results[0].n;
     const maxN = results[results.length - 1].n;
     const rangeN = maxN - minN;
 
-    return topByPeak.slice(0, 5).map((r) => ({
+    return previewTopByPeak.map((r) => ({
       x: xScale(r.n, minN, rangeN),
       y: yLog(r.peak, logMaxPeak),
       peak: r.peak,
       n: r.n,
       steps: r.steps,
     }));
-  }, [results, topByPeak, logMaxPeak]);
+  }, [results, previewTopByPeak, logMaxPeak]);
 
   // Axis grid lines (log scale ticks)
   const gridLines = useMemo(() => {
@@ -129,7 +152,12 @@ export function PeakGrowthGraph({ results, topByPeak, loading }: Props) {
           <div className="mb-5 flex flex-col items-center gap-3 text-center sm:flex-row sm:items-start sm:justify-between sm:text-left">
             <div className="max-w-2xl">
               <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
-                <p className="section-heading">Peak Growth Graph</p>
+                <p className="section-heading">{title}</p>
+                {isEstimated && (
+                  <span className="rounded-full bg-cyan-500/15 px-2.5 py-1 font-mono text-[10px] font-semibold text-cyan-600 dark:text-cyan-400">
+                    {displayLabel}
+                  </span>
+                )}
                 <PanelHelp
                   title="Peak Growth Graph"
                   description="Shows the highest value reached by each tested starting number. Some numbers climb far above their origin before eventually descending to 1."
@@ -137,7 +165,7 @@ export function PeakGrowthGraph({ results, topByPeak, loading }: Props) {
                 />
               </div>
               <p className="mt-1 text-xs text-slate-400 dark:text-slate-400">
-                Maps how high each tested integer climbs before returning to 1.
+                {helperCopy}
               </p>
             </div>
             <span className={`rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-400 dark:bg-slate-800 dark:text-slate-500 sm:self-start ${loading ? "" : "invisible"}`}>
@@ -167,7 +195,7 @@ export function PeakGrowthGraph({ results, topByPeak, loading }: Props) {
           {isEmpty ? (
             <div className="placeholder-panel">
               <p className="text-center text-sm text-slate-400 dark:text-slate-500">
-                Records will appear as the engine advances and results are persisted.
+                Peak preview data will appear once the selected starting window is available.
               </p>
             </div>
           ) : (
@@ -282,7 +310,7 @@ export function PeakGrowthGraph({ results, topByPeak, loading }: Props) {
           <div className="mt-4 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 border-t border-slate-200 pt-4 text-center dark:border-slate-800 sm:justify-start sm:text-left">
             {[
               { color: "bg-indigo-400", label: "Peak value per starting number (log scale)" },
-              { color: EVENT_COLORS.amber.dot, label: "Highest peak records" },
+              { color: EVENT_COLORS.amber.dot, label: mode === "estimated_live" ? "Highest peaks in preview" : "Highest peaks in selected window" },
             ].map((item) => (
               <div key={item.label} className="flex items-center justify-center gap-2 sm:justify-start">
                 <span className={`h-2.5 w-2.5 flex-shrink-0 rounded-sm ${item.color}`} />

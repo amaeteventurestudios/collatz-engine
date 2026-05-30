@@ -379,6 +379,11 @@ export function TrajectoryVisualizer({
             <div className="max-w-2xl">
               <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
                 <p className="section-heading">Collatz Trajectory Visualizer</p>
+                {isEstimated && (
+                  <span className="rounded-full bg-cyan-500/15 px-2.5 py-1 font-mono text-[10px] font-semibold text-cyan-600 dark:text-cyan-400">
+                    {displayLabel}
+                  </span>
+                )}
                 <PanelHelp
                   title="Trajectory Visualizer"
                   description="Shows how one selected starting number moves through the Collatz process until it reaches 1. Peaks show how high the sequence climbs before descending."
@@ -575,7 +580,7 @@ export function TrajectoryVisualizer({
           >
             {displayLabel} · {result.steps_to_1} steps · peak {peakDisplay}
             {isEstimated && (
-              <> · <span className="text-cyan-600 dark:text-cyan-500">Estimated from live engine rate. Not catalog-verified.</span></>
+              <> · <span className="text-cyan-600 dark:text-cyan-500">Generated locally from the estimated engine position. Verified catalog data updates on backend sync.</span></>
             )}
           </p>
         </div>
