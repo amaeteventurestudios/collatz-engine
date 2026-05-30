@@ -327,7 +327,7 @@ function MetricChipView({
   return (
     <span
       title={chip.title}
-      className={`metadata-chip shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] ${chipClass(
+      className={`shrink-0 metadata-chip shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] ${chipClass(
         visual,
         chip.tone,
       )}`}
@@ -420,7 +420,7 @@ function TimelineCard({
           </div>
 
           {chips.length > 0 && (
-            <div className="flex min-w-0 flex-wrap justify-center gap-2 lg:max-w-[34rem] lg:justify-end">
+            <div className="no-scrollbar flex min-w-0 gap-2 overflow-x-auto pb-0.5 lg:flex-wrap lg:overflow-visible lg:pb-0 lg:max-w-[34rem] lg:justify-end">
               {chips.map((chip) => (
                 <MetricChipView key={`${chip.text}-${chip.title ?? ""}`} chip={chip} visual={visual} />
               ))}
@@ -428,7 +428,7 @@ function TimelineCard({
           )}
 
           <div className="flex shrink-0 flex-row items-center justify-center gap-4 border-t border-white/10 pt-3 lg:min-w-32 lg:flex-col lg:items-end lg:border-t-0 lg:pt-0">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-cyan-100">
+            <p className="whitespace-nowrap text-[10px] font-semibold uppercase tracking-[0.08em] text-cyan-100">
               {relativeTime(log.created_at, now)}
             </p>
             <p className="whitespace-nowrap text-sm font-semibold tabular-nums text-slate-200">
@@ -539,7 +539,10 @@ export function DiscoveryFeed() {
 
     load();
     const interval = window.setInterval(load, REFRESH_CADENCE_MS);
-    const clock = window.setInterval(() => setNow(new Date()), 1_000);
+    // 30s precision is enough: relativeTime only changes at minute boundaries
+    // for entries > 60s old, and "just now" is stable for the first 60s.
+    // Reducing from 1s to 30s eliminates per-second re-renders of all 20 cards.
+    const clock = window.setInterval(() => setNow(new Date()), 30_000);
     return () => {
       isMounted = false;
       window.clearInterval(interval);

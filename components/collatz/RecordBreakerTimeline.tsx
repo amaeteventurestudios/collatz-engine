@@ -432,8 +432,12 @@ async function getAllTimeRecordsSnapshot(): Promise<AllTimeRecordsSnapshot | nul
 }
 
 function preserveScrollAfterLivePaint(scrollX: number, scrollY: number) {
+  const capturedAt = Date.now();
   window.requestAnimationFrame(() => {
     window.requestAnimationFrame(() => {
+      // Skip if more than 150 ms have elapsed since capture — the user likely
+      // scrolled intentionally between fetch completion and the second RAF.
+      if (Date.now() - capturedAt > 150) return;
       const movedX = Math.abs(window.scrollX - scrollX) > 1;
       const movedY = Math.abs(window.scrollY - scrollY) > 1;
       if (movedX || movedY) {

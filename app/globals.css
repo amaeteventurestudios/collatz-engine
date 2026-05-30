@@ -79,7 +79,24 @@
     @apply inline-flex max-w-full items-center gap-2 rounded-xl border px-3 py-2 text-[11px] font-medium leading-snug;
   }
 
-  .live-stable {
+  /* Prevent browser scroll-anchoring from jumping to elements inside live
+     panels when their content updates. Applied to the section itself AND all
+     descendants so mobile Chrome/Safari can't pick a live table row or card
+     as a scroll anchor during a data refresh. */
+  .live-stable,
+  .live-stable * {
+    overflow-anchor: none;
+  }
+
+  /* Static sections that sit below the DiscoveryFeed cannot be scroll anchors
+     either. When the feed loads its full content (~7 000 px expansion), the
+     browser would otherwise pick an element in AboutSection/footer as anchor
+     and scroll the page down to compensate, creating a one-time load jump. */
+  #about, #about *,
+  #methodology, #methodology *,
+  #prior-work, #prior-work *,
+  #contribute, #contribute *,
+  footer, footer * {
     overflow-anchor: none;
   }
 
