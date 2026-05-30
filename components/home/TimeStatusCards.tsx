@@ -11,12 +11,12 @@ export interface EngineRuntimeProps {
 
 export function EngineRuntimeCard() {
   return (
-    <div className="flex flex-col items-center justify-center rounded-xl bg-slate-100/60 px-3 py-3 text-center ring-1 ring-slate-200/80 dark:bg-slate-800/40 dark:ring-slate-700/60">
+    <div className="live-card flex flex-col items-center justify-center rounded-xl bg-slate-100/60 px-3 py-3 text-center ring-1 ring-slate-200/80 dark:bg-slate-800/40 dark:ring-slate-700/60">
       <p className="stat-label">Engine Runtime</p>
-      <p className="mt-1.5 text-sm font-bold leading-tight text-slate-500 dark:text-slate-400">
+      <p className="live-value mt-1.5 text-sm font-bold leading-tight text-slate-500 dark:text-slate-400">
         Pending Start
       </p>
-      <p className="mt-0.5 text-[10px] leading-snug text-slate-400 dark:text-slate-500">
+      <p className="live-subtext mt-0.5 text-[10px] leading-snug text-slate-400 dark:text-slate-500">
         Starts when persistent cataloging is enabled
       </p>
     </div>
@@ -42,12 +42,12 @@ export function LocalTimeCard() {
   }, []);
 
   return (
-    <div className="flex flex-col items-center justify-center rounded-xl bg-teal-500/5 px-3 py-3 text-center ring-1 ring-teal-500/20 dark:bg-teal-400/5 dark:ring-teal-400/20">
+    <div className="live-card flex flex-col items-center justify-center rounded-xl bg-teal-500/5 px-3 py-3 text-center ring-1 ring-teal-500/20 dark:bg-teal-400/5 dark:ring-teal-400/20">
       <p className="stat-label">Your Local Time</p>
-      <p className="mt-1.5 text-sm font-bold leading-tight tabular-nums text-slate-900 dark:text-slate-100">
+      <p className="live-value mt-1.5 text-sm font-bold leading-tight text-slate-900 dark:text-slate-100">
         {display?.time ?? "Pending"}
       </p>
-      <p className="mt-0.5 text-[10px] leading-snug text-slate-400 dark:text-slate-500">
+      <p className="live-subtext mt-0.5 text-[10px] leading-snug text-slate-400 dark:text-slate-500">
         {display?.tz || "Detecting timezone..."}
       </p>
     </div>

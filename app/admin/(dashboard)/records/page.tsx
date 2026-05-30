@@ -124,7 +124,7 @@ export default async function RecordsPage() {
                       </td>
                       <td className="px-4 py-3 font-mono text-sm font-bold text-slate-100 tabular-nums">{fmtN(row.n)}</td>
                       <td className="px-4 py-3 font-semibold text-violet-400 tabular-nums">{fmtN(row.steps)}</td>
-                      <td className="px-4 py-3 text-[11px] tabular-nums text-slate-400" title={formatLargeNumberTitle(row.peak)}>
+                      <td className="px-4 py-3 text-[11px] tabular-nums whitespace-nowrap text-slate-400" title={formatLargeNumberTitle(row.peak)}>
                         {formatLargeNumber(row.peak)}
                       </td>
                     </tr>
@@ -169,7 +169,7 @@ export default async function RecordsPage() {
                         <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full border border-slate-700 bg-slate-800 px-1.5 text-[10px] font-bold text-slate-300">{i + 1}</span>
                       </td>
                       <td className="px-4 py-3 font-mono text-sm font-bold text-slate-100 tabular-nums">{fmtN(row.n)}</td>
-                      <td className="px-4 py-3 font-semibold text-amber-400 tabular-nums" title={formatLargeNumberTitle(row.peak)}>
+                      <td className="px-4 py-3 font-semibold text-amber-400 tabular-nums whitespace-nowrap" title={formatLargeNumberTitle(row.peak)}>
                         {formatLargeNumber(row.peak)}
                       </td>
                       <td className="px-4 py-3 text-[11px] tabular-nums text-slate-400">{fmtN(row.steps)}</td>

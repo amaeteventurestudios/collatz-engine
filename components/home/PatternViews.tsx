@@ -231,7 +231,7 @@ function HeatmapSkeleton() {
             {Array.from({ length: COLS }).map((_, ci) => (
               <div
                 key={ci}
-                className="h-5 flex-1 animate-pulse rounded-sm bg-slate-200 dark:bg-slate-700"
+                className="h-5 flex-1 rounded-sm bg-slate-200 motion-safe:animate-pulse dark:bg-slate-700"
               />
             ))}
           </div>
@@ -372,7 +372,7 @@ export function PatternViews() {
   const refreshedLabel = formatAge(lastRefreshedAt, now);
 
   return (
-    <section className="px-4 pb-10 sm:pb-14">
+    <section className="live-stable px-4 pb-10 sm:pb-14">
       <div className="mx-auto max-w-7xl">
         <div className="engine-card">
           {/* Header */}
@@ -386,18 +386,19 @@ export function PatternViews() {
                   align="left"
                 />
               </div>
-              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              <p className="mt-1 min-h-[2rem] text-xs text-slate-500 dark:text-slate-400">
                 Latest {Math.min(results.length || SAMPLE_SIZE, SAMPLE_SIZE).toLocaleString("en-US")} verified trajectories · {rangeLabel} · refreshed {refreshedLabel} · refresh cadence: 10 seconds
               </p>
             </div>
-            {results.length > 0 && (
-              <button
-                onClick={() => setModalOpen(true)}
-                className="shrink-0 rounded-lg border border-teal-500/30 px-3 py-1.5 text-[11px] font-medium text-teal-600 hover:bg-teal-500/10 dark:text-teal-400"
-              >
-                View all ({results.length})
-              </button>
-            )}
+            <button
+              onClick={() => setModalOpen(true)}
+              disabled={results.length === 0}
+              className={`shrink-0 rounded-lg border border-teal-500/30 px-3 py-1.5 text-[11px] font-medium text-teal-600 hover:bg-teal-500/10 disabled:pointer-events-none dark:text-teal-400 ${
+                results.length > 0 ? "" : "invisible"
+              }`}
+            >
+              View all ({results.length})
+            </button>
           </div>
 
           <p className="mb-4 rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2 text-center text-xs leading-relaxed text-slate-500 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-400 sm:text-left">

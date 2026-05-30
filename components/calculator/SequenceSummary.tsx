@@ -3,6 +3,7 @@
 import Link from "next/link";
 import type { CalcResult } from "@/lib/collatz/calculator";
 import { fmtBig, fmtNum, fmtPct } from "@/lib/collatz/calculator";
+import { CALCULATOR_STEP_COPY } from "./calculatorCopy";
 
 interface Props {
   result: CalcResult;
@@ -14,12 +15,15 @@ export function SequenceSummary({ result }: Props) {
       {/* Card 1: Sequence Summary */}
       <SummaryCard title="Sequence Summary">
         <SummaryRow label="Start Number" value={fmtBig(result.startNumber)} accent />
-        <SummaryRow label="Total Steps" value={fmtNum(result.totalSteps)} />
-        <SummaryRow label="Stopping Time (to reach 1)" value={fmtNum(result.stoppingTime)} />
+        <SummaryRow label={CALCULATOR_STEP_COPY.sequenceLengthLabel} value={fmtNum(result.sequenceLength)} />
+        <SummaryRow label={CALCULATOR_STEP_COPY.stoppingTimeLabel} value={fmtNum(result.stoppingTime)} />
         <SummaryRow label="Highest Peak" value={fmtBig(result.highestPeak)} />
         <SummaryRow label="Odd Steps" value={`${fmtNum(result.oddSteps)} (${fmtPct(result.oddPercent)})`} />
         <SummaryRow label="Even Steps" value={`${fmtNum(result.evenSteps)} (${fmtPct(result.evenPercent)})`} />
         <SummaryRow label="Average Value" value={result.averageValue.toLocaleString("en-US", { maximumFractionDigits: 2 })} />
+        <p className="pt-2 text-[11px] leading-relaxed text-slate-500">
+          {CALCULATOR_STEP_COPY.recordsNote}
+        </p>
       </SummaryCard>
 
       {/* Card 2: Sequence End */}

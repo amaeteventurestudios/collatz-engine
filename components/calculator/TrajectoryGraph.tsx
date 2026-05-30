@@ -262,9 +262,9 @@ export function TrajectoryGraph({ result, logScale, onLogScaleChange }: Props) {
       </div>
 
       {/* Mini range note */}
-      {result.graphPoints.length < result.totalSteps && (
+      {result.graphPoints.length < result.sequenceLength && (
         <p className="mt-2 text-center text-[10px] text-slate-600 sm:text-left">
-          Showing {fmtNum(result.graphPoints.length)} sampled points from {fmtNum(result.totalSteps)} total steps for performance.
+          Showing {fmtNum(result.graphPoints.length)} sampled points from {fmtNum(result.sequenceLength)} sequence values for performance.
         </p>
       )}
     </div>

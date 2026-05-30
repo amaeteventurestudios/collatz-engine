@@ -13,8 +13,9 @@ export interface CalcStep {
 export interface CalcResult {
   startNumber: bigint;
   steps: CalcStep[];
-  totalSteps: number;         // including start (steps.length)
-  stoppingTime: number;       // steps taken to reach 1
+  sequenceLength: number;     // values in trajectory, including start (steps.length)
+  totalSteps: number;         // legacy alias for sequenceLength
+  stoppingTime: number;       // transitions taken to reach 1
   highestPeak: bigint;
   oddSteps: number;
   evenSteps: number;
@@ -146,9 +147,9 @@ function buildResult(
   maxStepsHit: boolean,
   shortcutMode: boolean,
 ): CalcResult {
-  const totalSteps = steps.length;
+  const sequenceLength = steps.length;
   const movingSteps = oddCount + evenCount;
-  const avg = totalSteps > 0 ? sum / totalSteps : 0;
+  const avg = sequenceLength > 0 ? sum / sequenceLength : 0;
 
   // Build graph points with sampling
   const seqLen = steps.length;
@@ -166,7 +167,8 @@ function buildResult(
   return {
     startNumber: start,
     steps,
-    totalSteps,
+    sequenceLength,
+    totalSteps: sequenceLength,
     stoppingTime: movingSteps,
     highestPeak: peakValue,
     oddSteps: oddCount,

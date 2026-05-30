@@ -66,7 +66,7 @@ const HEALTH_CONFIG: Record<
 > = {
   live: {
     label: "LIVE",
-    dot: `${EVENT_COLORS.cyan.dot} animate-ping`,
+    dot: `${EVENT_COLORS.cyan.dot} motion-safe:animate-ping`,
     text: EVENT_COLORS.cyan.text,
     border: EVENT_COLORS.cyan.border,
     bg: EVENT_COLORS.cyan.subtleBg,
@@ -94,7 +94,7 @@ const HEALTH_CONFIG: Record<
   },
   error: {
     label: "ERROR",
-    dot: `${EVENT_COLORS.slate.dot} animate-ping`,
+    dot: `${EVENT_COLORS.slate.dot} motion-safe:animate-ping`,
     text: EVENT_COLORS.slate.text,
     border: EVENT_COLORS.slate.border,
     bg: EVENT_COLORS.slate.subtleBg,
@@ -119,7 +119,7 @@ function Value({
   className?: string;
 }) {
   return (
-    <p className={`mt-1 font-mono font-bold tabular-nums ${className}`}>
+    <p className={`live-value mt-1 font-mono font-bold ${className}`}>
       {children}
     </p>
   );
@@ -127,7 +127,7 @@ function Value({
 
 function SkeletonBar({ w = "w-24" }: { w?: string }) {
   return (
-    <div className={`h-4 animate-pulse rounded bg-slate-800 ${w}`} />
+    <div className={`h-4 motion-safe:animate-pulse rounded bg-slate-800 ${w}`} />
   );
 }
 
@@ -144,7 +144,7 @@ function HealthBadge({ status }: { status: HealthStatus }) {
           className={`absolute inline-flex h-full w-full rounded-full opacity-75 ${cfg.dot}`}
         />
         <span
-          className={`relative inline-flex h-2 w-2 rounded-full ${cfg.dot.replace("animate-ping", "").trim()}`}
+          className={`relative inline-flex h-2 w-2 rounded-full ${cfg.dot.replace("motion-safe:animate-ping", "").trim()}`}
         />
       </span>
       <span className={`font-mono text-[10px] font-bold tracking-[0.2em] ${cfg.text}`}>
@@ -158,7 +158,7 @@ function HealthBadge({ status }: { status: HealthStatus }) {
 
 function LoadingSkeleton() {
   return (
-    <section className="border-y border-slate-800 bg-slate-950">
+    <section className="live-stable min-h-[34rem] border-y border-slate-800 bg-slate-950">
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
         <div className="mb-6 flex flex-col items-center justify-between gap-3 text-center sm:flex-row sm:text-left">
           <SkeletonBar w="w-48" />
@@ -181,7 +181,7 @@ function LoadingSkeleton() {
 
 function NoDataState({ error }: { error: string | null }) {
   return (
-    <section className="border-y border-slate-800 bg-slate-950">
+    <section className="live-stable min-h-[34rem] border-y border-slate-800 bg-slate-950">
       <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
         <div className="flex flex-col items-center gap-3 text-center">
           <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-slate-600">
@@ -228,7 +228,7 @@ export function LiveEngineStatus() {
   const currentN = Number(state.last_checked_number ?? 0) + 1;
 
   return (
-    <section className="border-y border-slate-800 bg-slate-950">
+    <section className="live-stable border-y border-slate-800 bg-slate-950">
       <div className="mx-auto max-w-7xl px-4 py-0 sm:px-6">
 
         {/* ── Header ─────────────────────────────────────────────────────── */}
@@ -269,7 +269,7 @@ export function LiveEngineStatus() {
           {/* Current n */}
           <div className="py-6 text-center sm:pr-8 md:text-left">
             <Label>Currently Analyzing</Label>
-            <p className="mt-2 font-mono text-4xl font-bold tabular-nums tracking-tight text-slate-50 sm:text-5xl">
+            <p className="live-value mt-2 font-mono text-4xl font-bold tracking-tight text-slate-50 sm:text-5xl">
               n = {fmtN(currentN)}
             </p>
             <p className="mt-1.5 font-mono text-[11px] text-slate-600">
@@ -280,7 +280,7 @@ export function LiveEngineStatus() {
           {/* Catalog size */}
           <div className="border-t border-slate-800/70 py-6 text-center sm:border-l sm:border-t-0 sm:pl-8 md:text-left">
             <Label>Catalog Size</Label>
-            <p className="mt-2 font-mono text-4xl font-bold tabular-nums tracking-tight text-slate-50 sm:text-5xl">
+            <p className="live-value mt-2 font-mono text-4xl font-bold tracking-tight text-slate-50 sm:text-5xl">
               {fmtN(state.total_numbers_checked)}
             </p>
             <p className="mt-1.5 font-mono text-[11px] text-slate-600">
@@ -307,13 +307,13 @@ export function LiveEngineStatus() {
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             {/* Last verified batch */}
-            <div className="rounded border border-slate-800 bg-slate-900/60 px-4 py-3 text-center md:text-left">
+            <div className="min-h-[5.75rem] rounded border border-slate-800 bg-slate-900/60 px-4 py-3 text-center md:text-left">
               <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-600">
                 Last Verified Batch
               </p>
               {lastVerifiedEnd > 0 ? (
                 <>
-                  <p className="mt-1.5 font-mono text-sm font-bold text-slate-200 tabular-nums">
+                  <p className="live-value mt-1.5 font-mono text-sm font-bold text-slate-200">
                     n = {fmtN(lastVerifiedStart)} → {fmtN(lastVerifiedEnd)}
                   </p>
                   <p className="mt-0.5 font-mono text-[10px] text-slate-600">
@@ -328,11 +328,11 @@ export function LiveEngineStatus() {
             </div>
 
             {/* Currently processing */}
-            <div className={`rounded border px-4 py-3 text-center md:text-left ${EVENT_COLORS.cyan.border} ${EVENT_COLORS.cyan.bg}`}>
+            <div className={`min-h-[5.75rem] rounded border px-4 py-3 text-center md:text-left ${EVENT_COLORS.cyan.border} ${EVENT_COLORS.cyan.bg}`}>
               <p className={`font-mono text-[9px] font-semibold uppercase tracking-[0.15em] ${EVENT_COLORS.cyan.text}`}>
                 Currently Processing
               </p>
-              <p className={`mt-1.5 font-mono text-sm font-bold tabular-nums ${EVENT_COLORS.cyan.text}`}>
+              <p className={`live-value mt-1.5 font-mono text-sm font-bold ${EVENT_COLORS.cyan.text}`}>
                 n = {fmtN(nextBatchStart)} → {fmtN(nextBatchEnd)}
               </p>
               <p className="mt-0.5 font-mono text-[10px] text-cyan-800">
@@ -341,11 +341,11 @@ export function LiveEngineStatus() {
             </div>
 
             {/* Next queued */}
-            <div className="rounded border border-slate-800 bg-slate-900/40 px-4 py-3 text-center md:text-left">
+            <div className="min-h-[5.75rem] rounded border border-slate-800 bg-slate-900/40 px-4 py-3 text-center md:text-left">
               <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-600">
                 Next Queued
               </p>
-              <p className="mt-1.5 font-mono text-sm font-bold text-slate-400 tabular-nums">
+              <p className="live-value mt-1.5 font-mono text-sm font-bold text-slate-400">
                 n = {fmtN(nextBatchEnd + 1)} → {fmtN(nextBatchEnd + batchSize)}
               </p>
               <p className="mt-0.5 font-mono text-[10px] text-slate-700">
@@ -422,7 +422,7 @@ export function LiveEngineStatus() {
             <div className="text-center md:text-left">
               <Label>Longest Trajectory on Record</Label>
               <div className="mt-2 flex flex-col items-center gap-1 sm:flex-row sm:items-baseline sm:justify-center md:justify-start md:gap-3">
-                <span className={`font-mono text-2xl font-bold tabular-nums ${EVENT_COLORS.violet.text}`}>
+                <span className={`live-value font-mono text-2xl font-bold ${EVENT_COLORS.violet.text}`}>
                   {fmtN(state.longest_steps)}
                 </span>
                 <span className="font-mono text-[11px] text-slate-500">steps to reach 1</span>
@@ -446,34 +446,34 @@ export function LiveEngineStatus() {
 
         {/* ── Last run + error ─────────────────────────────────────────────── */}
         <div className="py-4">
-          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-center md:justify-start md:text-left">
+          <div className="flex min-h-[2rem] flex-wrap items-center justify-center gap-x-6 gap-y-2 text-center md:justify-start md:text-left">
             <div className="flex flex-wrap items-center justify-center gap-2.5">
               <Label>Last Run</Label>
-              <span className="font-mono text-[11px] text-slate-400">
+              <span className="whitespace-nowrap font-mono text-[11px] text-slate-400">
                 {fmtDateTime(state.last_run_at)}
               </span>
             </div>
-            {state.worker_heartbeat_at && (
-              <div className="flex flex-wrap items-center justify-center gap-2.5">
-                <Label>Last Heartbeat</Label>
-                <span className="font-mono text-[11px] text-slate-500">
-                  {fmtDateTime(state.worker_heartbeat_at)}
-                </span>
-              </div>
-            )}
+            <div className={`flex flex-wrap items-center justify-center gap-2.5 ${state.worker_heartbeat_at ? "" : "invisible"}`}>
+              <Label>Last Heartbeat</Label>
+              <span className="whitespace-nowrap font-mono text-[11px] text-slate-500">
+                {fmtDateTime(state.worker_heartbeat_at)}
+              </span>
+            </div>
           </div>
 
           {/* Error banner */}
-          {state.last_error && (
-            <div className="mt-3 flex flex-col items-center gap-2.5 rounded border border-red-900/60 bg-red-950/40 px-3 py-2.5 text-center md:flex-row md:items-start md:text-left">
-              <span className="shrink-0 font-mono text-[10px] font-bold uppercase tracking-widest text-red-500 md:mt-px">
-                Error
-              </span>
-              <p className="font-mono text-[11px] leading-relaxed text-red-400">
-                {state.last_error}
-              </p>
-            </div>
-          )}
+          <div
+            className={`mt-3 flex h-[5rem] flex-col items-center gap-2.5 overflow-hidden rounded border border-red-900/60 bg-red-950/40 px-3 py-2.5 text-center md:h-[3.5rem] md:flex-row md:items-start md:text-left ${
+              state.last_error ? "" : "invisible"
+            }`}
+          >
+            <span className="shrink-0 font-mono text-[10px] font-bold uppercase tracking-widest text-red-500 md:mt-px">
+              Error
+            </span>
+            <p className="font-mono text-[11px] leading-relaxed text-red-400">
+              {state.last_error ?? "No engine error"}
+            </p>
+          </div>
 
           {/* Disclaimer */}
           <p className="mt-3 text-center font-mono text-[9px] leading-relaxed text-slate-700 md:text-left">

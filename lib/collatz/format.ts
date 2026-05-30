@@ -75,7 +75,7 @@ export function formatSequenceSummary(steps: number, peak: bigint): string {
  * Thresholds:
  *   < 1 B   → full comma-separated number  (e.g. 76,778,008)
  *   1 B–1 T → compact billions             (e.g. 24.65B)
- *   ≥ 1 T   → scientific notation          (e.g. 1.24 × 10^12)
+ *   ≥ 1 T   → compact trillions            (e.g. 60.34T)
  */
 export function formatLargeNumber(n: number | bigint): string {
   if (typeof n === "bigint") {
@@ -87,10 +87,9 @@ export function formatLargeNumber(n: number | bigint): string {
       const hundredths = ((abs % BILLION_BIG) * 100n) / BILLION_BIG;
       return `${sign}${whole}.${hundredths.toString().padStart(2, "0")}B`;
     }
-    const digits = abs.toString();
-    const exp = digits.length - 1;
-    const decimal = digits.slice(1, 3).padEnd(2, "0");
-    return `${sign}${digits[0]}.${decimal} × 10^${exp}`;
+    const whole = abs / TRILLION_BIG;
+    const hundredths = ((abs % TRILLION_BIG) * 100n) / TRILLION_BIG;
+    return `${sign}${whole}.${hundredths.toString().padStart(2, "0")}T`;
   }
 
   if (!Number.isFinite(n) || Number.isNaN(n)) return "Pending";
@@ -98,9 +97,7 @@ export function formatLargeNumber(n: number | bigint): string {
   const abs = Math.abs(v);
   if (abs < BILLION) return v.toLocaleString("en-US");
   if (abs < TRILLION) return `${(v / BILLION).toFixed(2)}B`;
-  const exp = Math.floor(Math.log10(abs));
-  const mantissa = v / Math.pow(10, exp);
-  return `${mantissa.toFixed(2)} × 10^${exp}`;
+  return `${(v / TRILLION).toFixed(2)}T`;
 }
 
 /**

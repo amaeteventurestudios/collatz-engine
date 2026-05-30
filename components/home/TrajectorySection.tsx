@@ -41,7 +41,7 @@ export function TrajectorySection() {
   return (
     <>
       {/* ── Display mode selector ─────────────────────────────────────────── */}
-      <div className="px-4 pb-2 pt-2">
+      <div className="live-stable px-4 pb-2 pt-2">
         <div className="mx-auto max-w-7xl">
           <div className="flex flex-col items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-center dark:border-slate-800 dark:bg-slate-900/60 md:flex-row md:text-left">
             <div className="flex flex-wrap items-center justify-center gap-1.5 md:justify-start">
@@ -64,17 +64,13 @@ export function TrajectorySection() {
               ))}
             </div>
 
-            <div className="flex flex-wrap items-center justify-center gap-2 md:justify-end">
-              {loading && (
-                <span className="font-mono text-[10px] text-slate-400 dark:text-slate-500">
-                  Loading...
-                </span>
-              )}
-              {error && (
-                <span className="font-mono text-[10px] text-red-500 dark:text-red-400">
-                  {error}
-                </span>
-              )}
+            <div className="flex min-h-[1.5rem] flex-wrap items-center justify-center gap-2 md:justify-end">
+              <span className={`font-mono text-[10px] text-slate-400 dark:text-slate-500 ${loading ? "" : "invisible"}`}>
+                Loading...
+              </span>
+              <span className={`max-w-64 truncate font-mono text-[10px] text-red-500 dark:text-red-400 ${error ? "" : "invisible"}`}>
+                {error ?? "No error"}
+              </span>
               <span className="hidden font-mono text-[10px] text-slate-400 dark:text-slate-500 sm:inline">
                 {label}
               </span>

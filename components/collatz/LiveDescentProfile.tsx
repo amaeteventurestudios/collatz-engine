@@ -87,7 +87,7 @@ export function LiveDescentProfile({ result, loading }: Props) {
   ];
 
   return (
-    <section className="scroll-mt-20 px-4 pb-10 sm:pb-14">
+    <section className="live-stable scroll-mt-20 px-4 pb-10 sm:pb-14">
       <div className="mx-auto max-w-7xl">
         <div className="engine-card">
           {/* Header */}
@@ -105,11 +105,9 @@ export function LiveDescentProfile({ result, loading }: Props) {
                 Tracks when the active trajectory first falls below its origin.
               </p>
             </div>
-            {loading && (
-              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-400 dark:bg-slate-800 dark:text-slate-500 sm:self-start">
-                Updating...
-              </span>
-            )}
+            <span className={`rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-400 dark:bg-slate-800 dark:text-slate-500 sm:self-start ${loading ? "" : "invisible"}`}>
+              Updating...
+            </span>
           </div>
 
           {/* Metric chips */}

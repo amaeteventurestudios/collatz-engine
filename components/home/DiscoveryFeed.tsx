@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Activity,
   CheckCircle2,
@@ -92,6 +92,22 @@ function refreshAge(date: Date | null, now: Date): string {
   if (seconds < 60) return `${seconds}s ago`;
   const minutes = Math.floor(seconds / 60);
   return `${minutes}m ago`;
+}
+
+function logIdentity(log: ActivityLogRow): string {
+  return String(
+    log.id ??
+      `${log.event_type}-${log.created_at ?? "pending"}-${log.batch_start ?? "x"}-${log.message}`,
+  );
+}
+
+function sameLogList(a: ActivityLogRow[], b: ActivityLogRow[]): boolean {
+  return a.length === b.length && a.every((log, index) => logIdentity(log) === logIdentity(b[index]));
+}
+
+function countNewLogs(next: ActivityLogRow[], current: ActivityLogRow[]): number {
+  const currentIds = new Set(current.map(logIdentity));
+  return next.filter((log) => !currentIds.has(logIdentity(log))).length;
 }
 
 function rangeLabel(log: ActivityLogRow): string | null {
@@ -249,7 +265,7 @@ function MetadataItem({
         <p className="card-label leading-tight text-slate-400 sm:text-[10px]">
           {label}
         </p>
-        <p className="mt-1 max-w-full break-words text-[13px] font-semibold leading-snug tabular-nums text-slate-50 sm:text-sm">
+        <p className="live-value mt-1 text-[13px] font-semibold leading-snug text-slate-50 sm:text-sm">
           {value}
         </p>
       </div>
@@ -415,7 +431,7 @@ function TimelineCard({
             <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-cyan-100">
               {relativeTime(log.created_at, now)}
             </p>
-            <p className="text-sm font-semibold tabular-nums text-slate-200">
+            <p className="whitespace-nowrap text-sm font-semibold tabular-nums text-slate-200">
               {timestampLabel(log.created_at)}
             </p>
           </div>
@@ -435,14 +451,14 @@ function TimelineSkeleton() {
       <div className="space-y-4">
         {Array.from({ length: 4 }).map((_, index) => (
           <div key={index} className="relative pl-0 sm:pl-24">
-            <div className="relative mx-auto mb-3 h-10 w-10 animate-pulse rounded-full border border-cyan-300/20 bg-cyan-300/10 sm:absolute sm:left-0 sm:top-3 sm:mx-0 sm:mb-0 sm:h-16 sm:w-16" />
+            <div className="relative mx-auto mb-3 h-10 w-10 rounded-full border border-cyan-300/20 bg-cyan-300/10 motion-safe:animate-pulse sm:absolute sm:left-0 sm:top-3 sm:mx-0 sm:mb-0 sm:h-16 sm:w-16" />
             <div className="rounded-2xl border border-cyan-300/10 bg-slate-900/60 p-5">
-              <div className="h-5 w-32 animate-pulse rounded bg-slate-800" />
-              <div className="mt-4 h-6 w-full max-w-lg animate-pulse rounded bg-slate-800" />
+              <div className="h-5 w-32 rounded bg-slate-800 motion-safe:animate-pulse" />
+              <div className="mt-4 h-6 w-full max-w-lg rounded bg-slate-800 motion-safe:animate-pulse" />
               <div className="mt-4 flex flex-wrap gap-2">
-                <div className="h-9 w-36 animate-pulse rounded-xl bg-slate-800" />
-                <div className="h-9 w-28 animate-pulse rounded-xl bg-slate-800" />
-                <div className="h-9 w-32 animate-pulse rounded-xl bg-slate-800" />
+                <div className="h-9 w-36 rounded-xl bg-slate-800 motion-safe:animate-pulse" />
+                <div className="h-9 w-28 rounded-xl bg-slate-800 motion-safe:animate-pulse" />
+                <div className="h-9 w-32 rounded-xl bg-slate-800 motion-safe:animate-pulse" />
               </div>
             </div>
           </div>
@@ -483,6 +499,9 @@ function EmptyState() {
 
 export function DiscoveryFeed() {
   const [logs, setLogs] = useState<ActivityLogRow[]>([]);
+  const logsRef = useRef<ActivityLogRow[]>([]);
+  const [pendingLogs, setPendingLogs] = useState<ActivityLogRow[] | null>(null);
+  const [pendingCount, setPendingCount] = useState(0);
   const [loaded, setLoaded] = useState(false);
   const [lastRefreshedAt, setLastRefreshedAt] = useState<Date | null>(null);
   const [now, setNow] = useState(() => new Date());
@@ -494,7 +513,26 @@ export function DiscoveryFeed() {
     async function load() {
       const rows = await getRecentActivityLogs(FEED_LIMIT);
       if (!isMounted) return;
-      setLogs(rows);
+
+      const currentLogs = logsRef.current;
+      if (currentLogs.length === 0 || sameLogList(rows, currentLogs)) {
+        logsRef.current = rows;
+        setLogs(rows);
+        setPendingLogs(null);
+        setPendingCount(0);
+      } else {
+        const newRows = countNewLogs(rows, currentLogs);
+        if (newRows > 0) {
+          setPendingLogs(rows);
+          setPendingCount(newRows);
+        } else {
+          logsRef.current = rows;
+          setLogs(rows);
+          setPendingLogs(null);
+          setPendingCount(0);
+        }
+      }
+
       setLoaded(true);
       setLastRefreshedAt(new Date());
     }
@@ -509,9 +547,25 @@ export function DiscoveryFeed() {
     };
   }, []);
 
+  function applyPendingLogs() {
+    if (!pendingLogs) return;
+    logsRef.current = pendingLogs;
+    setLogs(pendingLogs);
+    setPendingLogs(null);
+    setPendingCount(0);
+  }
+
   const refreshedLabel = refreshAge(lastRefreshedAt, now);
-  const eventCountLabel = loaded ? logs.length.toLocaleString("en-US") : "Loading";
-  const latestEventsValue = loaded ? `Showing ${logs.length.toLocaleString("en-US")}` : "Loading";
+  const eventCountLabel = loaded
+    ? pendingCount > 0
+      ? `${logs.length.toLocaleString("en-US")} + ${pendingCount.toLocaleString("en-US")} new`
+      : logs.length.toLocaleString("en-US")
+    : "Loading";
+  const latestEventsValue = loaded
+    ? pendingCount > 0
+      ? `${pendingCount.toLocaleString("en-US")} new available`
+      : `Showing ${logs.length.toLocaleString("en-US")}`
+    : "Loading";
   const currentN = state ? Number(state.last_checked_number ?? 0) + 1 : null;
   const engineStatus = state?.current_status ?? null;
   const liveVisual = getEventVisualStyle("active");
@@ -520,7 +574,7 @@ export function DiscoveryFeed() {
   return (
     <section
       id="feed"
-      className="relative isolate scroll-mt-20 overflow-hidden border-y border-cyan-300/10 bg-slate-950 px-4 py-12 text-slate-100 sm:px-6 sm:py-16"
+      className="live-stable relative isolate scroll-mt-20 overflow-hidden border-y border-cyan-300/10 bg-slate-950 px-4 py-12 text-slate-100 sm:px-6 sm:py-16"
     >
       <div
         className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_12%_8%,rgba(34,211,238,0.16),transparent_24%),radial-gradient(circle_at_84%_16%,rgba(59,130,246,0.15),transparent_24%),linear-gradient(180deg,rgba(2,6,23,0.2),rgba(2,6,23,0.92))]"
@@ -574,8 +628,25 @@ export function DiscoveryFeed() {
             <MetadataItem Icon={Satellite} label="Engine Status" value={engineStatus ?? "Loading"} />
           </div>
 
-          {engineStatus && (
-            <EngineStatusCard status={engineStatus} currentN={currentN} />
+          <div className={engineStatus ? "" : "invisible"}>
+            <EngineStatusCard status={engineStatus ?? "Loading"} currentN={currentN} />
+          </div>
+        </div>
+
+        <div className="mt-6 flex min-h-[2.75rem] items-center justify-center">
+          {pendingCount > 0 ? (
+            <button
+              type="button"
+              onClick={applyPendingLogs}
+              className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] transition-colors ${liveVisual.badgeClass} hover:bg-cyan-300/15`}
+            >
+              <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
+              {pendingCount.toLocaleString("en-US")} new {pendingCount === 1 ? "event" : "events"} available
+            </button>
+          ) : (
+            <span className="invisible inline-flex rounded-full border px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.08em]">
+              No new activity
+            </span>
           )}
         </div>
 
@@ -595,7 +666,7 @@ export function DiscoveryFeed() {
             />
             <div className="space-y-4">
               {logs.map((log, index) => (
-                <TimelineCard key={log.id ?? `${log.event_type}-${index}`} log={log} index={index} now={now} />
+                <TimelineCard key={logIdentity(log)} log={log} index={index} now={now} />
               ))}
             </div>
           </div>

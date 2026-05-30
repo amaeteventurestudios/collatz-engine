@@ -74,7 +74,7 @@ export function MilestoneFeed() {
   const percentLabel = `${percent.toFixed(percent >= 10 ? 1 : 2)}%`;
 
   return (
-    <section id="milestones" className="scroll-mt-20 px-4 pb-10 sm:pb-14">
+    <section id="milestones" className="live-stable scroll-mt-20 px-4 pb-10 sm:pb-14">
       <div className="mx-auto max-w-7xl">
         <div className="rounded-lg border border-slate-800 bg-slate-950 p-5 shadow-sm sm:p-6">
           <div className="mb-5 flex flex-col items-center gap-3 text-center sm:flex-row sm:items-start sm:justify-between sm:text-left">
@@ -117,12 +117,12 @@ export function MilestoneFeed() {
           ) : (
             <>
               <div className="grid gap-3 lg:grid-cols-3">
-                <div className="rounded-md border border-slate-800 bg-slate-900/50 p-4 text-center sm:text-left">
+                <div className="min-h-[7.75rem] rounded-md border border-slate-800 bg-slate-900/50 p-4 text-center sm:text-left">
                   <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                     Previous Milestone Reached
                   </p>
                   <p
-                    className="mt-2 font-mono text-2xl font-bold text-slate-100"
+                    className="live-value mt-2 font-mono text-2xl font-bold text-slate-100"
                     title={
                       milestoneState.previous
                         ? milestoneTitle(milestoneState.previous)
@@ -135,12 +135,12 @@ export function MilestoneFeed() {
                   </p>
                 </div>
 
-                <div className="rounded-md border border-cyan-500/30 bg-cyan-500/10 p-4 text-center sm:text-left">
+                <div className="min-h-[7.75rem] rounded-md border border-cyan-500/30 bg-cyan-500/10 p-4 text-center sm:text-left">
                   <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.18em] text-cyan-300">
                     Current Target
                   </p>
                   <p
-                    className="mt-2 font-mono text-2xl font-bold text-slate-50"
+                    className="live-value mt-2 font-mono text-2xl font-bold text-slate-50"
                     title={
                       milestoneState.target ? milestoneTitle(milestoneState.target) : undefined
                     }
@@ -156,11 +156,11 @@ export function MilestoneFeed() {
                   </p>
                 </div>
 
-                <div className="rounded-md border border-slate-800 bg-slate-900/50 p-4 text-center sm:text-left">
+                <div className="min-h-[7.75rem] rounded-md border border-slate-800 bg-slate-900/50 p-4 text-center sm:text-left">
                   <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                     ETA
                   </p>
-                  <p className="mt-2 font-mono text-2xl font-bold text-slate-100">
+                  <p className="live-value mt-2 font-mono text-2xl font-bold text-slate-100">
                     {milestoneState.secondsRemaining != null && milestoneState.target
                       ? formatDurationApprox(milestoneState.secondsRemaining)
                       : "Pending"}
@@ -194,7 +194,7 @@ export function MilestoneFeed() {
                   }`}
                 >
                   <div
-                    className="h-full rounded-full bg-gradient-to-r from-teal-400 via-cyan-300 to-sky-400 transition-[width] duration-300"
+                    className="h-full rounded-full bg-gradient-to-r from-teal-400 via-cyan-300 to-sky-400 motion-safe:transition-[width] motion-safe:duration-300"
                     style={{ width: `${percent}%` }}
                   />
                 </div>

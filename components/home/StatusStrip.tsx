@@ -43,15 +43,15 @@ function StatusCard({
   valueClass?: string;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-xl px-3 py-3 text-center">
+    <div className="live-card flex flex-col items-center justify-center rounded-xl px-3 py-3 text-center">
       <p className="stat-label">{label}</p>
       <p
-        className={`mt-1.5 text-sm font-bold leading-tight tabular-nums ${valueClass}`}
+        className={`live-value mt-1.5 text-sm font-bold leading-tight ${valueClass}`}
         title={valueTitle}
       >
         {value}
       </p>
-      <p className="mt-0.5 text-[10px] leading-snug text-slate-400 dark:text-slate-500">{sub}</p>
+      <p className="live-subtext mt-0.5 text-[10px] leading-snug text-slate-400 dark:text-slate-500">{sub}</p>
     </div>
   );
 }
@@ -188,7 +188,7 @@ export function StatusStrip() {
   ];
 
   return (
-    <section className="border-y border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900/60">
+    <section className="live-stable border-y border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900/60">
       {/* Live status header */}
       <div className="flex flex-col items-center justify-between gap-2 border-b border-slate-200 px-4 py-2.5 text-center dark:border-slate-800 sm:flex-row sm:text-left sm:px-6">
         <div className="flex flex-wrap items-center justify-center gap-2.5 sm:justify-start">

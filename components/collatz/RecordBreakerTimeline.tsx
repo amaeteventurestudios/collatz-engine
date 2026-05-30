@@ -237,12 +237,12 @@ function AllTimeMetricCard({
 }) {
   const color = EVENT_COLORS[tone];
   return (
-    <div className={`rounded-xl border px-4 py-4 ${color.border} ${color.bg}`}>
+    <div className={`live-card rounded-xl border px-4 py-4 ${color.border} ${color.bg}`}>
       <p className="card-label">{label}</p>
-      <p className={`mt-2 text-lg font-bold tabular-nums tracking-tight ${color.text}`} title={title}>
+      <p className={`live-value mt-2 text-lg font-bold tracking-tight ${color.text}`} title={title}>
         {value}
       </p>
-      <p className="mt-1 text-[11px] leading-snug text-slate-500 dark:text-slate-400">
+      <p className="live-subtext mt-1 text-[11px] leading-snug text-slate-500 dark:text-slate-400">
         {sub}
       </p>
     </div>
@@ -300,7 +300,7 @@ function AllTimeRecordsTable({
                   {type === "peak" ? (
                     <>
                       <td
-                        className={`px-3 py-3 font-semibold tabular-nums ${color.text}`}
+                        className={`px-3 py-3 font-semibold tabular-nums whitespace-nowrap ${color.text}`}
                         title={formatMaybeLargeNumberTitle(row.peak_value)}
                       >
                         {formatMaybeLargeNumber(row.peak_value)}
@@ -315,7 +315,7 @@ function AllTimeRecordsTable({
                         {formatMaybeNumber(row.steps)}
                       </td>
                       <td
-                        className="px-3 py-3 tabular-nums text-slate-400"
+                        className="px-3 py-3 tabular-nums whitespace-nowrap text-slate-400"
                         title={formatMaybeLargeNumberTitle(row.peak_value)}
                       >
                         {formatMaybeLargeNumber(row.peak_value)}
@@ -350,11 +350,13 @@ function AllTimeRecordsTable({
           </tbody>
         </table>
       </div>
-      {hasMissingHeadlineDetails && (
-        <p className="border-t border-violet-400/20 px-4 py-3 text-[11px] leading-relaxed text-slate-400">
-          Detailed starting number for this historical record was not retained. A reconstruction backfill can restore it.
-        </p>
-      )}
+      <p
+        className={`flex min-h-[3.25rem] items-center border-t border-violet-400/20 px-4 py-3 text-[11px] leading-relaxed text-slate-400 ${
+          hasMissingHeadlineDetails ? "" : "invisible"
+        }`}
+      >
+        Detailed starting number for this historical record was not retained. A reconstruction backfill can restore it.
+      </p>
     </div>
   );
 }
@@ -428,6 +430,18 @@ async function getAllTimeRecordsSnapshot(): Promise<AllTimeRecordsSnapshot | nul
   return (await res.json()) as AllTimeRecordsSnapshot;
 }
 
+function preserveScrollAfterLivePaint(scrollX: number, scrollY: number) {
+  window.requestAnimationFrame(() => {
+    window.requestAnimationFrame(() => {
+      const movedX = Math.abs(window.scrollX - scrollX) > 1;
+      const movedY = Math.abs(window.scrollY - scrollY) > 1;
+      if (movedX || movedY) {
+        window.scrollTo({ left: scrollX, top: scrollY, behavior: "auto" });
+      }
+    });
+  });
+}
+
 export function AllTimeEngineRecords() {
   const [engineState, setEngineState] = useState<EngineState | null>(null);
   const [longestRows, setLongestRows] = useState<CollatzAllTimeRecordRow[]>([]);
@@ -435,6 +449,7 @@ export function AllTimeEngineRecords() {
   const [backfillState, setBackfillState] = useState<BackfillState | null>(null);
   const [loading, setLoading] = useState(true);
   const mountedRef = useRef(false);
+  const hasLoadedRef = useRef(false);
   const headlineLongest = longestRows[0]?.steps === engineState?.longest_steps ? longestRows[0] : null;
   const headlinePeak = peakRows[0]?.peak_value === engineState?.highest_peak ? peakRows[0] : null;
   const allTimeLongestRows = useMemo(
@@ -454,10 +469,17 @@ export function AllTimeEngineRecords() {
         const snapshot = await getAllTimeRecordsSnapshot();
         if (!mountedRef.current) return;
         if (!snapshot) return;
+        const shouldPreserveScroll = hasLoadedRef.current;
+        const scrollX = window.scrollX;
+        const scrollY = window.scrollY;
         setEngineState(snapshot.engineState);
         setLongestRows(snapshot.longestRecords);
         setPeakRows(snapshot.peakRecords);
         setBackfillState(snapshot.backfillState);
+        hasLoadedRef.current = true;
+        if (shouldPreserveScroll) {
+          preserveScrollAfterLivePaint(scrollX, scrollY);
+        }
       } finally {
         if (mountedRef.current) setLoading(false);
       }
@@ -472,7 +494,7 @@ export function AllTimeEngineRecords() {
   }, []);
 
   return (
-    <section className="scroll-mt-20 px-4 pb-10 sm:pb-14">
+    <section id="all-time-records" className="live-stable scroll-mt-20 px-4 pb-10 sm:pb-14">
       <div className="mx-auto max-w-7xl">
         <div className="engine-card border-violet-500/40 bg-slate-950/40">
           <div className="mb-5 flex flex-col items-center gap-3 text-center sm:flex-row sm:items-start sm:justify-between sm:text-left">
@@ -546,7 +568,7 @@ export function AllTimeEngineRecords() {
             />
           </div>
 
-          <p className="mt-5 rounded-lg border border-violet-400/20 bg-violet-400/10 px-3 py-2 text-center text-[11px] text-slate-300">
+          <p className="mt-5 flex min-h-[4.75rem] items-center justify-center overflow-hidden rounded-lg border border-violet-400/20 bg-violet-400/10 px-3 py-2 text-center text-[11px] leading-relaxed text-slate-300 sm:min-h-[3.25rem]">
             {backfillStatusNote(backfillState)} Missing historical starting numbers are not inferred.
           </p>
         </div>
@@ -682,7 +704,7 @@ export function RecordBreakerTimeline({
     (topBySteps.length > 0 ? 1 : 0) + (topByPeak.length > 0 ? 1 : 0);
 
   return (
-    <section className="scroll-mt-20 px-4 pb-10 sm:pb-14">
+    <section id="record-breaker-timeline" className="live-stable scroll-mt-20 px-4 pb-10 sm:pb-14">
       <div className="mx-auto max-w-7xl">
         <div className="engine-card">
           <div className="mb-5 flex flex-col items-center gap-3 text-center sm:flex-row sm:items-start sm:justify-between sm:text-left">
@@ -731,15 +753,19 @@ export function RecordBreakerTimeline({
             />
           </div>
 
-          {events.length === 0 ? (
-            <EmptyTimeline />
-          ) : (
-            <div className="space-y-4">
-              {events.map((event) => (
-                <RecordEventCard key={event.id} event={event} />
-              ))}
-            </div>
-          )}
+          <div className="h-[42rem] overflow-y-auto pr-1">
+            {events.length === 0 ? (
+              <div className="flex h-full items-center">
+                <EmptyTimeline />
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {events.map((event) => (
+                  <RecordEventCard key={event.id} event={event} />
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </section>
@@ -802,7 +828,7 @@ function LeaderboardTable({
                   {type === "peak" ? (
                     <>
                       <td
-                        className={`px-3 py-3 font-semibold tabular-nums ${color.text}`}
+                        className={`px-3 py-3 font-semibold tabular-nums whitespace-nowrap ${color.text}`}
                         title={formatLargeNumberTitle(row.peak)}
                       >
                         {formatLargeNumber(row.peak)}
@@ -817,7 +843,7 @@ function LeaderboardTable({
                         {fmtNumber(row.steps)}
                       </td>
                       <td
-                        className="px-3 py-3 tabular-nums text-slate-600 dark:text-slate-400"
+                        className="px-3 py-3 tabular-nums whitespace-nowrap text-slate-600 dark:text-slate-400"
                         title={formatLargeNumberTitle(row.peak)}
                       >
                         {formatLargeNumber(row.peak)}
@@ -848,7 +874,7 @@ export function RecordLeaderboards({
   loading,
 }: RecordTimelineProps) {
   return (
-    <section className="scroll-mt-20 px-4 pb-10 sm:pb-14">
+    <section id="retained-buffer-leaders" className="live-stable scroll-mt-20 px-4 pb-10 sm:pb-14">
       <div className="mx-auto max-w-7xl">
         <div className="engine-card">
           <div className="mb-5 flex flex-col items-center gap-3 text-center sm:flex-row sm:items-start sm:justify-between sm:text-left">

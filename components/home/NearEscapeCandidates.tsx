@@ -439,6 +439,7 @@ export function NearEscapeCandidates() {
 
   const top3 = peakCandidates.slice(0, 3);
   const tableRows = displayedCandidates.slice(0, TOP_DISPLAY);
+  const placeholderRows = Math.max(0, TOP_DISPLAY - tableRows.length);
   const allForModal = displayedCandidates;
 
   // Stats
@@ -459,7 +460,7 @@ export function NearEscapeCandidates() {
   const newestAvailable = newestCandidates.length > 0;
 
   return (
-    <section id="near-escape" className="scroll-mt-20 px-4 pb-10 sm:pb-14">
+    <section id="near-escape" className="live-stable scroll-mt-20 px-4 pb-10 sm:pb-14">
       <div className="mx-auto max-w-7xl">
         <div className="rounded-xl border border-slate-800 bg-slate-950 p-5 shadow-lg">
 
@@ -479,9 +480,9 @@ export function NearEscapeCandidates() {
               <p className="mt-1 text-xs text-slate-400">
                 Numbers with unusually high peak ratios or long trajectories from the live catalog
               </p>
-              <div className="mt-1.5 flex flex-wrap items-center justify-center gap-2 text-[10px] text-slate-500 sm:justify-start">
+              <div className="mt-1.5 flex min-h-[2.5rem] flex-wrap items-center justify-center gap-2 text-[10px] text-slate-500 sm:justify-start">
                 <span className="flex items-center justify-center gap-1">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 motion-safe:animate-pulse" />
                   LIVE
                 </span>
                 <span>·</span>
@@ -645,6 +646,15 @@ export function NearEscapeCandidates() {
                   <tbody>
                     {tableRows.map((c, i) => (
                       <RankedRow key={c.n} candidate={c} rank={i + 1} />
+                    ))}
+                    {Array.from({ length: placeholderRows }).map((_, i) => (
+                      <tr key={`candidate-placeholder-${i}`} aria-hidden="true" className="border-b border-slate-800/60">
+                        {Array.from({ length: 7 }).map((__, cell) => (
+                          <td key={cell} className="px-3 py-2.5 text-transparent">
+                            -
+                          </td>
+                        ))}
+                      </tr>
                     ))}
                   </tbody>
                 </table>

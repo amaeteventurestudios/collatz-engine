@@ -2,6 +2,7 @@
 
 import type { CalcResult } from "@/lib/collatz/calculator";
 import { fmtBig, fmtNum, fmtPct } from "@/lib/collatz/calculator";
+import { CALCULATOR_STEP_COPY } from "./calculatorCopy";
 
 interface Props {
   result: CalcResult;
@@ -10,9 +11,9 @@ interface Props {
 export function CalculatorMetricCards({ result }: Props) {
   const cards = [
     {
-      label: "Total Steps",
-      value: fmtNum(result.totalSteps),
-      caption: "Including starting number",
+      label: CALCULATOR_STEP_COPY.sequenceLengthLabel,
+      value: fmtNum(result.sequenceLength),
+      caption: CALCULATOR_STEP_COPY.sequenceLengthCaption,
       icon: <StepsIcon />,
       color: "text-teal-400",
       bg: "bg-teal-500/10",
@@ -30,7 +31,7 @@ export function CalculatorMetricCards({ result }: Props) {
     {
       label: "Odd Steps",
       value: fmtNum(result.oddSteps),
-      caption: `${fmtPct(result.oddPercent)} of total steps`,
+      caption: `${fmtPct(result.oddPercent)} of stopping time`,
       icon: <OddIcon />,
       color: "text-pink-400",
       bg: "bg-pink-500/10",
@@ -39,16 +40,16 @@ export function CalculatorMetricCards({ result }: Props) {
     {
       label: "Even Steps",
       value: fmtNum(result.evenSteps),
-      caption: `${fmtPct(result.evenPercent)} of total steps`,
+      caption: `${fmtPct(result.evenPercent)} of stopping time`,
       icon: <EvenIcon />,
       color: "text-sky-400",
       bg: "bg-sky-500/10",
       ring: "ring-sky-500/20",
     },
     {
-      label: "Stopping Time",
+      label: CALCULATOR_STEP_COPY.stoppingTimeLabel,
       value: fmtNum(result.stoppingTime),
-      caption: `Steps to reach ${result.reachedOne ? "1" : "max"}`,
+      caption: CALCULATOR_STEP_COPY.stoppingTimeCaption,
       icon: <TimeIcon />,
       color: "text-amber-400",
       bg: "bg-amber-500/10",

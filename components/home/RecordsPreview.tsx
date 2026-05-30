@@ -164,7 +164,7 @@ export function RecordsPreview() {
   const totalChecked = engineState?.total_numbers_checked ?? 0;
 
   return (
-    <section id="records" className="scroll-mt-20 px-4 pb-10 sm:pb-14">
+    <section id="records" className="live-stable scroll-mt-20 px-4 pb-10 sm:pb-14">
       <div className="mx-auto max-w-7xl">
         {/* Section heading */}
         <div className="mb-6 text-center">
@@ -178,7 +178,7 @@ export function RecordsPreview() {
               align="center"
             />
           </div>
-          <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
+          <p className="mt-1.5 min-h-[2rem] text-xs text-slate-500 dark:text-slate-400">
             {totalChecked > 0
               ? `Live records from ${fmt(totalChecked)} cataloged trajectories · Computed by the Collatz engine`
               : "Awaiting dataset growth · Records update automatically as the engine catalogs numbers"}
@@ -189,23 +189,23 @@ export function RecordsPreview() {
           {records.map((rec) => (
             <div
               key={rec.label}
-              className={`engine-card-sm flex flex-col items-center text-center ring-1 ${rec.ring} ${rec.bg}`}
+              className={`engine-card-sm live-card flex flex-col items-center text-center ring-1 ${rec.ring} ${rec.bg}`}
             >
               <span className={`text-3xl leading-none ${rec.color}`}>{rec.icon}</span>
               <p className="mt-2.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                 {rec.label}
               </p>
-              <p className={`mt-2 text-sm font-bold leading-tight tabular-nums ${rec.color}`}>
+              <p className={`live-value mt-2 text-sm font-bold leading-tight ${rec.color}`}>
                 <span title={rec.valueTitle}>{rec.value}</span>
               </p>
-              <p className="mt-1 text-[9px] leading-snug text-slate-400 dark:text-slate-500">
+              <p className="live-subtext mt-1 text-[9px] leading-snug text-slate-400 dark:text-slate-500">
                 <span title={rec.subTitle}>{rec.sub}</span>
               </p>
             </div>
           ))}
         </div>
 
-        <p className="mt-4 text-center text-[11px] text-slate-400 dark:text-slate-500">
+        <p className="mt-4 min-h-[1.25rem] text-center text-[11px] text-slate-400 dark:text-slate-500">
           {totalChecked > 0
             ? `Live catalog records · ${fmt(totalChecked)} numbers verified · All trajectories confirmed to reach 1`
             : "Records will appear here as the engine catalogs trajectories. All verified numbers reach 1."}

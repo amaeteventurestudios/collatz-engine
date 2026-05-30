@@ -79,6 +79,22 @@
     @apply inline-flex max-w-full items-center gap-2 rounded-xl border px-3 py-2 text-[11px] font-medium leading-snug;
   }
 
+  .live-stable {
+    overflow-anchor: none;
+  }
+
+  .live-card {
+    @apply min-h-[6.25rem] min-w-0;
+  }
+
+  .live-value {
+    @apply max-w-full overflow-hidden text-ellipsis whitespace-nowrap tabular-nums;
+  }
+
+  .live-subtext {
+    @apply max-w-full overflow-hidden text-ellipsis whitespace-nowrap;
+  }
+
   /* Dashed placeholder panel */
   .placeholder-panel {
     @apply flex min-h-[200px] items-center justify-center rounded-xl border border-dashed border-slate-300 bg-slate-50 dark:border-slate-700 dark:bg-slate-900/50;
@@ -162,6 +178,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .live-dot,
   .panel-help-pulse,
   .panel-help-popover,
   .panel-help-popover-open {
