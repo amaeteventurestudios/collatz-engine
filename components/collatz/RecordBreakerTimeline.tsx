@@ -1,11 +1,17 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { PanelHelp } from "@/components/ui/PanelHelp";
 import { EventColorLegend } from "@/components/collatz/EventColorLegend";
 import { formatLargeNumber, formatLargeNumberTitle } from "@/lib/collatz/format";
 import { EVENT_COLORS, getEventVisualStyle } from "@/lib/collatz/event-visuals";
 import type { AnalyticsRecordRow } from "@/hooks/useCollatzAnalyticsData";
+import {
+  getAllTimeRecords,
+  getEngineState,
+  type CollatzAllTimeRecordRow,
+  type EngineState,
+} from "@/lib/collatz/store";
 
 type RecordType = "trajectory" | "peak";
 
@@ -40,6 +46,15 @@ function formatTimestamp(iso: string | null): string {
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
+  });
+}
+
+function formatDate(iso: string | null | undefined): string {
+  if (!iso) return "Pending";
+  return new Date(iso).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
   });
 }
 
@@ -144,6 +159,230 @@ function TimelineMetricCard({
         {value}
       </p>
     </div>
+  );
+}
+
+function AllTimeMetricCard({
+  label,
+  value,
+  sub,
+  title,
+  tone,
+}: {
+  label: string;
+  value: string;
+  sub: string;
+  title?: string;
+  tone: keyof typeof EVENT_COLORS;
+}) {
+  const color = EVENT_COLORS[tone];
+  return (
+    <div className={`rounded-xl border px-4 py-4 ${color.border} ${color.bg}`}>
+      <p className="card-label">{label}</p>
+      <p className={`mt-2 text-lg font-bold tabular-nums tracking-tight ${color.text}`} title={title}>
+        {value}
+      </p>
+      <p className="mt-1 text-[11px] leading-snug text-slate-500 dark:text-slate-400">
+        {sub}
+      </p>
+    </div>
+  );
+}
+
+function AllTimeRecordsTable({
+  title,
+  type,
+  rows,
+}: {
+  title: string;
+  type: RecordType;
+  rows: CollatzAllTimeRecordRow[];
+}) {
+  const color = type === "peak" ? EVENT_COLORS.amber : EVENT_COLORS.violet;
+
+  return (
+    <div className={`overflow-hidden rounded-xl border ${color.subtleBorder} bg-slate-950/30`}>
+      <div className={`border-b px-4 py-3 ${color.subtleBorder} ${color.subtleBg}`}>
+        <p className={`text-[11px] font-semibold uppercase tracking-[0.08em] ${color.text}`}>
+          {title}
+        </p>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[560px] text-left text-xs">
+          <thead className="bg-slate-950/50 text-[10px] uppercase tracking-[0.08em] text-slate-500">
+            <tr>
+              <th className="px-3 py-3 font-semibold">Rank</th>
+              <th className="px-3 py-3 font-semibold">Starting Number (n)</th>
+              <th className="px-3 py-3 font-semibold">{type === "peak" ? "Peak Value" : "Steps"}</th>
+              <th className="px-3 py-3 font-semibold">{type === "peak" ? "Steps" : "Peak Value"}</th>
+              <th className="px-3 py-3 font-semibold">Discovered</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-800/70">
+            {rows.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="px-3 py-6 text-center text-slate-500">
+                  No permanent records preserved yet.
+                </td>
+              </tr>
+            ) : (
+              rows.map((row, idx) => (
+                <tr key={`${row.record_category}-${row.starting_number}`} className="hover:bg-slate-900/50">
+                  <td className="px-3 py-3 text-slate-500">{idx + 1}</td>
+                  <td className="px-3 py-3 font-mono font-semibold text-slate-200">
+                    {fmtNumber(row.starting_number)}
+                  </td>
+                  {type === "peak" ? (
+                    <>
+                      <td
+                        className={`px-3 py-3 font-semibold tabular-nums ${color.text}`}
+                        title={formatLargeNumberTitle(row.peak_value)}
+                      >
+                        {formatLargeNumber(row.peak_value)}
+                      </td>
+                      <td className="px-3 py-3 tabular-nums text-slate-400">{fmtNumber(row.steps)}</td>
+                    </>
+                  ) : (
+                    <>
+                      <td className={`px-3 py-3 font-semibold tabular-nums ${color.text}`}>
+                        {fmtNumber(row.steps)}
+                      </td>
+                      <td
+                        className="px-3 py-3 tabular-nums text-slate-400"
+                        title={formatLargeNumberTitle(row.peak_value)}
+                      >
+                        {formatLargeNumber(row.peak_value)}
+                      </td>
+                    </>
+                  )}
+                  <td className="px-3 py-3 text-slate-400">{formatDate(row.discovered_at)}</td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+export function AllTimeEngineRecords() {
+  const [engineState, setEngineState] = useState<EngineState | null>(null);
+  const [longestRows, setLongestRows] = useState<CollatzAllTimeRecordRow[]>([]);
+  const [peakRows, setPeakRows] = useState<CollatzAllTimeRecordRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const mountedRef = useRef(false);
+  const headlineLongest = longestRows[0]?.steps === engineState?.longest_steps ? longestRows[0] : null;
+  const headlinePeak = peakRows[0]?.peak_value === engineState?.highest_peak ? peakRows[0] : null;
+
+  useEffect(() => {
+    mountedRef.current = true;
+
+    async function poll() {
+      try {
+        const [state, longest, peaks] = await Promise.all([
+          getEngineState(),
+          getAllTimeRecords("longest_trajectory", 10),
+          getAllTimeRecords("highest_peak", 10),
+        ]);
+        if (!mountedRef.current) return;
+        setEngineState(state);
+        setLongestRows(longest);
+        setPeakRows(peaks);
+      } finally {
+        if (mountedRef.current) setLoading(false);
+      }
+    }
+
+    poll();
+    const id = window.setInterval(poll, 5_000);
+    return () => {
+      mountedRef.current = false;
+      window.clearInterval(id);
+    };
+  }, []);
+
+  return (
+    <section className="scroll-mt-20 px-4 pb-10 sm:pb-14">
+      <div className="mx-auto max-w-7xl">
+        <div className="engine-card border-violet-500/40 bg-slate-950/40">
+          <div className="mb-5 flex flex-col items-center gap-3 text-center sm:flex-row sm:items-start sm:justify-between sm:text-left">
+            <div className="max-w-3xl">
+              <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+                <p className="section-heading text-violet-300">All-Time Engine Records</p>
+                <span className="rounded-full border border-violet-400/30 bg-violet-400/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-violet-200">
+                  Authoritative
+                </span>
+                <PanelHelp
+                  title="All-Time Engine Records"
+                  description="Authoritative records preserved in engine state and permanent record storage. Missing historical starting numbers are labeled rather than reconstructed."
+                  align="left"
+                />
+              </div>
+              <p className="panel-subtitle mt-1">
+                Authoritative records preserved in engine state and permanent record storage.
+              </p>
+            </div>
+            {loading && (
+              <span className="rounded-full bg-slate-800 px-2.5 py-1 text-[10px] font-semibold text-slate-500 sm:self-start">
+                Updating...
+              </span>
+            )}
+          </div>
+
+          <div className="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            <AllTimeMetricCard
+              label="Longest Trajectory"
+              value={engineState ? `${fmtNumber(engineState.longest_steps)} steps` : "Pending"}
+              sub={headlineLongest ? `Starting n: ${fmtNumber(headlineLongest.starting_number)}` : "Starting n: not retained"}
+              tone="violet"
+            />
+            <AllTimeMetricCard
+              label="Highest Peak"
+              value={engineState?.highest_peak != null ? formatLargeNumber(engineState.highest_peak) : "Pending"}
+              title={engineState?.highest_peak != null ? formatLargeNumberTitle(engineState.highest_peak) : undefined}
+              sub={headlinePeak ? `Starting n: ${fmtNumber(headlinePeak.starting_number)}` : "Starting n: not retained"}
+              tone="amber"
+            />
+            <AllTimeMetricCard
+              label="Numbers Checked"
+              value={engineState ? fmtNumber(engineState.total_numbers_checked) : "Pending"}
+              sub={engineState ? `Last checked: ${fmtNumber(engineState.last_checked_number)}` : "Engine state unavailable"}
+              tone="cyan"
+            />
+            <AllTimeMetricCard
+              label="Current Number"
+              value={engineState ? fmtNumber(engineState.current_number) : "Pending"}
+              sub={engineState ? `Status: ${engineState.current_status}` : "Engine state unavailable"}
+              tone="blue"
+            />
+            <AllTimeMetricCard
+              label="Last Updated"
+              value={formatDate(engineState?.worker_heartbeat_at ?? engineState?.updated_at)}
+              sub={engineState?.worker_heartbeat_at ? "Worker heartbeat" : "Engine state timestamp"}
+              tone="slate"
+            />
+          </div>
+
+          <div className="grid gap-5 lg:grid-cols-2">
+            <AllTimeRecordsTable
+              title="Top 10 All-Time Longest Trajectories"
+              type="trajectory"
+              rows={longestRows}
+            />
+            <AllTimeRecordsTable
+              title="Top 10 All-Time Highest Peaks"
+              type="peak"
+              rows={peakRows}
+            />
+          </div>
+
+          <p className="mt-5 rounded-lg border border-violet-400/20 bg-violet-400/10 px-3 py-2 text-center text-[11px] text-slate-300">
+            Historical top records are preserved from available retained data and future engine runs. Missing historical starting numbers are not inferred.
+          </p>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -436,15 +675,15 @@ export function RecordLeaderboards({
           <div className="mb-5 flex flex-col items-center gap-3 text-center sm:flex-row sm:items-start sm:justify-between sm:text-left">
             <div className="max-w-2xl">
               <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
-                <p className="section-heading">Record Leaderboards</p>
+                <p className="section-heading text-cyan-300">Recent Retained Buffer Leaders</p>
                 <PanelHelp
-                  title="Record Leaderboards"
+                  title="Recent Retained Buffer Leaders"
                   description="Shows the top ranked results from the retained results buffer. The engine retains recent results for analysis; all-time records are tracked separately in engine state."
                   align="left"
                 />
               </div>
               <p className="panel-subtitle mt-1">
-                Top results from the retained catalog buffer.
+                Top retained results from the recent catalog buffer. These are not all-time records.
               </p>
             </div>
             {loading && (
@@ -456,12 +695,12 @@ export function RecordLeaderboards({
 
           <div className="grid gap-5 lg:grid-cols-2">
             <LeaderboardTable
-              title="Longest Trajectories"
+              title="Longest Trajectories (Retained Buffer)"
               type="trajectory"
               rows={topBySteps}
             />
             <LeaderboardTable
-              title="Highest Peaks"
+              title="Highest Peaks (Retained Buffer)"
               type="peak"
               rows={topByPeak}
             />

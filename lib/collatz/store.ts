@@ -40,7 +40,27 @@ export interface CollatzResultRow {
   created_at?: string | null;
 }
 
+export type AllTimeRecordCategory = "longest_trajectory" | "highest_peak";
+
+export interface CollatzAllTimeRecordRow {
+  id?: string;
+  record_category: AllTimeRecordCategory;
+  starting_number: number;
+  steps: number;
+  peak_value: number;
+  rank_scope?: string;
+  source?: string;
+  source_batch_start?: number | null;
+  source_batch_end?: number | null;
+  discovered_at?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
 const ENGINE_ID = "main";
+const ALL_TIME_RECORD_LIMIT = 1000;
+const reportedMissingAllTimeRecordCategories = new Set<AllTimeRecordCategory>();
+const reportedPreserveFailures = new Set<AllTimeRecordCategory>();
 
 /**
  * Fetch persistent engine state
@@ -218,6 +238,127 @@ export async function getTopHighestPeaks(limit = 10): Promise<CollatzResultRow[]
     return [];
   }
   return (data ?? []) as CollatzResultRow[];
+}
+
+function coerceAllTimeRecord(row: Record<string, unknown>): CollatzAllTimeRecordRow {
+  return {
+    id: typeof row.id === "string" ? row.id : undefined,
+    record_category: row.record_category as AllTimeRecordCategory,
+    starting_number: Number(row.starting_number),
+    steps: Number(row.steps),
+    peak_value: Number(row.peak_value),
+    rank_scope: typeof row.rank_scope === "string" ? row.rank_scope : undefined,
+    source: typeof row.source === "string" ? row.source : undefined,
+    source_batch_start:
+      row.source_batch_start == null ? null : Number(row.source_batch_start),
+    source_batch_end:
+      row.source_batch_end == null ? null : Number(row.source_batch_end),
+    discovered_at: typeof row.discovered_at === "string" ? row.discovered_at : null,
+    created_at: typeof row.created_at === "string" ? row.created_at : null,
+    updated_at: typeof row.updated_at === "string" ? row.updated_at : null,
+  };
+}
+
+/**
+ * Permanent all-time records by category. Unlike collatz_results, these rows
+ * are not part of the retained recent buffer.
+ */
+export async function getAllTimeRecords(
+  category: AllTimeRecordCategory,
+  limit = 10,
+): Promise<CollatzAllTimeRecordRow[]> {
+  if (!supabase) return [];
+
+  const orderColumn = category === "longest_trajectory" ? "steps" : "peak_value";
+  const { data, error } = await supabase
+    .from("collatz_all_time_records")
+    .select(
+      "id, record_category, starting_number, steps, peak_value, rank_scope, source, source_batch_start, source_batch_end, discovered_at, created_at, updated_at",
+    )
+    .eq("record_category", category)
+    .order(orderColumn, { ascending: false })
+    .order("starting_number", { ascending: true })
+    .limit(limit);
+
+  if (error) {
+    const maybeCode = "code" in error ? error.code : undefined;
+    if (maybeCode === "PGRST205") {
+      if (!reportedMissingAllTimeRecordCategories.has(category)) {
+        reportedMissingAllTimeRecordCategories.add(category);
+        console.warn(
+          `[Collatz Engine] collatz_all_time_records is not available yet; run supabase/phase-3g-all-time-records.sql to enable permanent ${category} records.`,
+        );
+      }
+      return [];
+    }
+    console.error(`[Collatz Engine] getAllTimeRecords(${category}) failed`, error);
+    return [];
+  }
+
+  return ((data ?? []) as Record<string, unknown>[]).map(coerceAllTimeRecord);
+}
+
+function topRecordCandidates(
+  rows: CollatzResultRow[],
+  category: AllTimeRecordCategory,
+): CollatzResultRow[] {
+  const sorted = [...rows].sort((a, b) => {
+    const diff =
+      category === "longest_trajectory"
+        ? b.steps - a.steps
+        : b.peak - a.peak;
+    return diff !== 0 ? diff : a.n - b.n;
+  });
+  return sorted.slice(0, ALL_TIME_RECORD_LIMIT);
+}
+
+/**
+ * Preserve future all-time leaderboard candidates outside the retained buffer.
+ * This is best-effort and intentionally independent of engine state progression.
+ */
+export async function preserveAllTimeRecordCandidates(
+  rows: CollatzResultRow[],
+  batchStart?: number,
+  batchEnd?: number,
+): Promise<void> {
+  if (!supabase || rows.length === 0) return;
+
+  const preserveCategory = async (category: AllTimeRecordCategory) => {
+    const candidates = topRecordCandidates(rows, category).map((row) => ({
+      starting_number: row.n,
+      steps: row.steps,
+      peak_value: row.peak,
+    }));
+
+    if (candidates.length === 0) return;
+
+    const { error } = await supabase.rpc(
+      "preserve_collatz_all_time_record_candidates",
+      {
+        p_record_category: category,
+        p_candidates: candidates,
+        p_source: "live_worker",
+        p_source_batch_start: batchStart ?? null,
+        p_source_batch_end: batchEnd ?? null,
+        p_keep: ALL_TIME_RECORD_LIMIT,
+      },
+    );
+
+    if (error) {
+      if (!reportedPreserveFailures.has(category)) {
+        reportedPreserveFailures.add(category);
+        console.warn(
+          `[Collatz Engine] preserveAllTimeRecordCandidates(${category}) failed (non-fatal):`,
+          error,
+        );
+      }
+    }
+  };
+
+  await Promise.all([
+    preserveCategory("longest_trajectory"),
+    preserveCategory("highest_peak"),
+  ]);
 }
 
 /**

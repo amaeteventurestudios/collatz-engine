@@ -7,6 +7,7 @@ import { PeakGrowthGraph } from "@/components/collatz/PeakGrowthGraph";
 import { StoppingTimeGraph } from "@/components/collatz/StoppingTimeGraph";
 import { OddEvenTransitionGraph } from "@/components/collatz/OddEvenTransitionGraph";
 import {
+  AllTimeEngineRecords,
   RecordBreakerTimeline,
   RecordLeaderboards,
 } from "@/components/collatz/RecordBreakerTimeline";
@@ -40,6 +41,7 @@ export function TrajectoryIntelligenceSection() {
         topByPeak={topByPeak}
         loading={analyticsLoading}
       />
+      <AllTimeEngineRecords />
       <RecordLeaderboards
         topBySteps={topBySteps}
         topByPeak={topByPeak}

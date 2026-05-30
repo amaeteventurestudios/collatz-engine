@@ -2,6 +2,7 @@ import { computeCollatzSummary } from "./engine";
 import {
   getEngineState,
   insertBatchResults,
+  preserveAllTimeRecordCandidates,
   readCommittedMaxN,
   updateEngineState,
   insertActivityLog,
@@ -127,6 +128,13 @@ export async function runAutonomousBatch(
 
     // ── Persist results ────────────────────────────────────────────────────────
     await insertBatchResults(rows);
+
+    // ── Permanent record preservation ──────────────────────────────────────────
+    // Best-effort: this must not affect checkpoint advancement or retained-buffer
+    // pruning. The permanent table keeps top all-time candidates outside cleanup.
+    await preserveAllTimeRecordCandidates(rows, batchStart, batchEnd).catch((err: unknown) => {
+      console.warn("[Collatz Runner] All-time record preservation failed (non-fatal):", err);
+    });
 
     // ── Verify inserted rows are visible before advancing state ────────────────
     // A read-back confirms the upsert is committed and readable. If the max
