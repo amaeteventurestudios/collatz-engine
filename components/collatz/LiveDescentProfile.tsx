@@ -8,6 +8,7 @@ import {
   formatSteps,
 } from "@/lib/collatz/format";
 import type { CollatzResult } from "@/lib/collatz/types";
+import type { DisplayMode } from "@/components/home/CollatzVisualizationProvider";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -15,6 +16,7 @@ const SVG_W = 600;
 const SVG_H = 200;
 const Y_BOTTOM = 185;
 const Y_RANGE = 158;
+const ML = 42;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -27,21 +29,40 @@ function seqToPoints(seq: bigint[], peakN: number): string {
   const len = seq.length;
   return seq
     .map((val, i) => {
-      const x = (i / Math.max(len - 1, 1)) * SVG_W;
+      const x = ML + (i / Math.max(len - 1, 1)) * (SVG_W - ML);
       const y = yLinear(val, peakN);
       return `${x.toFixed(1)},${y.toFixed(1)}`;
     })
     .join(" ");
 }
 
+function xFromStep(step: number, steps: number): number {
+  return ML + (step / Math.max(steps, 1)) * (SVG_W - ML);
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 interface Props {
   result: CollatzResult;
+  mode: DisplayMode;
+  displayLabel: string;
+  helperCopy?: string | null;
+  isEstimated?: boolean;
   loading?: boolean;
 }
 
-export function LiveDescentProfile({ result, loading }: Props) {
+export function LiveDescentProfile({
+  result,
+  mode,
+  displayLabel,
+  helperCopy,
+  isEstimated = false,
+  loading,
+}: Props) {
   const seq = result.full_sequence;
   const start = result.start_number;
   const peak = result.peak_value;
@@ -58,13 +79,13 @@ export function LiveDescentProfile({ result, loading }: Props) {
     [seq, peak],
   );
 
-  const peakX = (Math.max(peakIdx, 0) / Math.max(seq.length - 1, 1)) * SVG_W;
+  const peakX = xFromStep(Math.max(peakIdx, 0), Math.max(seq.length - 1, 1));
   const peakY = yLinear(peak, peakN);
   const startY = yLinear(start, peakN);
 
   const descentX =
     firstDescentStep !== null && firstDescentStep >= 0 && firstDescentStep < seq.length
-      ? (firstDescentStep / Math.max(seq.length - 1, 1)) * SVG_W
+      ? xFromStep(firstDescentStep, Math.max(seq.length - 1, 1))
       : null;
   const descentY =
     firstDescentStep !== null && firstDescentStep >= 0 && seq[firstDescentStep] !== undefined
@@ -73,6 +94,14 @@ export function LiveDescentProfile({ result, loading }: Props) {
 
   const peakRatio =
     startN > 0 ? (peakN / startN).toFixed(2) : "Pending";
+  const title = mode === "estimated_live"
+    ? "Estimated Live Descent Profile"
+    : mode === "latest_verified"
+      ? "Latest Verified Descent Profile"
+      : "Record Descent Profile";
+  const subtitle = mode === "estimated_live"
+    ? "Generated locally from the estimated engine position."
+    : "Generated locally from the selected backend-verified starting number.";
 
   const chips = [
     { label: "Start", value: formatLargeNumber(start), title: formatLargeNumberTitle(start) },
@@ -94,7 +123,12 @@ export function LiveDescentProfile({ result, loading }: Props) {
           <div className="mb-5 flex flex-col items-center gap-3 text-center sm:flex-row sm:items-start sm:justify-between sm:text-left">
             <div className="max-w-2xl">
               <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
-                <p className="section-heading">Live Descent Profile</p>
+                <p className="section-heading">{title}</p>
+                {isEstimated && (
+                  <span className="rounded-full bg-cyan-500/15 px-2.5 py-1 font-mono text-[10px] font-semibold text-cyan-600 dark:text-cyan-400">
+                    {displayLabel}
+                  </span>
+                )}
                 <PanelHelp
                   title="Live Descent Profile"
                   description="Tracks when the active trajectory first falls below its starting value. This helps show how long a number resists descent before it begins moving back toward convergence."
@@ -102,8 +136,11 @@ export function LiveDescentProfile({ result, loading }: Props) {
                 />
               </div>
               <p className="mt-1 text-xs text-slate-400 dark:text-slate-400">
-                Tracks when the active trajectory first falls below its origin.
+                {subtitle}
               </p>
+              {helperCopy && (
+                <p className="mt-1 text-[11px] text-cyan-600 dark:text-cyan-500">{helperCopy}</p>
+              )}
             </div>
             <span className={`rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-400 dark:bg-slate-800 dark:text-slate-500 sm:self-start ${loading ? "" : "invisible"}`}>
               Updating...
@@ -146,7 +183,7 @@ export function LiveDescentProfile({ result, loading }: Props) {
               >
                 {/* Grid line at start value */}
                 <line
-                  x1="0"
+                  x1={ML}
                   y1={startY}
                   x2={SVG_W}
                   y2={startY}
@@ -155,16 +192,24 @@ export function LiveDescentProfile({ result, loading }: Props) {
                   strokeWidth="1"
                   strokeDasharray="5 3"
                 />
-                {/* Start label with dark background to avoid overlap with the reference line */}
-                <rect x="3" y={Math.max(startY - 15, 2)} width="76" height="12" rx="2" fill="#0f172a" fillOpacity="0.72" />
-                <text x="6" y={Math.max(startY - 6, 11)} fontSize="7.5" fill="#2dd4bf" fontWeight="600" opacity="0.9">
-                  Start: {formatLargeNumber(start)}
-                  <title>{formatLargeNumberTitle(start)}</title>
-                </text>
+                <line x1={ML} y1="0" x2={ML} y2={Y_BOTTOM} stroke="currentColor" strokeOpacity="0.06" strokeWidth="1" />
+                {(() => {
+                  const y = startY < 24 ? startY + 8 : startY - 18;
+                  const x = clamp(ML + 7, ML + 4, SVG_W - 82);
+                  return (
+                    <>
+                      <rect x={x} y={clamp(y, 3, Y_BOTTOM - 16)} width="78" height="13" rx="3" fill="#0f172a" fillOpacity="0.78" />
+                      <text x={x + 4} y={clamp(y + 9, 12, Y_BOTTOM - 6)} fontSize="7.5" fill="#2dd4bf" fontWeight="600" opacity="0.95">
+                        Start: {formatLargeNumber(start)}
+                        <title>{formatLargeNumberTitle(start)}</title>
+                      </text>
+                    </>
+                  );
+                })()}
 
                 {/* Area fill */}
                 <polyline
-                  points={`0,${Y_BOTTOM} ${points} ${SVG_W},${Y_BOTTOM}`}
+                  points={`${ML},${Y_BOTTOM} ${points} ${SVG_W},${Y_BOTTOM}`}
                   fill="url(#descentFill)"
                   stroke="none"
                 />
@@ -203,11 +248,12 @@ export function LiveDescentProfile({ result, loading }: Props) {
                     />
                     {(() => {
                       const labelW = 68;
-                      const lx = Math.min(peakX + 7, SVG_W - labelW - 4);
+                      const lx = clamp(peakX + 8, ML + 4, SVG_W - labelW - 4);
+                      const ly = clamp(peakY - 18, 3, Y_BOTTOM - 18);
                       return (
                         <>
-                          <rect x={lx} y={peakY - 4} width={labelW} height="15" rx="3" fill="#0f172a" fillOpacity="0.72" />
-                          <text x={lx + 4} y={peakY + 7} fontSize="8.5" fill="#fbbf24" fontWeight="600">
+                          <rect x={lx} y={ly} width={labelW} height="15" rx="3" fill="#0f172a" fillOpacity="0.78" />
+                          <text x={lx + 4} y={ly + 11} fontSize="8.5" fill="#fbbf24" fontWeight="600">
                             Peak: {formatLargeNumber(peak)}
                             <title>{formatLargeNumberTitle(peak)}</title>
                           </text>
@@ -219,19 +265,21 @@ export function LiveDescentProfile({ result, loading }: Props) {
 
                 {/* First descent marker */}
                 {descentX !== null && descentY !== null && (() => {
-                  const lx = Math.min(descentX + 7, SVG_W - 60);
-                  const ly = Math.max(descentY - 6, 10);
+                  const lx = clamp(descentX + 8, ML + 4, SVG_W - 64);
+                  const ly = clamp(descentY + 8, 14, Y_BOTTOM - 14);
                   return (
                     <>
                       <circle cx={descentX} cy={descentY} r="4" fill="#fb923c" stroke="#ffffff" strokeWidth="1.5" opacity="0.9" />
-                      <rect x={lx} y={ly - 9} width="56" height="12" rx="2" fill="#0f172a" fillOpacity="0.72" />
-                      <text x={lx + 3} y={ly} fontSize="7.5" fill="#fb923c" fontWeight="600">First descent</text>
+                      <g className="hidden sm:block">
+                        <rect x={lx} y={ly - 10} width="60" height="13" rx="3" fill="#0f172a" fillOpacity="0.78" />
+                        <text x={lx + 4} y={ly} fontSize="7.5" fill="#fb923c" fontWeight="600">First descent</text>
+                      </g>
                     </>
                   );
                 })()}
 
                 {/* Start dot */}
-                <circle cx="0" cy={startY} r="3" fill="#14b8a6" stroke="#ffffff" strokeWidth="1.5" opacity="0.9" />
+                <circle cx={ML} cy={startY} r="3" fill="#14b8a6" stroke="#ffffff" strokeWidth="1.5" opacity="0.9" />
 
                 {/* Convergence dot */}
                 <circle cx={SVG_W} cy={Y_BOTTOM} r="3" fill="#22c55e" stroke="#ffffff" strokeWidth="1.5" opacity="0.9" />
@@ -243,7 +291,7 @@ export function LiveDescentProfile({ result, loading }: Props) {
                 {[0, result.steps_to_1].map((s) => (
                   <text
                     key={s}
-                    x={(s / Math.max(result.steps_to_1, 1)) * SVG_W}
+                    x={xFromStep(s, result.steps_to_1)}
                     y={SVG_H - 2}
                     fontSize="8"
                     fill="currentColor"

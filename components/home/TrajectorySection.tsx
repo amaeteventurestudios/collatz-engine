@@ -1,9 +1,9 @@
 "use client";
 
 import {
-  useCollatzSelectedTrajectory,
+  useCollatzVisualization,
   type DisplayMode,
-} from "@/hooks/useCollatzSelectedTrajectory";
+} from "@/components/home/CollatzVisualizationProvider";
 import { TrajectoryVisualizer } from "@/components/home/TrajectoryVisualizer";
 import { SequenceTrace } from "@/components/home/SequenceTrace";
 
@@ -11,14 +11,14 @@ import { SequenceTrace } from "@/components/home/SequenceTrace";
 
 const MODE_BUTTONS: { mode: DisplayMode; label: string; hint: string }[] = [
   {
+    mode: "estimated_live",
+    label: "Estimated Live",
+    hint: "Browser-estimated live trajectory from the current engine position",
+  },
+  {
     mode: "latest_verified",
     label: "Latest Verified",
     hint: "Most recently confirmed trajectory from the live catalog",
-  },
-  {
-    mode: "current_batch",
-    label: "Estimated Live",
-    hint: "Browser-estimated live trajectory from the current engine position",
   },
   {
     mode: "longest_record",
@@ -36,7 +36,7 @@ const MODE_BUTTONS: { mode: DisplayMode; label: string; hint: string }[] = [
 
 export function TrajectorySection() {
   const { mode, setMode, result, label, helperCopy, loading, error, isEstimated } =
-    useCollatzSelectedTrajectory();
+    useCollatzVisualization();
 
   return (
     <>
@@ -93,7 +93,12 @@ export function TrajectorySection() {
       />
 
       {/* ── Sequence Trace ────────────────────────────────────────────────── */}
-      <SequenceTrace result={result} displayLabel={label} />
+      <SequenceTrace
+        result={result}
+        displayLabel={label}
+        mode={mode}
+        isEstimated={isEstimated}
+      />
     </>
   );
 }

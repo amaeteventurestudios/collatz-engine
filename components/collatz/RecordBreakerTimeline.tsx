@@ -5,7 +5,7 @@ import { PanelHelp } from "@/components/ui/PanelHelp";
 import { EventColorLegend } from "@/components/collatz/EventColorLegend";
 import { formatLargeNumber, formatLargeNumberTitle } from "@/lib/collatz/format";
 import { EVENT_COLORS, getEventVisualStyle } from "@/lib/collatz/event-visuals";
-import type { AnalyticsRecordRow } from "@/hooks/useCollatzAnalyticsData";
+import type { VisualizationRecordRow } from "@/hooks/useEstimatedLiveCollatz";
 import type { CollatzAllTimeRecordRow, EngineState } from "@/lib/collatz/store";
 
 type RecordType = "trajectory" | "peak";
@@ -24,8 +24,8 @@ interface RecordTimelineEvent {
 }
 
 interface RecordTimelineProps {
-  topBySteps: AnalyticsRecordRow[];
-  topByPeak: AnalyticsRecordRow[];
+  topBySteps: VisualizationRecordRow[];
+  topByPeak: VisualizationRecordRow[];
   loading?: boolean;
 }
 
@@ -132,7 +132,7 @@ function relativeTime(iso: string | null): string {
   return formatTimestamp(iso);
 }
 
-function sortKey(row: AnalyticsRecordRow): number {
+function sortKey(row: VisualizationRecordRow): number {
   if (row.created_at) {
     const parsed = new Date(row.created_at).getTime();
     if (Number.isFinite(parsed)) return parsed;
@@ -141,7 +141,7 @@ function sortKey(row: AnalyticsRecordRow): number {
 }
 
 function deriveRecordProgression(
-  rows: AnalyticsRecordRow[],
+  rows: VisualizationRecordRow[],
   type: RecordType,
 ): RecordTimelineEvent[] {
   const sorted = [...rows].sort((a, b) => sortKey(a) - sortKey(b));
@@ -174,8 +174,8 @@ function deriveRecordProgression(
 }
 
 function buildTimelineEvents(
-  topBySteps: AnalyticsRecordRow[],
-  topByPeak: AnalyticsRecordRow[],
+  topBySteps: VisualizationRecordRow[],
+  topByPeak: VisualizationRecordRow[],
 ): RecordTimelineEvent[] {
   return [
     ...deriveRecordProgression(topBySteps, "trajectory"),
@@ -784,7 +784,7 @@ function LeaderboardTable({
 }: {
   title: string;
   type: RecordType;
-  rows: AnalyticsRecordRow[];
+  rows: VisualizationRecordRow[];
 }) {
   const color = type === "peak" ? EVENT_COLORS.amber : EVENT_COLORS.violet;
   const displayRows = rows.slice(0, 10);
@@ -879,21 +879,21 @@ export function RecordLeaderboards({
   loading,
 }: RecordTimelineProps) {
   return (
-    <section id="retained-buffer-leaders" className="live-stable scroll-mt-20 px-4 pb-10 sm:pb-14">
+    <section id="dashboard-record-leaders" className="live-stable scroll-mt-20 px-4 pb-10 sm:pb-14">
       <div className="mx-auto max-w-7xl">
         <div className="engine-card">
           <div className="mb-5 flex flex-col items-center gap-3 text-center sm:flex-row sm:items-start sm:justify-between sm:text-left">
             <div className="max-w-2xl">
               <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
-                <p className="section-heading text-cyan-300">Recent Retained Buffer Leaders</p>
+                <p className="section-heading text-cyan-300">Backend Record Leaders</p>
                 <PanelHelp
-                  title="Recent Retained Buffer Leaders"
-                  description="Shows the top ranked results from the retained results buffer. The engine retains recent results for analysis; all-time records are tracked separately in engine state."
+                  title="Backend Record Leaders"
+                  description="Shows authoritative record leaders returned by the cached dashboard payload. Estimated visualizations never update these backend record tables."
                   align="left"
                 />
               </div>
               <p className="panel-subtitle mt-1">
-                Top retained results from the recent catalog buffer. These are not all-time records.
+                Official backend records from the cached dashboard payload. Estimated previews stay separate.
               </p>
             </div>
             <span
@@ -905,20 +905,19 @@ export function RecordLeaderboards({
 
           <div className="grid gap-5 lg:grid-cols-2">
             <LeaderboardTable
-              title="Longest Trajectories (Retained Buffer)"
+              title="Longest Trajectories (Backend Records)"
               type="trajectory"
               rows={topBySteps}
             />
             <LeaderboardTable
-              title="Highest Peaks (Retained Buffer)"
+              title="Highest Peaks (Backend Records)"
               type="peak"
               rows={topByPeak}
             />
           </div>
 
           <p className="mt-5 text-center text-[11px] text-slate-400 dark:text-slate-500">
-            These tables reflect the retained recent results buffer, not all-time engine records.
-            All-time records (longest trajectory, highest peak) are tracked in engine state.
+            These tables reflect backend-verified dashboard records. Estimated live previews never change official records.
           </p>
         </div>
 

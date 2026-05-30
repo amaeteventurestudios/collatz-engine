@@ -4,15 +4,23 @@ import { useMemo, useState } from "react";
 import { formatDensity, formatLargeNumber, formatLargeNumberTitle } from "@/lib/collatz/format";
 import { PanelHelp } from "@/components/ui/PanelHelp";
 import type { CollatzResult } from "@/lib/collatz/types";
+import type { DisplayMode } from "@/components/home/CollatzVisualizationProvider";
 
 const INITIAL_ROWS = 10;
 
 interface SequenceTraceProps {
   result: CollatzResult;
   displayLabel: string;
+  mode: DisplayMode;
+  isEstimated?: boolean;
 }
 
-export function SequenceTrace({ result, displayLabel }: SequenceTraceProps) {
+export function SequenceTrace({
+  result,
+  displayLabel,
+  mode,
+  isEstimated = false,
+}: SequenceTraceProps) {
   const [showAll, setShowAll] = useState(false);
 
   const visibleCount = showAll ? result.full_sequence.length - 1 : INITIAL_ROWS;
@@ -54,6 +62,15 @@ export function SequenceTrace({ result, displayLabel }: SequenceTraceProps) {
   const n = Number(result.start_number);
   const totalSteps = result.steps_to_1;
   const hasMore = totalSteps > INITIAL_ROWS;
+  const isEstimatedMode = mode === "estimated_live";
+  const title = isEstimatedMode
+    ? "Estimated Live Sequence Trace"
+    : mode === "latest_verified"
+      ? "Latest Verified Sequence Trace"
+      : "Sequence Trace";
+  const helperCopy = isEstimatedMode
+    ? `Generated locally from ${isEstimated ? "~" : ""}n. Not catalog-verified until backend sync.`
+    : "Backend-selected starting number; sequence rendered locally in the browser.";
 
   return (
     <section className="px-4 pb-10 sm:pb-14">
@@ -62,7 +79,7 @@ export function SequenceTrace({ result, displayLabel }: SequenceTraceProps) {
           {/* Header */}
           <div className="mb-5 flex flex-col items-center justify-between gap-2 text-center sm:flex-row sm:text-left">
             <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
-              <p className="section-heading">Sequence Trace</p>
+              <p className="section-heading">{title}</p>
               <PanelHelp
                 title="Sequence Trace"
                 description="Lists the step-by-step path for the selected number. Each row shows whether the rule used was divide by 2 or multiply by 3 and add 1."
@@ -74,6 +91,9 @@ export function SequenceTrace({ result, displayLabel }: SequenceTraceProps) {
               Computed · {displayLabel}
             </span>
           </div>
+          <p className="mb-5 text-center text-[11px] text-cyan-600 dark:text-cyan-500 sm:text-left">
+            {helperCopy}
+          </p>
 
           {/* Stats row */}
           <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -213,7 +233,10 @@ export function SequenceTrace({ result, displayLabel }: SequenceTraceProps) {
 
           <p className="mt-4 text-center text-[11px] text-slate-400 dark:text-slate-500">
             Showing {tableRows.length} of {totalSteps.toLocaleString("en-US")} steps ·{" "}
-            {displayLabel} · All trajectories verified to reach 1
+            {displayLabel} ·{" "}
+            {isEstimatedMode
+              ? "local visualization only; catalog verification arrives on backend sync"
+              : "backend-selected trajectory confirmed to reach 1"}
           </p>
         </div>
       </div>

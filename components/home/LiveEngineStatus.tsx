@@ -7,6 +7,7 @@ import type { HealthStatus } from "@/hooks/useCollatzLiveState";
 import { PanelHelp } from "@/components/ui/PanelHelp";
 import { formatLargeNumber, formatLargeNumberTitle } from "@/lib/collatz/format";
 import { EVENT_COLORS } from "@/lib/collatz/event-visuals";
+import { getEstimatedEnginePosition } from "@/lib/collatz/live-estimate";
 
 // ─── Format helpers ───────────────────────────────────────────────────────────
 
@@ -206,32 +207,6 @@ function NoDataState({ error }: { error: string | null }) {
   );
 }
 
-// ─── Estimated position helper ────────────────────────────────────────────────
-
-/**
- * Project the engine's current number forward from a synced baseline.
- * Uses the backend-reported sustained rate and time elapsed since the server
- * generated the payload (which accounts for server-side cache age too).
- * Returns null when the estimate is not available (engine stopped, no rate, no timestamp).
- */
-function getEstimatedN(
-  backendN: number,
-  ratePerSecond: number | null | undefined,
-  generatedAt: Date | null,
-  status: string | null | undefined,
-): number | null {
-  if (
-    status !== "running" ||
-    !ratePerSecond ||
-    !Number.isFinite(ratePerSecond) ||
-    ratePerSecond <= 0 ||
-    !generatedAt
-  )
-    return null;
-  const elapsed = Math.max(0, (Date.now() - generatedAt.getTime()) / 1000);
-  return Math.round(backendN + ratePerSecond * elapsed);
-}
-
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function LiveEngineStatus() {
@@ -264,16 +239,14 @@ export function LiveEngineStatus() {
   }, []);
 
   const estimatedN = useMemo<number | null>(() => {
-    const backendN = Number(state?.last_checked_number ?? 0) + 1;
-    return getEstimatedN(
-      backendN,
-      state?.numbers_per_second,
+    const estimate = getEstimatedEnginePosition({
+      state,
       payloadGeneratedAt,
-      state?.current_status,
-    );
-    // `now` is intentionally included — it drives the 1-second update cadence
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state?.last_checked_number, state?.numbers_per_second, state?.current_status, payloadGeneratedAt, now]);
+      nowMs: now,
+      fallback: "queued",
+    });
+    return estimate.isEstimated ? estimate.n : null;
+  }, [state, payloadGeneratedAt, now]);
 
   if (loading) return <LoadingSkeleton />;
   if (!state) return <NoDataState error={error} />;
