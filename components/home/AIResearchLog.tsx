@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { getEngineState } from "@/lib/collatz/store";
+import { useState } from "react";
+import { useDashboardData } from "@/hooks/useDashboardData";
 import type { EngineState } from "@/lib/collatz/store";
 
 const logTabs = [
@@ -85,17 +85,8 @@ function buildNotes(state: EngineState | null): Note[] {
 
 export function AIResearchLog() {
   const [activeTab, setActiveTab] = useState("Latest Note");
-  const [engineState, setEngineState] = useState<EngineState | null>(null);
-
-  useEffect(() => {
-    let isMounted = true;
-    async function load() {
-      const state = await getEngineState();
-      if (isMounted) setEngineState(state);
-    }
-    load();
-    return () => { isMounted = false; };
-  }, []);
+  const { data } = useDashboardData();
+  const engineState = data?.engineState ?? null;
 
   const notes = buildNotes(engineState);
 

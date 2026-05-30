@@ -10,6 +10,12 @@ import {
 import { getStorageMonitor } from "@/lib/admin/storage";
 import { getR2Status } from "@/lib/admin/r2";
 import { computeWatchdog } from "@/lib/admin/watchdog";
+import { COLLATZ_CACHE_TTL_MS } from "@/lib/collatz/cache-policy";
+import {
+  getCachedRead,
+  logReadCacheDiagnostic,
+  makeReadCacheHeaders,
+} from "@/lib/collatz/read-cache";
 
 export const dynamic = "force-dynamic";
 
@@ -20,11 +26,7 @@ async function isAuthorized(): Promise<boolean> {
   return verifySessionToken(token);
 }
 
-export async function GET() {
-  if (!(await isAuthorized())) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
+async function readAdminMetricsPayload() {
   const [engine, storage, r2, throughput, activity, workerLock, runtimeConfig] =
     await Promise.all([
       getEngineAdminState(),
@@ -44,7 +46,7 @@ export async function GET() {
     runtimeConfigExists: runtimeConfig.exists,
   });
 
-  return Response.json({
+  return {
     engine: engine.data,
     engineConnected: engine.connected,
     engineError: engine.error,
@@ -58,5 +60,39 @@ export async function GET() {
     runtimeConfigExists: runtimeConfig.exists,
     latestIntegrityRun: null,
     fetchedAt: new Date().toISOString(),
-  });
+  };
+}
+
+export async function GET() {
+  if (!(await isAuthorized())) {
+    return Response.json(
+      { error: "Unauthorized" },
+      { status: 401, headers: { "Cache-Control": "no-store" } },
+    );
+  }
+
+  const startedAt = Date.now();
+  const ttlMs = COLLATZ_CACHE_TTL_MS.ADMIN_METRICS;
+
+  try {
+    const { data, meta } = await getCachedRead(
+      "collatz:admin:metrics:v1",
+      ttlMs,
+      readAdminMetricsPayload,
+    );
+    logReadCacheDiagnostic("api/admin/metrics", meta, startedAt);
+    return Response.json(data, {
+      headers: makeReadCacheHeaders(meta, {
+        ttlMs,
+        visibility: "private",
+        includeKey: false,
+      }),
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unable to read admin metrics.";
+    return Response.json(
+      { error: message },
+      { status: 500, headers: { "Cache-Control": "no-store" } },
+    );
+  }
 }

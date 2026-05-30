@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import Link from "next/link";
 import { PanelHelp } from "@/components/ui/PanelHelp";
 import { formatLargeNumber, formatLargeNumberTitle } from "@/lib/collatz/format";
 import { EVENT_COLORS } from "@/lib/collatz/event-visuals";
+import { COLLATZ_POLL_MS } from "@/lib/collatz/cache-policy";
+import { useSafePolling } from "@/hooks/useSafePolling";
 
 interface LiveIntegritySummary {
   ok: boolean;
@@ -51,7 +53,7 @@ interface LatestIntegrityRun {
 
 type PanelStatus = "passed" | "warning" | "unavailable";
 
-const POLL_MS = 30_000;
+const POLL_MS = COLLATZ_POLL_MS.PUBLIC_INTEGRITY;
 
 function statusFrom(summary: LiveIntegritySummary | null, error: string | null): PanelStatus {
   if (error || !summary) return "unavailable";
@@ -133,57 +135,52 @@ export function VerificationPanel() {
   const [latestError, setLatestError] = useState<string | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
 
-  useEffect(() => {
-    let mounted = true;
+  const load = useCallback(async (signal: AbortSignal) => {
+    try {
+      const [liveRes, latestRes] = await Promise.all([
+        fetch("/api/collatz/integrity", { signal }),
+        fetch("/api/collatz/integrity/latest", { signal }),
+      ]);
+      const [liveJson, latestJson] = await Promise.all([
+        liveRes.json(),
+        latestRes.json(),
+      ]);
 
-    async function load() {
-      try {
-        const [liveRes, latestRes] = await Promise.all([
-          fetch("/api/collatz/integrity", { cache: "no-store" }),
-          fetch("/api/collatz/integrity/latest", { cache: "no-store" }),
-        ]);
-        const [liveJson, latestJson] = await Promise.all([
-          liveRes.json(),
-          latestRes.json(),
-        ]);
-        if (!mounted) return;
-
-        if (!liveRes.ok) {
-          setLiveError(liveJson.error ?? "Live verification summary is unavailable.");
-        } else {
-          // ok: false means some checks failed (warning) — data is still available
-          setLiveSummary(liveJson as LiveIntegritySummary);
-          setLiveError(null);
-        }
-
-        if (!latestRes.ok) {
-          setLatestRun(null);
-          setLatestMessage(null);
-          setLatestError(latestJson.error ?? "Full verification status is unavailable.");
-        } else if (latestJson.ok === false) {
-          setLatestRun(null);
-          setLatestMessage(latestJson.message ?? "No full verification run recorded yet.");
-          setLatestError(null);
-        } else {
-          setLatestRun(latestJson.latest as LatestIntegrityRun);
-          setLatestMessage(null);
-          setLatestError(null);
-        }
-      } catch (err) {
-        if (!mounted) return;
-        const message = err instanceof Error ? err.message : "Verification summary is unavailable.";
-        setLiveError(message);
-        setLatestError(message);
+      if (!liveRes.ok) {
+        setLiveError(liveJson.error ?? "Live verification summary is unavailable.");
+      } else {
+        // ok: false means some checks failed (warning) — data is still available
+        setLiveSummary(liveJson as LiveIntegritySummary);
+        setLiveError(null);
       }
-    }
 
-    load();
-    const id = window.setInterval(load, POLL_MS);
-    return () => {
-      mounted = false;
-      window.clearInterval(id);
-    };
+      if (!latestRes.ok) {
+        setLatestRun(null);
+        setLatestMessage(null);
+        setLatestError(latestJson.error ?? "Full verification status is unavailable.");
+      } else if (latestJson.ok === false) {
+        setLatestRun(null);
+        setLatestMessage(latestJson.message ?? "No full verification run recorded yet.");
+        setLatestError(null);
+      } else {
+        setLatestRun(latestJson.latest as LatestIntegrityRun);
+        setLatestMessage(null);
+        setLatestError(null);
+      }
+    } catch (err) {
+      if (signal.aborted) return;
+      const message = err instanceof Error ? err.message : "Verification summary is unavailable.";
+      setLiveError(message);
+      setLatestError(message);
+    }
   }, []);
+
+  useSafePolling({
+    intervalMs: POLL_MS,
+    minIntervalMs: 60_000,
+    staleAfterMs: POLL_MS * 2,
+    poll: load,
+  });
 
   const liveStatus = statusFrom(liveSummary, liveError);
   const liveCfg = statusCopy(liveStatus);

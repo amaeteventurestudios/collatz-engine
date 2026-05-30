@@ -40,14 +40,6 @@ export interface WorkerHealthAssessment {
   heartbeatAgeSeconds: number | null;
 }
 
-interface ActivityLogRow {
-  event_type?: string | null;
-  message?: string | null;
-  metadata?: Record<string, unknown> | null;
-  created_at?: string | null;
-  numbers_processed?: number | string | null;
-}
-
 const LIVE_HEARTBEAT_SECONDS = 30;
 const STALLED_HEARTBEAT_SECONDS = 120;
 const OPERATIONAL_EVENT_TYPES = [
@@ -66,18 +58,6 @@ function toNumber(value: number | string | null | undefined): number {
   if (value == null) return 0;
   const parsed = typeof value === "number" ? value : Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
-}
-
-function toNullableNumber(value: unknown): number | null {
-  if (value == null) return null;
-  const parsed = typeof value === "number" ? value : Number(value);
-  return Number.isFinite(parsed) ? Math.trunc(parsed) : null;
-}
-
-function toSeverity(value: unknown): WorkerHealthSeverity {
-  return value === "critical" || value === "warning" || value === "info"
-    ? value
-    : "info";
 }
 
 function numberText(value: number): string {
@@ -142,34 +122,6 @@ export function assessWorkerHealth(
   };
 }
 
-export async function getRecentOperationalEvents(
-  client: SupabaseClient,
-  limit = 6,
-): Promise<PublicOperationalEvent[]> {
-  const { data, error } = await client
-    .from("collatz_activity_logs")
-    .select("event_type,message,metadata,created_at,numbers_processed")
-    .in("event_type", OPERATIONAL_EVENT_TYPES)
-    .order("created_at", { ascending: false })
-    .limit(limit);
-
-  if (error) return [];
-
-  return ((data ?? []) as ActivityLogRow[]).map((row) => {
-    const metadata = row.metadata ?? {};
-    return {
-      eventType: row.event_type ?? "operational_event",
-      severity: toSeverity(metadata.severity),
-      message: row.message ?? "Operational event recorded.",
-      observedAt: row.created_at ?? new Date().toISOString(),
-      heartbeatAgeSeconds: toNullableNumber(metadata.heartbeat_age_seconds),
-      numbersCataloged:
-        toNullableNumber(metadata.numbers_cataloged) ??
-        toNullableNumber(row.numbers_processed),
-    };
-  });
-}
-
 export async function getPublicHealthSnapshot(
   client: SupabaseClient,
 ): Promise<PublicHealthSnapshot> {
@@ -178,10 +130,7 @@ export async function getPublicHealthSnapshot(
     throw new Error(error ?? "Live engine state is unavailable.");
   }
 
-  const [latestIntegrityRun, latestEvents] = await Promise.all([
-    getLatestIntegrityRun(client).catch(() => null),
-    getRecentOperationalEvents(client),
-  ]);
+  const latestIntegrityRun = await getLatestIntegrityRun(client).catch(() => null);
   const assessment = assessWorkerHealth(state);
 
   return {
@@ -196,7 +145,8 @@ export async function getPublicHealthSnapshot(
     lastBatchDurationMs: toNumber(state.last_batch_duration_ms),
     lastFullIntegrityRun: latestIntegrityRun,
     message: publicHealthMessage(assessment.status),
-    latestEvents,
+    // Public health exposes summary signals only. Activity-log details remain admin-only.
+    latestEvents: [],
   };
 }
 

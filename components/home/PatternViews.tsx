@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { getLatestResults } from "@/lib/collatz/store";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { CollatzResultRow } from "@/lib/collatz/store";
 import { Modal } from "@/components/ui/Modal";
 import { PanelHelp } from "@/components/ui/PanelHelp";
 import { formatLargeNumber, formatLargeNumberTitle } from "@/lib/collatz/format";
+import { COLLATZ_POLL_MS } from "@/lib/collatz/cache-policy";
+import { useSafePolling } from "@/hooks/useSafePolling";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -20,8 +21,15 @@ type PatternView = (typeof PATTERN_VIEWS)[number];
 const COLS = 20;
 const ROWS = 8;
 const MIN_FOR_HEATMAP = 40;
-const POLL_MS = 30_000;
+const POLL_MS = COLLATZ_POLL_MS.PUBLIC_ANALYTICS;
 const SAMPLE_SIZE = 200;
+
+interface PatternViewsApiResponse {
+  ok: boolean;
+  generatedAt?: string;
+  chartResults?: CollatzResultRow[];
+  error?: string;
+}
 
 // ─── Heatmap builders ─────────────────────────────────────────────────────────
 
@@ -324,30 +332,36 @@ export function PatternViews() {
   const [modalOpen, setModalOpen] = useState(false);
   const [lastRefreshedAt, setLastRefreshedAt] = useState<Date | null>(null);
   const [now, setNow] = useState(() => new Date());
-  const mountedRef = useRef(false);
+
+  const poll = useCallback(async (signal: AbortSignal) => {
+    try {
+      const res = await fetch(
+        `/api/collatz/analytics?chartLimit=${SAMPLE_SIZE}&recordLimit=1`,
+        { signal },
+      );
+      const json = (await res.json()) as PatternViewsApiResponse;
+      if (!res.ok || !json.ok) {
+        throw new Error(json.error ?? "Pattern data unavailable.");
+      }
+      setResults(json.chartResults ?? []);
+      setLoaded(true);
+      setLastRefreshedAt(json.generatedAt ? new Date(json.generatedAt) : new Date());
+    } catch {
+      if (!signal.aborted) setLoaded(true);
+    }
+  }, []);
+
+  useSafePolling({
+    intervalMs: POLL_MS,
+    minIntervalMs: 60_000,
+    staleAfterMs: POLL_MS * 2,
+    poll,
+  });
 
   useEffect(() => {
-    mountedRef.current = true;
-
-    async function poll() {
-      try {
-        const rows = await getLatestResults(SAMPLE_SIZE);
-        if (!mountedRef.current) return;
-        setResults(rows);
-        setLoaded(true);
-        setLastRefreshedAt(new Date());
-      } catch {
-        // Keep last known data on transient errors
-      }
-    }
-
-    poll();
-    const pollId = window.setInterval(poll, POLL_MS);
     const clockId = window.setInterval(() => setNow(new Date()), 1000);
 
     return () => {
-      mountedRef.current = false;
-      window.clearInterval(pollId);
       window.clearInterval(clockId);
     };
   }, []);
@@ -387,7 +401,7 @@ export function PatternViews() {
                 />
               </div>
               <p className="mt-1 min-h-[2rem] text-xs text-slate-500 dark:text-slate-400">
-                Latest {Math.min(results.length || SAMPLE_SIZE, SAMPLE_SIZE).toLocaleString("en-US")} verified trajectories · {rangeLabel} · refreshed {refreshedLabel} · refresh cadence: 10 seconds
+                Latest {Math.min(results.length || SAMPLE_SIZE, SAMPLE_SIZE).toLocaleString("en-US")} verified trajectories · {rangeLabel} · refreshed {refreshedLabel} · refresh cadence: {Math.round(POLL_MS / 60_000)} min
               </p>
             </div>
             <button

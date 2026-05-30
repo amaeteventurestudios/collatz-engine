@@ -52,7 +52,7 @@ export default async function IntegrityPage() {
   let integrityError: string | null = null;
   try {
     const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-    const res = await fetch(`${baseUrl}/api/collatz/integrity`, { cache: "no-store" });
+    const res = await fetch(`${baseUrl}/api/collatz/integrity`);
     if (res.ok) {
       integritySummary = (await res.json()) as Record<string, unknown>;
     } else {
@@ -66,7 +66,7 @@ export default async function IntegrityPage() {
   let latestRun: Record<string, unknown> | null = null;
   try {
     const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-    const res = await fetch(`${baseUrl}/api/collatz/integrity/latest`, { cache: "no-store" });
+    const res = await fetch(`${baseUrl}/api/collatz/integrity/latest`);
     if (res.ok) {
       const json = await res.json() as Record<string, unknown>;
       if (json.ok) latestRun = json.latest as Record<string, unknown>;

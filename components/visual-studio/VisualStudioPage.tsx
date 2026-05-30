@@ -44,7 +44,7 @@ export function VisualStudioPage() {
     useState<VisualStudioTabId>("live-sequence-stack");
   const [visiblePathCount, setVisiblePathCount] = useState(DEFAULT_VISIBLE_PATHS);
   const [treePathCount, setTreePathCount] = useState(DEFAULT_TREE_PATHS);
-  const [liveUpdates, setLiveUpdates] = useState(true);
+  const [liveUpdates, setLiveUpdates] = useState(false);
   const [scaleMode, setScaleMode] = useState<ScaleMode>("log");
   const [treeLayoutMode, setTreeLayoutMode] =
     useState<ConvergenceLayoutMode>("radial");

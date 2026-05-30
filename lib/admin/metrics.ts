@@ -2,6 +2,9 @@ import "server-only";
 import { createClient } from "@supabase/supabase-js";
 import type { EngineAdminState, ActivityLogEntry, RuntimeConfig, WorkerLockState } from "./types";
 
+const STRUCTURED_PLACEHOLDER = "[object Object]";
+const MAX_ACTIVITY_MESSAGE_LENGTH = 700;
+
 function getServiceClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -14,6 +17,64 @@ function getAnonClient() {
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !key) return null;
   return createClient(url, key, { auth: { persistSession: false } });
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function truncateMessage(value: string): string {
+  return value.length > MAX_ACTIVITY_MESSAGE_LENGTH
+    ? `${value.slice(0, MAX_ACTIVITY_MESSAGE_LENGTH - 1)}…`
+    : value;
+}
+
+function stringifyActivityValue(value: unknown): string | null {
+  if (value == null) return null;
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed && trimmed !== STRUCTURED_PLACEHOLDER ? trimmed : null;
+  }
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  if (value instanceof Error) return value.message || value.name;
+  if (typeof value === "bigint") return value.toString();
+
+  try {
+    const json = JSON.stringify(
+      value,
+      (_key, nested) => (typeof nested === "bigint" ? nested.toString() : nested),
+    );
+    return json && json !== "{}" ? json : null;
+  } catch {
+    return "Structured event details could not be serialized.";
+  }
+}
+
+function metadataActivityDetail(metadata: unknown): string | null {
+  if (!isRecord(metadata)) return null;
+
+  for (const key of ["error_message", "error", "message", "detail", "details", "reason"]) {
+    const formatted = stringifyActivityValue(metadata[key]);
+    if (formatted) return formatted;
+  }
+
+  return stringifyActivityValue(metadata);
+}
+
+export function formatActivityLogMessage(message: unknown, metadata?: unknown): string {
+  const raw = stringifyActivityValue(message);
+  const detail = metadataActivityDetail(metadata);
+
+  if (raw) {
+    return truncateMessage(
+      raw.replaceAll(
+        STRUCTURED_PLACEHOLDER,
+        detail ?? "structured event details",
+      ),
+    );
+  }
+
+  return truncateMessage(detail ?? "Structured event details recorded.");
 }
 
 export async function getEngineAdminState(): Promise<{
@@ -96,7 +157,7 @@ export async function getRecentActivityLogs(limit = 20): Promise<{
   try {
     const { data, error } = await client
       .from("collatz_activity_logs")
-      .select("id,event_type,message,created_at,numbers_processed,numbers_per_second")
+      .select("id,event_type,message,created_at,numbers_processed,numbers_per_second,metadata")
       .order("created_at", { ascending: false })
       .limit(limit);
 
@@ -106,10 +167,11 @@ export async function getRecentActivityLogs(limit = 20): Promise<{
       data: ((data ?? []) as ActivityLogEntry[]).map((row) => ({
         id: row.id,
         event_type: row.event_type ?? "unknown",
-        message: row.message ?? "",
+        message: formatActivityLogMessage(row.message, row.metadata),
         created_at: row.created_at ?? new Date().toISOString(),
         numbers_processed: row.numbers_processed ?? null,
         numbers_per_second: row.numbers_per_second ?? null,
+        metadata: row.metadata ?? null,
       })),
       error: null,
     };

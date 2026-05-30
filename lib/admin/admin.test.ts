@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { storageStatus, formatBytes } from "./storage";
+import { formatActivityLogMessage } from "./metrics";
 import { MODE_PRESETS, RECOVERY_DEFAULTS } from "../collatz/runtime-config";
 
 // ── Storage threshold helper ───────────────────────────────────────────────────
@@ -38,6 +39,26 @@ describe("formatBytes", () => {
   it("formats KB", () => expect(formatBytes(2048)).toBe("2.0 KB"));
   it("formats MB", () => expect(formatBytes(5 * 1024 * 1024)).toBe("5.00 MB"));
   it("formats GB", () => expect(formatBytes(1.5 * 1024 ** 3)).toBe("1.500 GB"));
+});
+
+// ── Activity log message formatting ───────────────────────────────────────────
+
+describe("formatActivityLogMessage", () => {
+  it("replaces object placeholders with structured metadata details", () => {
+    const message = formatActivityLogMessage("Batch failed: [object Object]", {
+      error: { message: "connection timeout", code: "ETIMEDOUT" },
+    });
+
+    expect(message).toContain("connection timeout");
+    expect(message).not.toContain("[object Object]");
+  });
+
+  it("formats non-string messages without leaking object placeholders", () => {
+    const message = formatActivityLogMessage({ message: "insert failed", code: "23505" });
+
+    expect(message).toContain("insert failed");
+    expect(message).not.toContain("[object Object]");
+  });
 });
 
 // ── Runtime config mode presets ────────────────────────────────────────────────

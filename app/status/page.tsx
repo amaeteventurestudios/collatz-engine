@@ -429,34 +429,44 @@ export default async function StatusPage() {
 
             <section className="rounded-lg border border-slate-800 bg-slate-950 p-5">
               <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
-                Latest Operational Events
+                Public Health Signals
               </p>
-              <div className="mt-4 space-y-3">
-                {health?.latestEvents && health.latestEvents.length > 0 ? (
-                  health.latestEvents.map((event) => (
-                    <div key={`${event.eventType}-${event.observedAt}`} className="border-l border-slate-700 pl-3">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <StatusBadge
-                          status={
-                            event.severity === "critical"
-                              ? "error"
-                              : event.severity === "warning"
-                                ? "warning"
-                                : "passed"
-                          }
-                        />
-                        <span className="font-mono text-[10px] text-slate-500">
-                          {fmtDate(event.observedAt)}
-                        </span>
-                      </div>
-                      <p className="mt-1 text-sm leading-relaxed text-slate-300">{event.message}</p>
-                    </div>
-                  ))
-                ) : (
-                  <p className="rounded border border-slate-800 bg-slate-900/40 px-4 py-3 text-sm text-slate-400">
-                    No operational events recorded yet.
-                  </p>
-                )}
+              <p className="mt-2 text-sm leading-relaxed text-slate-400">
+                Public status summarizes current health without exposing internal activity-log details.
+              </p>
+              <div className="mt-4 grid gap-3 text-sm sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
+                {[
+                  {
+                    label: "Catalog Boundary",
+                    value: formatLargeNumber(catalogSize),
+                    sub: "Verified integers",
+                  },
+                  {
+                    label: "Heartbeat Signal",
+                    value: fmtAge(health?.heartbeatAgeSeconds ?? null),
+                    sub: "Freshness only",
+                  },
+                  {
+                    label: "Integrity Signal",
+                    value:
+                      liveCheckStatus === "passed"
+                        ? "Passed"
+                        : liveCheckStatus === "warning"
+                          ? "Review"
+                          : "Unavailable",
+                    sub: "Bounded check",
+                  },
+                ].map((item) => (
+                  <div key={item.label} className="rounded border border-slate-800 bg-slate-900/40 px-4 py-3">
+                    <p className="font-mono text-[9px] uppercase tracking-[0.16em] text-slate-500">
+                      {item.label}
+                    </p>
+                    <p className="mt-1 font-mono text-sm font-semibold text-slate-200">
+                      {item.value}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">{item.sub}</p>
+                  </div>
+                ))}
               </div>
             </section>
           </div>

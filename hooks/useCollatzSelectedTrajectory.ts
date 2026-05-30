@@ -1,13 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { getSeedResult } from "@/lib/collatz/examples";
 import { computeCollatz } from "@/lib/collatz/engine";
-import {
-  getTopLongestTrajectories,
-  getTopHighestPeaks,
-} from "@/lib/collatz/store";
+import { COLLATZ_POLL_MS } from "@/lib/collatz/cache-policy";
+import { useSafePolling } from "@/hooks/useSafePolling";
 import { useCollatzLiveState } from "./useCollatzLiveState";
+import type { CollatzAllTimeRecordRow } from "@/lib/collatz/store";
 import type { CollatzResult } from "@/lib/collatz/types";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -38,9 +37,16 @@ export interface SelectedTrajectoryResult {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const FALLBACK: CollatzResult = getSeedResult(27);
-const RECORDS_POLL_MS = 5_000;
+const RECORDS_POLL_MS = COLLATZ_POLL_MS.PUBLIC_RECORDS;
 // How often to refresh the estimated-live trajectory (Part 1 requirement)
 const ESTIMATED_REFRESH_MS = 5_000;
+
+interface AllTimeRecordsApiResponse {
+  ok: boolean;
+  longestRecords?: CollatzAllTimeRecordRow[];
+  peakRecords?: CollatzAllTimeRecordRow[];
+  error?: string;
+}
 
 const LABELS: Record<DisplayMode, (n: number, estimated: boolean) => string> = {
   latest_verified: (n) => `Latest verified, n=${n.toLocaleString("en-US")}`,
@@ -157,41 +163,42 @@ export function useCollatzSelectedTrajectory(): SelectedTrajectoryResult {
     return () => window.clearInterval(id);
   }, [mode]); // stable — reads exclusively from ref
 
-  // ── Record modes: DB fetch + compute, polled every 5 s ───────────────────
-  useEffect(() => {
+  // ── Record modes: cached API fetch + compute ─────────────────────────────
+  const fetchRecordMode = useCallback(async (signal: AbortSignal) => {
     if (mode !== "longest_record" && mode !== "highest_peak") return;
-    let active = true;
-
-    async function fetchAndCompute() {
-      setLoading(true);
-      try {
-        const rows =
-          mode === "longest_record"
-            ? await getTopLongestTrajectories(1)
-            : await getTopHighestPeaks(1);
-        if (!active || !rows || rows.length === 0) return;
-        const computed = computeCollatz(rows[0].n);
-        if (!active) return;
-        if (computed.reached_one && computed.full_sequence.length > 1) {
-          setResult(computed);
-          setIsEstimated(false);
-          setError(null);
-        }
-      } catch (err) {
-        if (!active) return;
-        setError(err instanceof Error ? err.message : "Failed to load record");
-      } finally {
-        if (active) setLoading(false);
+    setLoading(true);
+    try {
+      const res = await fetch("/api/collatz/all-time-records?limit=1", { signal });
+      const json = (await res.json()) as AllTimeRecordsApiResponse;
+      if (!res.ok || !json.ok) {
+        throw new Error(json.error ?? "Failed to load record");
       }
+      const row =
+        mode === "longest_record"
+          ? json.longestRecords?.[0]
+          : json.peakRecords?.[0];
+      if (!row) return;
+      const computed = computeCollatz(row.starting_number);
+      if (computed.reached_one && computed.full_sequence.length > 1) {
+        setResult(computed);
+        setIsEstimated(false);
+        setError(null);
+      }
+    } catch (err) {
+      if (signal.aborted) return;
+      setError(err instanceof Error ? err.message : "Failed to load record");
+    } finally {
+      setLoading(false);
     }
-
-    fetchAndCompute();
-    const pollId = window.setInterval(fetchAndCompute, RECORDS_POLL_MS);
-    return () => {
-      active = false;
-      window.clearInterval(pollId);
-    };
   }, [mode]);
+
+  useSafePolling({
+    enabled: mode === "longest_record" || mode === "highest_peak",
+    intervalMs: RECORDS_POLL_MS,
+    minIntervalMs: 60_000,
+    staleAfterMs: RECORDS_POLL_MS * 2,
+    poll: fetchRecordMode,
+  });
 
   const n = Number(result.start_number);
 

@@ -1,5 +1,4 @@
 export const dynamic = "force-dynamic";
-export const revalidate = 0;
 
 import Link from "next/link";
 import { ArrowRight, CheckCircle2, Database, FlaskConical, ShieldCheck } from "lucide-react";

@@ -1,4 +1,6 @@
 import { supabase } from "@/lib/supabase";
+import { COLLATZ_CACHE_TTL_MS } from "@/lib/collatz/cache-policy";
+import { getCachedRead } from "@/lib/collatz/read-cache";
 import {
   REPORT_TYPE_META,
   type DemoNote,
@@ -175,7 +177,7 @@ function mapDraftToNote(row: PublicDraft): DemoNote {
  * Fetch approved/published Observatory content.
  * No demo fallback is used here: public content must come from approved data.
  */
-export async function getPublishedNotes(): Promise<DemoNote[]> {
+async function readPublishedNotes(): Promise<DemoNote[]> {
   if (!supabase) return [];
   try {
     const drafts = await supabase
@@ -202,11 +204,20 @@ export async function getPublishedNotes(): Promise<DemoNote[]> {
   }
 }
 
+export async function getPublishedNotes(): Promise<DemoNote[]> {
+  const { data } = await getCachedRead(
+    "ai-observatory:published-notes:v1",
+    COLLATZ_CACHE_TTL_MS.PUBLIC_OBSERVATORY,
+    readPublishedNotes,
+  );
+  return data;
+}
+
 /**
  * Fetch a single published Observatory note by id.
  * Returns null (→ 404) if the note does not exist or is not published.
  */
-export async function getPublishedNoteById(id: string): Promise<DemoNote | null> {
+async function readPublishedNoteById(id: string): Promise<DemoNote | null> {
   if (supabase) {
     try {
       const draft = await supabase
@@ -229,4 +240,13 @@ export async function getPublishedNoteById(id: string): Promise<DemoNote | null>
     } catch { return null; }
   }
   return null;
+}
+
+export async function getPublishedNoteById(id: string): Promise<DemoNote | null> {
+  const { data } = await getCachedRead(
+    `ai-observatory:published-note:v1:id=${id}`,
+    COLLATZ_CACHE_TTL_MS.PUBLIC_OBSERVATORY,
+    () => readPublishedNoteById(id),
+  );
+  return data;
 }
