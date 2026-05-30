@@ -60,8 +60,8 @@ function deriveHealth(
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
 // Poll the cached dashboard API — never the Supabase anon client directly.
-// Server caches responses for 10 s, so many browser tabs share one DB round-trip.
-const DEFAULT_POLL_MS = 10_000;
+// Default matches the public dashboard poll interval (60 s).
+const DEFAULT_POLL_MS = 60_000;
 
 export function useCollatzLiveState(
   pollMs: number = DEFAULT_POLL_MS,

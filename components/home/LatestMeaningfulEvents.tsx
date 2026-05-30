@@ -32,6 +32,19 @@ function relativeTime(iso: string | null | undefined): string {
   return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
+function lastUpdatedLabel(updatedAt: Date | null): string {
+  if (!updatedAt) return "Awaiting first load";
+  const sec = Math.max(0, Math.floor((Date.now() - updatedAt.getTime()) / 1000));
+  if (sec < 60) return "Last updated less than 1 minute ago";
+  const min = Math.floor(sec / 60);
+  return `Last updated ${min} minute${min === 1 ? "" : "s"} ago`;
+}
+
+function refreshIntervalLabel(pollMs: number): string {
+  const sec = Math.round(pollMs / 1000);
+  return `Refreshes every ${sec} seconds to reduce database load.`;
+}
+
 function eventHeadline(event: DashboardEvent, kind: CollatzEventKind): string {
   if (kind === "peak_record") return "New highest peak recorded";
   if (kind === "trajectory_record") return "New longest trajectory recorded";
@@ -43,7 +56,6 @@ function eventHeadline(event: DashboardEvent, kind: CollatzEventKind): string {
 }
 
 function eventDetail(event: DashboardEvent, kind: CollatzEventKind): string | null {
-  // Coerce to ActivityLogRow shape for shared helpers
   const row = { metadata: event.metadata ?? {} } as ActivityLogRow;
   if (kind === "peak_record" || kind === "trajectory_record") {
     const n = metadataNumber(row, ["n", "number", "record_n", "candidate_n"]) ?? event.batchStart;
@@ -118,7 +130,7 @@ function EmptyState() {
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function LatestMeaningfulEvents() {
-  const { data } = useDashboardData();
+  const { data, lastUpdatedAt, pollIntervalMs } = useDashboardData();
   const events = data?.meaningfulEvents ?? [];
 
   return (
@@ -127,16 +139,25 @@ export function LatestMeaningfulEvents() {
       className="live-stable scroll-mt-20 px-4 pb-10 sm:pb-14"
     >
       <div className="mx-auto max-w-7xl">
-        <div className="mb-5 flex flex-wrap items-center justify-center gap-2 text-center sm:justify-start sm:text-left">
-          <h2 className="text-base font-bold text-slate-50 tracking-tight">
-            Latest Engine Events
-          </h2>
-          <PanelHelp
-            title="Latest Engine Events"
-            description="Shows high-signal events from the autonomous engine: new records, integrity checks, and notable system activity. Routine batch processing logs are excluded to reduce noise."
-            align="left"
-          />
-          <span className="text-[10px] text-slate-500">· updated every 10s · routine batches excluded</span>
+        <div className="mb-5 flex flex-col items-start gap-2">
+          <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+            <h2 className="text-base font-bold text-slate-50 tracking-tight">
+              Latest Engine Events
+            </h2>
+            <PanelHelp
+              title="Latest Engine Events"
+              description="Shows high-signal events from the autonomous engine: new records, integrity checks, and notable system activity. Routine batch processing logs are excluded to reduce noise."
+              align="left"
+            />
+            <span className="text-[10px] text-slate-500">· routine batches excluded</span>
+          </div>
+
+          {/* Freshness strip */}
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-slate-600">
+            <span>{lastUpdatedLabel(lastUpdatedAt)}</span>
+            <span aria-hidden="true">·</span>
+            <span>{refreshIntervalLabel(pollIntervalMs)}</span>
+          </div>
         </div>
 
         {events.length === 0 ? (
