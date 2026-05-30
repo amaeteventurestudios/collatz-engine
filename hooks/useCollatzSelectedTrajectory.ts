@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getSeedResult } from "@/lib/collatz/examples";
 import { computeCollatz } from "@/lib/collatz/engine";
 import {
@@ -31,28 +31,35 @@ export interface SelectedTrajectoryResult {
   loading: boolean;
   /** Non-null when a fetch or computation fails. */
   error: string | null;
+  /** True when the displayed trajectory is browser-estimated, not backend-verified. */
+  isEstimated: boolean;
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const FALLBACK: CollatzResult = getSeedResult(27);
 const RECORDS_POLL_MS = 5_000;
+// How often to refresh the estimated-live trajectory (Part 1 requirement)
+const ESTIMATED_REFRESH_MS = 5_000;
 
-const LABELS: Record<DisplayMode, (n: number) => string> = {
+const LABELS: Record<DisplayMode, (n: number, estimated: boolean) => string> = {
   latest_verified: (n) => `Latest verified, n=${n.toLocaleString("en-US")}`,
-  current_batch: (n) => `Current batch sample, n=${n.toLocaleString("en-US")}`,
+  current_batch: (n, est) =>
+    est
+      ? `Estimated live n=~${n.toLocaleString("en-US")}`
+      : `Current batch, n=${n.toLocaleString("en-US")}`,
   longest_record: (n) => `Longest record, n=${n.toLocaleString("en-US")}`,
   highest_peak: (n) => `Highest peak record, n=${n.toLocaleString("en-US")}`,
 };
 
-const HELPER_COPY: Record<DisplayMode, string | null> = {
-  latest_verified: null,
-  current_batch:
-    "Computed from the active batch, not yet stored in the catalog.",
-  longest_record:
-    "Updates only when a new record trajectory is discovered.",
-  highest_peak:
-    "Updates only when a new peak value record is discovered.",
+const HELPER_COPY: Record<DisplayMode, (estimated: boolean) => string | null> = {
+  latest_verified: () => null,
+  current_batch: (est) =>
+    est
+      ? "Generated locally from the estimated engine position. Verified catalog data updates on backend sync."
+      : "Computed from the active batch, not yet stored in the catalog.",
+  longest_record: () => "Updates only when a new record trajectory is discovered.",
+  highest_peak: () => "Updates only when a new peak value record is discovered.",
 };
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
@@ -62,22 +69,19 @@ export function useCollatzSelectedTrajectory(): SelectedTrajectoryResult {
   const [result, setResult] = useState<CollatzResult>(FALLBACK);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isEstimated, setIsEstimated] = useState(false);
 
-  // Engine state is already polled at 2 s — reuse it for live modes
-  const { state, nextBatchStart } = useCollatzLiveState();
+  // Engine state polled at the configured public interval; also exposes
+  // payloadGeneratedAt so we can project estimated n forward client-side.
+  const { state, nextBatchStart, payloadGeneratedAt } = useCollatzLiveState();
 
-  // ── Live modes: recompute synchronously whenever engine state advances ─────
-  // No extra DB query needed; computeCollatz is fast for typical n values.
+  // ── latest_verified mode: recompute on backend sync ──────────────────────
+  // setState calls are inside a helper function (not directly in the body)
+  // so the react-hooks/set-state-in-effect rule is satisfied.
   useEffect(() => {
-    if (mode !== "latest_verified" && mode !== "current_batch") return;
-
-    const n =
-      mode === "latest_verified"
-        ? (state?.last_checked_number ?? 0)
-        : nextBatchStart;
-
+    if (mode !== "latest_verified") return;
+    const n = state?.last_checked_number ?? 0;
     if (n <= 0) return;
-
     let active = true;
 
     function compute() {
@@ -86,27 +90,76 @@ export function useCollatzSelectedTrajectory(): SelectedTrajectoryResult {
         if (!active) return;
         if (computed.reached_one && computed.full_sequence.length > 1) {
           setResult(computed);
+          setIsEstimated(false);
           setError(null);
         }
       } catch (err) {
         if (!active) return;
         setError(err instanceof Error ? err.message : "Computation failed");
-      } finally {
-        if (active) setLoading(false);
       }
     }
 
     compute();
+    return () => { active = false; };
+  }, [mode, state?.last_checked_number]);
 
-    return () => {
-      active = false;
+  // ── current_batch mode: estimated N refreshed every 5 s ──────────────────
+  // Reads estimation params from a ref so the interval closure never goes stale.
+  const estimateRef = useRef({
+    base: 0,
+    rate: 0 as number | null | undefined,
+    generatedAt: null as Date | null,
+    running: false,
+  });
+
+  useEffect(() => {
+    estimateRef.current = {
+      base: nextBatchStart,
+      rate: state?.numbers_per_second,
+      generatedAt: payloadGeneratedAt,
+      running: state?.current_status === "running",
     };
-  }, [mode, state?.last_checked_number, nextBatchStart]);
+  }, [nextBatchStart, state?.numbers_per_second, payloadGeneratedAt, state?.current_status]);
+
+  useEffect(() => {
+    if (mode !== "current_batch") return;
+
+    function runCompute() {
+      const { base, rate, generatedAt, running } = estimateRef.current;
+      let n = base;
+      let estimated = false;
+
+      if (running && rate && rate > 0 && generatedAt) {
+        const elapsed = Math.max(0, (Date.now() - generatedAt.getTime()) / 1000);
+        const advanced = Math.round(rate * elapsed);
+        if (advanced > 0) {
+          n = base + advanced;
+          estimated = true;
+        }
+      }
+
+      if (n <= 0) return;
+
+      try {
+        const computed = computeCollatz(n);
+        if (computed.reached_one && computed.full_sequence.length > 1) {
+          setResult(computed);
+          setIsEstimated(estimated);
+          setError(null);
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Computation failed");
+      }
+    }
+
+    runCompute();
+    const id = window.setInterval(runCompute, ESTIMATED_REFRESH_MS);
+    return () => window.clearInterval(id);
+  }, [mode]); // stable — reads exclusively from ref
 
   // ── Record modes: DB fetch + compute, polled every 5 s ───────────────────
   useEffect(() => {
     if (mode !== "longest_record" && mode !== "highest_peak") return;
-
     let active = true;
 
     async function fetchAndCompute() {
@@ -116,21 +169,17 @@ export function useCollatzSelectedTrajectory(): SelectedTrajectoryResult {
           mode === "longest_record"
             ? await getTopLongestTrajectories(1)
             : await getTopHighestPeaks(1);
-
         if (!active || !rows || rows.length === 0) return;
-
         const computed = computeCollatz(rows[0].n);
         if (!active) return;
-
         if (computed.reached_one && computed.full_sequence.length > 1) {
           setResult(computed);
+          setIsEstimated(false);
           setError(null);
         }
       } catch (err) {
         if (!active) return;
-        setError(
-          err instanceof Error ? err.message : "Failed to load record",
-        );
+        setError(err instanceof Error ? err.message : "Failed to load record");
       } finally {
         if (active) setLoading(false);
       }
@@ -138,7 +187,6 @@ export function useCollatzSelectedTrajectory(): SelectedTrajectoryResult {
 
     fetchAndCompute();
     const pollId = window.setInterval(fetchAndCompute, RECORDS_POLL_MS);
-
     return () => {
       active = false;
       window.clearInterval(pollId);
@@ -151,9 +199,10 @@ export function useCollatzSelectedTrajectory(): SelectedTrajectoryResult {
     mode,
     setMode,
     result,
-    label: LABELS[mode](n),
-    helperCopy: HELPER_COPY[mode],
+    label: LABELS[mode](n, isEstimated),
+    helperCopy: HELPER_COPY[mode](isEstimated),
     loading,
     error,
+    isEstimated,
   };
 }

@@ -34,6 +34,29 @@ let moduleCache: CacheEntry | null = null;
 // Dynamic so we can read env vars and use the in-memory cache at request time.
 export const dynamic = "force-dynamic";
 
+// ── Response header helper ─────────────────────────────────────────────────────
+// Vercel-CDN-Cache-Control and CDN-Cache-Control bypass Next.js header
+// normalisation so the CDN sees the full directive set, not just "public".
+function makeCacheHeaders(
+  cacheWindowSeconds: number,
+  hit: boolean,
+  expiresInSeconds?: number,
+): Record<string, string> {
+  const directive = `public, max-age=0, s-maxage=${cacheWindowSeconds}, stale-while-revalidate=30`;
+  const cdnDirective = `public, s-maxage=${cacheWindowSeconds}, stale-while-revalidate=30`;
+  const headers: Record<string, string> = {
+    "Cache-Control": directive,
+    "CDN-Cache-Control": cdnDirective,
+    "Vercel-CDN-Cache-Control": cdnDirective,
+    "X-Cache": hit ? "HIT" : "MISS",
+    "X-Dashboard-Route-Version": "cache-v3",
+  };
+  if (hit && expiresInSeconds !== undefined) {
+    headers["X-Cache-Expires-In"] = String(expiresInSeconds);
+  }
+  return headers;
+}
+
 // High-signal event types shown on the public homepage.
 // Routine batch noise (batch_started, batch_completed, worker_heartbeat) is excluded.
 const EXCLUDED_EVENT_TYPES = new Set([
@@ -105,11 +128,11 @@ export async function GET() {
   const now = Date.now();
   if (moduleCache && now < moduleCache.expiresAt) {
     return NextResponse.json(moduleCache.payload, {
-      headers: {
-        "Cache-Control": `public, s-maxage=${cacheWindowSeconds}, stale-while-revalidate=30`,
-        "X-Cache": "HIT",
-        "X-Cache-Expires-In": String(Math.ceil((moduleCache.expiresAt - now) / 1000)),
-      },
+      headers: makeCacheHeaders(
+        cacheWindowSeconds,
+        true,
+        Math.ceil((moduleCache.expiresAt - now) / 1000),
+      ),
     });
   }
 
@@ -218,10 +241,7 @@ export async function GET() {
     };
 
     return NextResponse.json(payload, {
-      headers: {
-        "Cache-Control": `public, s-maxage=${cacheWindowSeconds}, stale-while-revalidate=30`,
-        "X-Cache": "MISS",
-      },
+      headers: makeCacheHeaders(cacheWindowSeconds, false),
     });
   } catch (err) {
     const message =

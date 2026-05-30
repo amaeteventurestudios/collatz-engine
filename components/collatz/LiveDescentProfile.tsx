@@ -155,7 +155,9 @@ export function LiveDescentProfile({ result, loading }: Props) {
                   strokeWidth="1"
                   strokeDasharray="5 3"
                 />
-                <text x="4" y={startY - 3} fontSize="7.5" fill="#14b8a6" opacity="0.75">
+                {/* Start label with dark background to avoid overlap with the reference line */}
+                <rect x="3" y={Math.max(startY - 15, 2)} width="76" height="12" rx="2" fill="#0f172a" fillOpacity="0.72" />
+                <text x="6" y={Math.max(startY - 6, 11)} fontSize="7.5" fill="#2dd4bf" fontWeight="600" opacity="0.9">
                   Start: {formatLargeNumber(start)}
                   <title>{formatLargeNumberTitle(start)}</title>
                 </text>
@@ -199,45 +201,34 @@ export function LiveDescentProfile({ result, loading }: Props) {
                       strokeWidth="1.5"
                       opacity="0.9"
                     />
-                    <rect
-                      x={peakX + 6}
-                      y={peakY - 3}
-                      width="62"
-                      height="14"
-                      rx="3"
-                      fill="#facc15"
-                      fillOpacity="0.15"
-                    />
-                    <text x={peakX + 9} y={peakY + 7} fontSize="8.5" fill="#ca8a04" fontWeight="600">
-                      Peak: {formatLargeNumber(peak)}
-                      <title>{formatLargeNumberTitle(peak)}</title>
-                    </text>
+                    {(() => {
+                      const labelW = 68;
+                      const lx = Math.min(peakX + 7, SVG_W - labelW - 4);
+                      return (
+                        <>
+                          <rect x={lx} y={peakY - 4} width={labelW} height="15" rx="3" fill="#0f172a" fillOpacity="0.72" />
+                          <text x={lx + 4} y={peakY + 7} fontSize="8.5" fill="#fbbf24" fontWeight="600">
+                            Peak: {formatLargeNumber(peak)}
+                            <title>{formatLargeNumberTitle(peak)}</title>
+                          </text>
+                        </>
+                      );
+                    })()}
                   </>
                 )}
 
                 {/* First descent marker */}
-                {descentX !== null && descentY !== null && (
-                  <>
-                    <circle
-                      cx={descentX}
-                      cy={descentY}
-                      r="4"
-                      fill="#fb923c"
-                      stroke="#ffffff"
-                      strokeWidth="1.5"
-                      opacity="0.9"
-                    />
-                    <text
-                      x={descentX + 6}
-                      y={descentY - 4}
-                      fontSize="7.5"
-                      fill="#f97316"
-                      fontWeight="600"
-                    >
-                      First descent
-                    </text>
-                  </>
-                )}
+                {descentX !== null && descentY !== null && (() => {
+                  const lx = Math.min(descentX + 7, SVG_W - 60);
+                  const ly = Math.max(descentY - 6, 10);
+                  return (
+                    <>
+                      <circle cx={descentX} cy={descentY} r="4" fill="#fb923c" stroke="#ffffff" strokeWidth="1.5" opacity="0.9" />
+                      <rect x={lx} y={ly - 9} width="56" height="12" rx="2" fill="#0f172a" fillOpacity="0.72" />
+                      <text x={lx + 3} y={ly} fontSize="7.5" fill="#fb923c" fontWeight="600">First descent</text>
+                    </>
+                  );
+                })()}
 
                 {/* Start dot */}
                 <circle cx="0" cy={startY} r="3" fill="#14b8a6" stroke="#ffffff" strokeWidth="1.5" opacity="0.9" />

@@ -12,7 +12,7 @@ const SVG_W = 600;
 const SVG_H = 200;
 const Y_BOTTOM = 185;
 const Y_RANGE = 158;
-const PAD_L = 2;
+const PAD_L = 40; // left margin reserves space for y-axis labels
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -180,10 +180,13 @@ export function PeakGrowthGraph({ results, topByPeak, loading }: Props) {
                 aria-label={`Peak growth graph, ${results.length} numbers charted, highest peak ${formatLargeNumberTitle(maxPeak)}`}
               >
                 {/* Grid lines */}
+                {/* Left margin separator */}
+                <line x1={PAD_L} y1="0" x2={PAD_L} y2={Y_BOTTOM} stroke="currentColor" strokeOpacity="0.06" strokeWidth="1" />
+
                 {gridLines.map(({ log, y, label }) => (
                   <g key={log}>
                     <line
-                      x1="0"
+                      x1={PAD_L}
                       y1={y}
                       x2={SVG_W}
                       y2={y}
@@ -191,13 +194,14 @@ export function PeakGrowthGraph({ results, topByPeak, loading }: Props) {
                       strokeOpacity="0.07"
                       strokeWidth="1"
                     />
-                    <text x="4" y={y + 4} fontSize="7.5" fill="currentColor" opacity="0.4">
+                    {/* Labels are right-aligned in the left margin — never overlap chart data */}
+                    <text x={PAD_L - 3} y={y + 3} fontSize="7.5" fill="currentColor" opacity="0.45" textAnchor="end">
                       {label}
                     </text>
                   </g>
                 ))}
-                <text x="4" y="11" fontSize="7" fill="currentColor" opacity="0.35">
-                  Peak (log scale)
+                <text x={PAD_L - 3} y="11" fontSize="7" fill="currentColor" opacity="0.35" textAnchor="end">
+                  log
                 </text>
 
                 {/* Area fill */}

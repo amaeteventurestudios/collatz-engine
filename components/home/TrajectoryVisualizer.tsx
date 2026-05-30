@@ -15,6 +15,7 @@ interface TrajectoryVisualizerProps {
   result: CollatzResult;
   displayLabel: string;
   helperCopy?: string | null;
+  isEstimated?: boolean;
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -25,7 +26,9 @@ type ViewMode = (typeof VIEW_MODES)[number];
 const SVG_W = 600;
 const SVG_H = 200;
 const Y_BOTTOM = 185;
-const Y_RANGE = 160;
+const Y_RANGE = 155;
+// Left margin reserves space for y-axis labels so they don't overlap chart data
+const ML = 42;
 
 // ─── SVG helpers ──────────────────────────────────────────────────────────────
 
@@ -40,13 +43,18 @@ function yLinear(val: bigint | number, peak: number): number {
   return Y_BOTTOM - (n / Math.max(peak, 1)) * Y_RANGE;
 }
 
+// Maps sequence index → x coordinate within the charting area [ML, SVG_W]
+function xFromIndex(i: number, len: number): number {
+  return ML + (i / Math.max(len - 1, 1)) * (SVG_W - ML);
+}
+
 function seqToPoints(seq: bigint[], peakValue: bigint, log: boolean): string {
   const len = seq.length;
   const peakN = Number(peakValue);
   const logPeak = Math.log10(Math.max(peakN, 2));
   return seq
     .map((val, i) => {
-      const x = (i / Math.max(len - 1, 1)) * SVG_W;
+      const x = xFromIndex(i, len);
       const y = log ? yLog(val, logPeak) : yLinear(val, peakN);
       return `${x.toFixed(1)},${y.toFixed(1)}`;
     })
@@ -284,6 +292,7 @@ export function TrajectoryVisualizer({
   result,
   displayLabel,
   helperCopy,
+  isEstimated = false,
 }: TrajectoryVisualizerProps) {
   const [activeView, setActiveView] = useState<ViewMode>("Trajectory");
   const [showOddSteps, setShowOddSteps] = useState(false);
@@ -324,20 +333,20 @@ export function TrajectoryVisualizer({
       const isOdd = val % 2n !== 0n;
       if (isOdd && !showOddSteps) continue;
       if (!isOdd && !showEvenSteps) continue;
-      const x = (i / Math.max(seq.length - 1, 1)) * SVG_W;
+      const x = xFromIndex(i, seq.length);
       const y = logScale ? yLog(val, logPeak) : yLinear(val, peakN);
       out.push({ x, y, isOdd });
     }
     return out;
   }, [seq, showOddSteps, showEvenSteps, logScale, logPeak, peakN]);
 
-  const peakX = (Math.max(peakIdx, 0) / Math.max(seq.length - 1, 1)) * SVG_W;
+  const peakX = xFromIndex(Math.max(peakIdx, 0), seq.length);
   const peakY = logScale ? yLog(result.peak_value, logPeak) : yLinear(result.peak_value, peakN);
   const startY = logScale ? yLog(result.start_number, logPeak) : yLinear(result.start_number, peakN);
 
   const descentX =
     firstDescentIdx !== null && firstDescentIdx >= 0
-      ? (firstDescentIdx / Math.max(seq.length - 1, 1)) * SVG_W
+      ? xFromIndex(firstDescentIdx, seq.length)
       : null;
   const descentY =
     firstDescentIdx !== null && firstDescentIdx >= 0
@@ -445,55 +454,73 @@ export function TrajectoryVisualizer({
                   className="block"
                   aria-label={`Collatz trajectory for n=${startTitle}, ${logScale ? "log" : "linear"} scale, ${result.steps_to_1} steps`}
                 >
+                  {/* Left margin separator (faint) */}
+                  <line x1={ML} y1="0" x2={ML} y2={Y_BOTTOM} stroke="currentColor" strokeOpacity="0.06" strokeWidth="1" />
+
+                  {/* Grid lines span full chart area; labels live in the left margin */}
                   {gridLines.map(({ v, y }) => (
-                    <line key={v} x1="0" y1={y} x2={SVG_W} y2={y} stroke="currentColor" strokeOpacity="0.07" strokeWidth="1" />
+                    <line key={v} x1={ML} y1={y} x2={SVG_W} y2={y} stroke="currentColor" strokeOpacity="0.07" strokeWidth="1" />
                   ))}
                   {gridLines.map(({ v, y, label }) => (
-                    <text key={v} x="4" y={y + 4} fontSize="8" fill="currentColor" opacity="0.4">{label}</text>
+                    <text key={v} x={ML - 3} y={y + 3} fontSize="7.5" fill="currentColor" opacity="0.45" textAnchor="end">{label}</text>
                   ))}
-                  <text x="4" y="12" fontSize="7" fill="currentColor" opacity="0.35">
-                    Value ({logScale ? "log" : "linear"})
+                  <text x={ML - 3} y="11" fontSize="7" fill="currentColor" opacity="0.35" textAnchor="end">
+                    {logScale ? "log" : "lin"}
                   </text>
 
-                  <polyline points={`0,${Y_BOTTOM} ${points} ${SVG_W},${Y_BOTTOM}`} fill="url(#trailFill)" stroke="none" />
+                  <polyline points={`${ML},${Y_BOTTOM} ${points} ${SVG_W},${Y_BOTTOM}`} fill="url(#trailFill)" stroke="none" />
                   <polyline points={points} fill="none" stroke="url(#trailLine)" strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round" />
 
                   {stepDots.map((d, i) => (
                     <circle key={i} cx={d.x} cy={d.y} r="2" fill={d.isOdd ? "#a855f7" : "#0ea5e9"} opacity="0.65" />
                   ))}
 
-                  {showFirstDescent && descentX !== null && descentY !== null && (
-                    <>
-                      <circle cx={descentX} cy={descentY} r="4" fill="#fb923c" stroke="#ffffff" strokeWidth="1.5" opacity="0.9" />
-                      <text x={descentX + 6} y={descentY - 4} fontSize="7" fill="#f97316" fontWeight="600">First descent</text>
-                    </>
-                  )}
+                  {showFirstDescent && descentX !== null && descentY !== null && (() => {
+                    const lx = Math.min(descentX + 6, SVG_W - 60);
+                    const ly = Math.max(descentY - 5, 10);
+                    return (
+                      <>
+                        <circle cx={descentX} cy={descentY} r="4" fill="#fb923c" stroke="#ffffff" strokeWidth="1.5" opacity="0.9" />
+                        <rect x={lx} y={ly - 8} width="54" height="11" rx="2" fill="#0f172a" fillOpacity="0.72" />
+                        <text x={lx + 3} y={ly} fontSize="7.5" fill="#fb923c" fontWeight="600">First descent</text>
+                      </>
+                    );
+                  })()}
 
-                  {showPeaks && (
-                    <>
-                      <circle cx={peakX} cy={peakY} r="4" fill="#facc15" stroke="#ffffff" strokeWidth="1.5" opacity="0.9" />
-                      <line x1={peakX} y1={peakY + 5} x2={peakX} y2={Y_BOTTOM} stroke="#facc15" strokeOpacity="0.15" strokeWidth="1" strokeDasharray="3 3" />
-                      <rect x={peakX + 6} y={peakY - 3} width="62" height="14" rx="3" fill="#facc15" fillOpacity="0.15" />
-                      <text x={peakX + 9} y={peakY + 7} fontSize="8.5" fill="#ca8a04" fontWeight="600">
-                        Peak: {peakDisplay}
-                        <title>{peakTitle}</title>
-                      </text>
-                    </>
-                  )}
+                  {showPeaks && (() => {
+                    // Clamp peak label so it doesn't overflow right edge
+                    const labelW = 68;
+                    const labelX = Math.min(peakX + 7, SVG_W - labelW - 4);
+                    return (
+                      <>
+                        <circle cx={peakX} cy={peakY} r="4" fill="#facc15" stroke="#ffffff" strokeWidth="1.5" opacity="0.9" />
+                        <line x1={peakX} y1={peakY + 5} x2={peakX} y2={Y_BOTTOM} stroke="#facc15" strokeOpacity="0.15" strokeWidth="1" strokeDasharray="3 3" />
+                        <rect x={labelX} y={peakY - 4} width={labelW} height="15" rx="3" fill="#0f172a" fillOpacity="0.72" />
+                        <text x={labelX + 4} y={peakY + 7} fontSize="8.5" fill="#fbbf24" fontWeight="600">
+                          Peak: {peakDisplay}
+                          <title>{peakTitle}</title>
+                        </text>
+                      </>
+                    );
+                  })()}
 
-                  <circle cx="0" cy={startY} r="3" fill="#14b8a6" stroke="#ffffff" strokeWidth="1.5" opacity="0.9" />
-                  <text x="4" y={startY - 4} fontSize="8" fill="#14b8a6" fontWeight="600">
+                  {/* Start dot — positioned at ML, not 0 */}
+                  <circle cx={ML} cy={startY} r="3" fill="#14b8a6" stroke="#ffffff" strokeWidth="1.5" opacity="0.9" />
+                  {/* Start label: dark rect background, placed above the dot */}
+                  <rect x={ML + 5} y={startY - 14} width="56" height="12" rx="2" fill="#0f172a" fillOpacity="0.72" />
+                  <text x={ML + 8} y={startY - 5} fontSize="8" fill="#2dd4bf" fontWeight="600">
                     n={startDisplay}
                     <title>{startTitle}</title>
                   </text>
                   <circle cx={SVG_W} cy={Y_BOTTOM} r="3" fill="#22c55e" stroke="#ffffff" strokeWidth="1.5" opacity="0.9" />
 
+                  {/* Step axis labels — offset from ML */}
                   {[0, 20, 40, 60, 80, 100, result.steps_to_1]
                     .filter((s, i, arr) => s <= result.steps_to_1 && arr.indexOf(s) === i)
                     .map((s) => (
-                      <text key={s} x={(s / Math.max(result.steps_to_1, 1)) * SVG_W} y={SVG_H - 2} fontSize="8" fill="currentColor" opacity="0.35">{s}</text>
+                      <text key={s} x={ML + (s / Math.max(result.steps_to_1, 1)) * (SVG_W - ML)} y={SVG_H - 2} fontSize="8" fill="currentColor" opacity="0.35">{s}</text>
                     ))}
-                  <text x={SVG_W / 2} y={SVG_H - 2} fontSize="8" fill="currentColor" opacity="0.3" textAnchor="middle">Step</text>
+                  <text x={ML + (SVG_W - ML) / 2} y={SVG_H - 2} fontSize="8" fill="currentColor" opacity="0.3" textAnchor="middle">Step</text>
 
                   <defs>
                     <linearGradient id="trailLine" x1="0%" y1="0%" x2="100%" y2="0%">
@@ -508,8 +535,13 @@ export function TrajectoryVisualizer({
                   </defs>
                 </svg>
 
-                <div className="absolute right-3 top-2">
-                  <span className="rounded-full bg-teal-500/15 px-2.5 py-1 text-[10px] font-semibold text-teal-500 dark:text-teal-300">
+                <div className="absolute right-3 top-2 flex flex-col items-end gap-1">
+                  {isEstimated && (
+                    <span className="rounded-full bg-cyan-500/20 px-2.5 py-1 text-[10px] font-semibold text-cyan-400">
+                      Estimated Live Trajectory
+                    </span>
+                  )}
+                  <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${isEstimated ? "bg-slate-800/80 text-slate-400" : "bg-teal-500/15 text-teal-500 dark:text-teal-300"}`}>
                     {displayLabel}
                   </span>
                 </div>
@@ -542,6 +574,9 @@ export function TrajectoryVisualizer({
             title={`peak ${peakTitle}`}
           >
             {displayLabel} · {result.steps_to_1} steps · peak {peakDisplay}
+            {isEstimated && (
+              <> · <span className="text-cyan-600 dark:text-cyan-500">Estimated from live engine rate. Not catalog-verified.</span></>
+            )}
           </p>
         </div>
       </div>

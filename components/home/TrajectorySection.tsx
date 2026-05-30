@@ -17,8 +17,8 @@ const MODE_BUTTONS: { mode: DisplayMode; label: string; hint: string }[] = [
   },
   {
     mode: "current_batch",
-    label: "Current Batch",
-    hint: "Sample from the batch currently being processed",
+    label: "Estimated Live",
+    hint: "Browser-estimated live trajectory from the current engine position",
   },
   {
     mode: "longest_record",
@@ -35,7 +35,7 @@ const MODE_BUTTONS: { mode: DisplayMode; label: string; hint: string }[] = [
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function TrajectorySection() {
-  const { mode, setMode, result, label, helperCopy, loading, error } =
+  const { mode, setMode, result, label, helperCopy, loading, error, isEstimated } =
     useCollatzSelectedTrajectory();
 
   return (
@@ -65,6 +65,11 @@ export function TrajectorySection() {
             </div>
 
             <div className="flex min-h-[1.5rem] flex-wrap items-center justify-center gap-2 md:justify-end">
+              {isEstimated && (
+                <span className="rounded-full bg-cyan-500/15 px-2.5 py-1 font-mono text-[10px] font-semibold text-cyan-600 dark:text-cyan-400">
+                  Estimated Live
+                </span>
+              )}
               <span className={`font-mono text-[10px] text-slate-400 dark:text-slate-500 ${loading ? "" : "invisible"}`}>
                 Loading...
               </span>
@@ -84,6 +89,7 @@ export function TrajectorySection() {
         result={result}
         displayLabel={label}
         helperCopy={helperCopy}
+        isEstimated={isEstimated}
       />
 
       {/* ── Sequence Trace ────────────────────────────────────────────────── */}

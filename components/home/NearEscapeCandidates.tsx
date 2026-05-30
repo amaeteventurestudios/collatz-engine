@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useDashboardData } from "@/hooks/useDashboardData";
 import type { DashboardNearEscape } from "@/app/api/collatz/dashboard/route";
+import { computeCollatzSummary } from "@/lib/collatz/engine";
 import { Modal } from "@/components/ui/Modal";
 import { PanelHelp } from "@/components/ui/PanelHelp";
 import { formatLargeNumberTitle } from "@/lib/collatz/format";
@@ -363,26 +364,111 @@ function RankedRow({ candidate, rank }: { candidate: Candidate; rank: number }) 
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
+// ── Browser-side candidate generation ────────────────────────────────────────
+// Computes Collatz summaries for a small window around the estimated engine
+// position. Display-only — never written to Supabase, never used for records.
+
+const BROWSER_WINDOW = 12; // numbers before + after estimated position
+const BROWSER_REFRESH_MS = 10_000;
+
+function computeBrowserCandidates(estimatedN: number): Candidate[] {
+  if (estimatedN <= 1) return [];
+  const start = Math.max(2, estimatedN - BROWSER_WINDOW);
+  const end = estimatedN + BROWSER_WINDOW;
+  const candidates: Candidate[] = [];
+  for (let n = start; n <= end; n++) {
+    try {
+      const s = computeCollatzSummary(n);
+      const peak = Number(s.peak_value);
+      const ratio = n > 0 ? peak / n : 0;
+      const flags: LiveFlag[] = [];
+      if (ratio > 50) flags.push("high_peak_ratio");
+      if (s.steps_to_1 > 150) flags.push("long_path");
+      candidates.push({ n, steps: s.steps_to_1, peak, ratio, flags, createdAt: null });
+    } catch {
+      // skip problematic values
+    }
+  }
+  return candidates.sort((a, b) => b.ratio - a.ratio).slice(0, 5);
+}
+
 export function NearEscapeCandidates() {
   const { data } = useDashboardData();
   const [tab, setTab] = useState<SortTab>("peak_ratio");
   const [modalOpen, setModalOpen] = useState(false);
   const [now, setNow] = useState(() => new Date());
+  const [browserCandidates, setBrowserCandidates] = useState<Candidate[]>([]);
+  const [browserRefreshedAt, setBrowserRefreshedAt] = useState<Date | null>(null);
+  const [lastBrowserN, setLastBrowserN] = useState<number>(0);
 
-  // Refresh the "last refreshed" label every 10 s to stay in sync with dashboard poll
-  useMemo(() => {
-    const id = typeof window !== "undefined"
-      ? window.setInterval(() => setNow(new Date()), 10_000)
-      : null;
-    return () => { if (id !== null) window.clearInterval(id); };
+  // Clock for refreshed-label display
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(new Date()), 10_000);
+    return () => window.clearInterval(id);
   }, []);
+
+  // Estimation params ref — keeps interval callback current without re-creating it
+  const estimateRef = useRef({
+    backendN: 0,
+    rate: 0 as number | null | undefined,
+    generatedAt: null as Date | null,
+    running: false,
+  });
+
+  // Keep ref in sync with latest dashboard data
+  const backendN = Number(
+    data?.engineState?.current_number ??
+    (Number(data?.engineState?.last_checked_number ?? 0) + 1),
+  );
+  const rate = data?.engineState?.numbers_per_second;
+  const generatedAtStr = data?.generatedAt ?? null;
+  const generatedAt = useMemo(
+    () => (generatedAtStr ? new Date(generatedAtStr) : null),
+    [generatedAtStr],
+  );
+  const engineRunning = data?.engineState?.current_status === "running";
+
+  useEffect(() => {
+    estimateRef.current = {
+      backendN,
+      rate,
+      generatedAt,
+      running: engineRunning,
+    };
+  }, [backendN, rate, generatedAt, engineRunning]);
+
+  // 10-second interval generates browser candidates from estimated position
+  useEffect(() => {
+    function refresh() {
+      const { backendN: base, rate: r, generatedAt: ga, running } = estimateRef.current;
+      let estimatedN = base;
+      if (running && r && r > 0 && ga) {
+        const elapsed = Math.max(0, (Date.now() - ga.getTime()) / 1000);
+        estimatedN = Math.round(base + r * elapsed);
+      }
+      if (estimatedN <= 1) return;
+      const candidates = computeBrowserCandidates(estimatedN);
+      setBrowserCandidates(candidates);
+      setBrowserRefreshedAt(new Date());
+      setLastBrowserN(estimatedN);
+    }
+    refresh();
+    const id = window.setInterval(refresh, BROWSER_REFRESH_MS);
+    return () => window.clearInterval(id);
+  }, []); // reads from ref
 
   const lastRefreshedAt = data ? new Date(data.generatedAt) : null;
 
-  // Derive candidate sets from dashboard near-escapes (already ranked by ratio server-side)
-  const allCandidates = useMemo(
+  // Use dashboard candidates when available; fall back to browser-generated ones
+  const dashboardCandidates = useMemo(
     () => (data?.nearEscapes ?? []).map(fromDashboard),
     [data],
+  );
+  const isEstimatedDisplay = dashboardCandidates.length === 0;
+
+  const allCandidates = useMemo(
+    () => (isEstimatedDisplay ? browserCandidates : dashboardCandidates),
+    [isEstimatedDisplay, browserCandidates, dashboardCandidates],
   );
   const peakCandidates = useMemo(
     () => [...allCandidates].sort((a, b) => b.ratio - a.ratio),
@@ -414,9 +500,10 @@ export function NearEscapeCandidates() {
   // All verified numbers in the Collatz catalog reach 1 by definition
   const allReachOne = true;
   const rangeInfo = getRangeInfo(allCandidates);
-  const refreshedLabel = formatAge(lastRefreshedAt, now);
+  const refreshedLabel = formatAge(isEstimatedDisplay ? browserRefreshedAt : lastRefreshedAt, now);
   const hasCandidates = peakCandidates.length > 0;
-  const hasMore = allForModal.length > TOP_DISPLAY;
+  // Don't show "View all" modal for browser-generated estimated candidates (only 5 max)
+  const hasMore = !isEstimatedDisplay && allForModal.length > TOP_DISPLAY;
 
   return (
     <section id="near-escape" className="live-stable scroll-mt-20 px-4 pb-10 sm:pb-14">
@@ -428,26 +515,44 @@ export function NearEscapeCandidates() {
             <div className="min-w-0 max-w-3xl">
               <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
                 <h2 className="text-base font-bold text-slate-50 tracking-tight">
-                  Near-Escape Candidates
+                  {isEstimatedDisplay
+                    ? "Estimated Live Near-Escape Candidates"
+                    : "Near-Escape Candidates"}
                 </h2>
+                {isEstimatedDisplay && (
+                  <span className="rounded-full bg-cyan-500/15 px-2.5 py-1 font-mono text-[10px] font-semibold text-cyan-400">
+                    Visualization Only
+                  </span>
+                )}
                 <PanelHelp
                   title="Near-Escape Candidates"
-                  description="Highlights numbers that climb unusually high or take unusually long before reaching 1. This is a visualization label only, not a mathematical claim."
+                  description={
+                    isEstimatedDisplay
+                      ? "Generated locally from the estimated engine position. These are live visualization candidates, not verified catalog records. No database query is made for this panel."
+                      : "Highlights numbers that climb unusually high or take unusually long before reaching 1. This is a visualization label only, not a mathematical claim."
+                  }
                   align="left"
                 />
               </div>
+              {isEstimatedDisplay && lastBrowserN > 0 && (
+                <p className="mt-1 text-[11px] text-cyan-600 dark:text-cyan-500">
+                  Generated locally from the estimated engine position. These are live visualization candidates, not verified catalog records.
+                </p>
+              )}
               <p className="mt-1 text-xs text-slate-400">
-                Numbers with unusually high peak ratios or long trajectories from the live catalog
+                {isEstimatedDisplay
+                  ? `Browser-computed window around estimated n=~${lastBrowserN > 0 ? lastBrowserN.toLocaleString("en-US") : "…"}`
+                  : "Numbers with unusually high peak ratios or long trajectories from the live catalog"}
               </p>
               <div className="mt-1.5 flex min-h-[2.5rem] flex-wrap items-center justify-center gap-2 text-[10px] text-slate-500 sm:justify-start">
                 <span className="flex items-center justify-center gap-1">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 motion-safe:animate-pulse" />
-                  LIVE
+                  <span className={`h-1.5 w-1.5 rounded-full motion-safe:animate-pulse ${isEstimatedDisplay ? "bg-cyan-400" : "bg-emerald-400"}`} />
+                  {isEstimatedDisplay ? "ESTIMATED" : "LIVE"}
                 </span>
                 <span>·</span>
                 <span>Refreshed {refreshedLabel}</span>
                 <span>·</span>
-                <span>Refresh cadence: 10s</span>
+                <span>Refresh cadence: {isEstimatedDisplay ? "10s" : "10s"}</span>
                 <span>·</span>
                 <span>
                   Ranked by: <span className="text-teal-400">
@@ -633,8 +738,12 @@ export function NearEscapeCandidates() {
             </p>
             <p className="text-center text-[10px] text-slate-500">
               {hasCandidates
-                ? `Showing top ${tableRows.length} of ${allCandidates.length} candidates by ${tab === "long_path" ? "path length" : "peak ratio"} from the live verified catalog.${allReachOne ? " All displayed candidates reach 1." : ""}`
-                : "Candidates flagged by peak ratio > 50× or trajectory length > 150 steps"}
+                ? isEstimatedDisplay
+                  ? `Estimated candidates from browser-computed window around n=~${lastBrowserN.toLocaleString("en-US")}. Visualization only — not catalog-verified.`
+                  : `Showing top ${tableRows.length} of ${allCandidates.length} candidates by ${tab === "long_path" ? "path length" : "peak ratio"} from the live verified catalog.${allReachOne ? " All displayed candidates reach 1." : ""}`
+                : isEstimatedDisplay
+                  ? "Waiting for estimated engine position. No database query is being made for this panel."
+                  : "Candidates flagged by peak ratio > 50× or trajectory length > 150 steps"}
             </p>
             <p className="text-[10px] text-slate-500">
               <span className="flex items-center justify-center gap-1.5">
