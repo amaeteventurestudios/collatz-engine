@@ -8,7 +8,6 @@ import { StoppingTimeGraph } from "@/components/collatz/StoppingTimeGraph";
 import { OddEvenTransitionGraph } from "@/components/collatz/OddEvenTransitionGraph";
 import {
   AllTimeEngineRecords,
-  RecordBreakerTimeline,
   RecordLeaderboards,
 } from "@/components/collatz/RecordBreakerTimeline";
 
@@ -20,7 +19,7 @@ export function TrajectoryIntelligenceSection() {
     topBySteps,
     topByPeak,
     loading: analyticsLoading,
-  } = useCollatzAnalyticsData(500, 100);
+  } = useCollatzAnalyticsData(500, 25);
 
   return (
     <>
@@ -36,11 +35,6 @@ export function TrajectoryIntelligenceSection() {
         loading={analyticsLoading}
       />
       <OddEvenTransitionGraph result={result} loading={trajectoryLoading} />
-      <RecordBreakerTimeline
-        topBySteps={topBySteps}
-        topByPeak={topByPeak}
-        loading={analyticsLoading}
-      />
       <AllTimeEngineRecords />
       <RecordLeaderboards
         topBySteps={topBySteps}

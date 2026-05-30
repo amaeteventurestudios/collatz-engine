@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { PanelHelp } from "@/components/ui/PanelHelp";
-import { useCollatzLiveState } from "@/hooks/useCollatzLiveState";
+import { useDashboardData } from "@/hooks/useDashboardData";
 import {
   formatDurationApprox,
   formatLargeNumber,
@@ -39,7 +39,8 @@ function milestoneTitle(value: number): string {
 }
 
 export function MilestoneFeed() {
-  const { state, loading, error } = useCollatzLiveState(5_000);
+  const { data, loading, error } = useDashboardData();
+  const state = data?.engineState ?? null;
 
   const verified = state?.total_numbers_checked ?? state?.last_checked_number ?? 0;
   const throughput = state?.numbers_per_second ?? 0;

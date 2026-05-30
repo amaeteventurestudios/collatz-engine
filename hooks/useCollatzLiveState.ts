@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { getEngineState } from "@/lib/collatz/store";
 import type { EngineState } from "@/lib/collatz/store";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -60,7 +59,9 @@ function deriveHealth(
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
-const DEFAULT_POLL_MS = 2_000;
+// Poll the cached dashboard API — never the Supabase anon client directly.
+// Server caches responses for 10 s, so many browser tabs share one DB round-trip.
+const DEFAULT_POLL_MS = 10_000;
 
 export function useCollatzLiveState(
   pollMs: number = DEFAULT_POLL_MS,
@@ -77,9 +78,11 @@ export function useCollatzLiveState(
 
     async function poll() {
       try {
-        const data = await getEngineState();
+        const res = await fetch("/api/collatz/dashboard");
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const json = await res.json();
         if (!mountedRef.current) return;
-        setState(data);
+        setState((json.engineState as EngineState) ?? null);
         setError(null);
       } catch (err: unknown) {
         if (!mountedRef.current) return;

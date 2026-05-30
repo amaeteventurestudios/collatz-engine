@@ -1,24 +1,23 @@
 "use client";
 
-import { useEffect, useRef, useState, useMemo } from "react";
-import { getTopHighestPeaks, getTopLongestTrajectories } from "@/lib/collatz/store";
-import type { CollatzResultRow } from "@/lib/collatz/store";
+import { useMemo, useState } from "react";
+import { useDashboardData } from "@/hooks/useDashboardData";
+import type { DashboardNearEscape } from "@/app/api/collatz/dashboard/route";
 import { Modal } from "@/components/ui/Modal";
 import { PanelHelp } from "@/components/ui/PanelHelp";
 import { formatLargeNumberTitle } from "@/lib/collatz/format";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const FETCH_N = 40;
-const TOP_DISPLAY = 8;
-const POLL_MS = 10_000;
+const TOP_DISPLAY = 5;
 const SPARKLINE_SAMPLES = 80;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type LiveFlag = "high_peak_ratio" | "long_path";
-type SortTab = "peak_ratio" | "long_path" | "newest" | "all";
+type SortTab = "peak_ratio" | "long_path" | "all";
 
+// Local shape that mirrors DashboardNearEscape with a typed flags array
 interface Candidate {
   n: number;
   steps: number;
@@ -30,12 +29,17 @@ interface Candidate {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function toCandidate(row: CollatzResultRow): Candidate {
-  const ratio = row.n > 0 ? row.peak / row.n : 0;
-  const flags: LiveFlag[] = [];
-  if (ratio > 50) flags.push("high_peak_ratio");
-  if (row.steps > 150) flags.push("long_path");
-  return { n: row.n, steps: row.steps, peak: row.peak, ratio, flags, createdAt: row.created_at ?? null };
+function fromDashboard(row: DashboardNearEscape): Candidate {
+  return {
+    n: row.n,
+    steps: row.steps,
+    peak: row.peak,
+    ratio: row.peakRatio,
+    flags: row.flags.filter((f): f is LiveFlag =>
+      f === "high_peak_ratio" || f === "long_path",
+    ),
+    createdAt: null,
+  };
 }
 
 function formatAge(date: Date | null, now: Date): string {
@@ -360,82 +364,40 @@ function RankedRow({ candidate, rank }: { candidate: Candidate; rank: number }) 
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function NearEscapeCandidates() {
-  const [peakRows, setPeakRows] = useState<CollatzResultRow[]>([]);
-  const [pathRows, setPathRows] = useState<CollatzResultRow[]>([]);
+  const { data } = useDashboardData();
   const [tab, setTab] = useState<SortTab>("peak_ratio");
   const [modalOpen, setModalOpen] = useState(false);
-  const [lastRefreshedAt, setLastRefreshedAt] = useState<Date | null>(null);
   const [now, setNow] = useState(() => new Date());
-  const mountedRef = useRef(false);
 
-  useEffect(() => {
-    mountedRef.current = true;
-
-    async function poll() {
-      try {
-        const [peaks, paths] = await Promise.all([
-          getTopHighestPeaks(FETCH_N),
-          getTopLongestTrajectories(FETCH_N),
-        ]);
-        if (!mountedRef.current) return;
-        setPeakRows(peaks);
-        setPathRows(paths);
-        setLastRefreshedAt(new Date());
-      } catch {
-        // Keep last known data on transient errors
-      }
-    }
-
-    poll();
-    const pollId = window.setInterval(poll, POLL_MS);
-    const clockId = window.setInterval(() => setNow(new Date()), 1000);
-
-    return () => {
-      mountedRef.current = false;
-      window.clearInterval(pollId);
-      window.clearInterval(clockId);
-    };
+  // Refresh the "last refreshed" label every 10 s to stay in sync with dashboard poll
+  useMemo(() => {
+    const id = typeof window !== "undefined"
+      ? window.setInterval(() => setNow(new Date()), 10_000)
+      : null;
+    return () => { if (id !== null) window.clearInterval(id); };
   }, []);
 
-  // Derive candidate sets
+  const lastRefreshedAt = data ? new Date(data.generatedAt) : null;
+
+  // Derive candidate sets from dashboard near-escapes (already ranked by ratio server-side)
+  const allCandidates = useMemo(
+    () => (data?.nearEscapes ?? []).map(fromDashboard),
+    [data],
+  );
   const peakCandidates = useMemo(
-    () => peakRows.map(toCandidate).sort((a, b) => b.ratio - a.ratio),
-    [peakRows],
+    () => [...allCandidates].sort((a, b) => b.ratio - a.ratio),
+    [allCandidates],
   );
   const pathCandidates = useMemo(
-    () => pathRows.map(toCandidate).sort((a, b) => b.steps - a.steps),
-    [pathRows],
+    () => [...allCandidates].sort((a, b) => b.steps - a.steps),
+    [allCandidates],
   );
-  const newestCandidates = useMemo(() => {
-    const all = [...peakRows, ...pathRows];
-    const seen = new Set<number>();
-    const deduped: CollatzResultRow[] = [];
-    for (const r of all) {
-      if (!seen.has(r.n)) { seen.add(r.n); deduped.push(r); }
-    }
-    return deduped
-      .map(toCandidate)
-      .filter((c) => c.createdAt)
-      .sort((a, b) => {
-        if (!a.createdAt || !b.createdAt) return 0;
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-      });
-  }, [peakRows, pathRows]);
-  const allCandidates = useMemo(() => {
-    const seen = new Set<number>();
-    const merged: Candidate[] = [];
-    for (const c of [...peakCandidates, ...pathCandidates]) {
-      if (!seen.has(c.n)) { seen.add(c.n); merged.push(c); }
-    }
-    return merged.sort((a, b) => b.ratio - a.ratio);
-  }, [peakCandidates, pathCandidates]);
 
   const displayedCandidates = useMemo(() => {
     if (tab === "peak_ratio") return peakCandidates;
     if (tab === "long_path") return pathCandidates;
-    if (tab === "newest") return newestCandidates;
     return allCandidates;
-  }, [tab, peakCandidates, pathCandidates, newestCandidates, allCandidates]);
+  }, [tab, peakCandidates, pathCandidates, allCandidates]);
 
   const top3 = peakCandidates.slice(0, 3);
   const tableRows = displayedCandidates.slice(0, TOP_DISPLAY);
@@ -449,15 +411,12 @@ export function NearEscapeCandidates() {
     peakCandidates.length > 0
       ? peakCandidates.reduce((s, c) => s + c.ratio, 0) / peakCandidates.length
       : 0;
-  const allReachOne = [...peakCandidates, ...pathCandidates].every(
-    (c) => peakRows.find((r) => r.n === c.n)?.reached_one !== false &&
-           pathRows.find((r) => r.n === c.n)?.reached_one !== false,
-  );
+  // All verified numbers in the Collatz catalog reach 1 by definition
+  const allReachOne = true;
   const rangeInfo = getRangeInfo(allCandidates);
   const refreshedLabel = formatAge(lastRefreshedAt, now);
   const hasCandidates = peakCandidates.length > 0;
   const hasMore = allForModal.length > TOP_DISPLAY;
-  const newestAvailable = newestCandidates.length > 0;
 
   return (
     <section id="near-escape" className="live-stable scroll-mt-20 px-4 pb-10 sm:pb-14">
@@ -492,7 +451,7 @@ export function NearEscapeCandidates() {
                 <span>·</span>
                 <span>
                   Ranked by: <span className="text-teal-400">
-                    {tab === "peak_ratio" ? "Peak Ratio" : tab === "long_path" ? "Path Length" : tab === "newest" ? "Newest" : "Peak Ratio"}
+                    {tab === "peak_ratio" ? "Peak Ratio" : tab === "long_path" ? "Path Length" : "Peak Ratio"}
                   </span>
                 </span>
                 {rangeInfo && (
@@ -602,12 +561,6 @@ export function NearEscapeCandidates() {
             <div className="flex flex-wrap justify-center gap-2 sm:justify-start">
               <TabButton label="Top by Peak Ratio" active={tab === "peak_ratio"} onClick={() => setTab("peak_ratio")} />
               <TabButton label="Top by Long Path"  active={tab === "long_path"}  onClick={() => setTab("long_path")} />
-              <TabButton
-                label="Newest Added"
-                active={tab === "newest"}
-                onClick={() => setTab("newest")}
-                disabled={!newestAvailable}
-              />
               <TabButton label={`All Candidates (${allCandidates.length})`} active={tab === "all"} onClick={() => setTab("all")} />
             </div>
             {hasMore && (

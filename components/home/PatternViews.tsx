@@ -20,8 +20,8 @@ type PatternView = (typeof PATTERN_VIEWS)[number];
 const COLS = 20;
 const ROWS = 8;
 const MIN_FOR_HEATMAP = 40;
-const POLL_MS = 10_000;
-const SAMPLE_SIZE = 500;
+const POLL_MS = 30_000;
+const SAMPLE_SIZE = 200;
 
 // ─── Heatmap builders ─────────────────────────────────────────────────────────
 

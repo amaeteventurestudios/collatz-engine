@@ -24,7 +24,7 @@ export interface CollatzAnalyticsData {
   error: string | null;
 }
 
-const POLL_MS = 5_000;
+const POLL_MS = 30_000;
 
 export function useCollatzAnalyticsData(
   chartLimit = 500,

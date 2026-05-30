@@ -1,17 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import {
-  getEngineState,
-  getTopLongestTrajectories,
-  getTopHighestPeaks,
-} from "@/lib/collatz/store";
-import type { EngineState, CollatzResultRow } from "@/lib/collatz/store";
+import { useDashboardData } from "@/hooks/useDashboardData";
+import type { DashboardRecord } from "@/app/api/collatz/dashboard/route";
+import type { EngineState } from "@/lib/collatz/store";
 import { PanelHelp } from "@/components/ui/PanelHelp";
 import { formatLargeNumber, formatLargeNumberTitle } from "@/lib/collatz/format";
 import { EVENT_COLORS } from "@/lib/collatz/event-visuals";
-
-const POLL_MS = 5_000;
 
 function fmt(n: number | null | undefined) {
   return Number(n ?? 0).toLocaleString("en-US");
@@ -31,26 +25,29 @@ interface RecordCard {
 
 function buildRecords(
   engineState: EngineState | null,
-  topTrajectory: CollatzResultRow | null,
-  topPeaks: CollatzResultRow[],
+  longestTrajectories: DashboardRecord[],
+  highestPeaks: DashboardRecord[],
 ): RecordCard[] {
+  const topTrajectory = longestTrajectories[0] ?? null;
+  const topPeak = highestPeaks[0] ?? null;
+
   let bestRatio = { ratio: 0, n: 0 };
-  for (const row of topPeaks) {
-    const ratio = row.n > 0 ? row.peak / row.n : 0;
-    if (ratio > bestRatio.ratio) bestRatio = { ratio, n: row.n };
+  for (const row of highestPeaks) {
+    const ratio = row.startingNumber > 0 ? row.peakValue / row.startingNumber : 0;
+    if (ratio > bestRatio.ratio) bestRatio = { ratio, n: row.startingNumber };
   }
 
   return [
     {
       icon: "⏱",
       label: "Longest Path",
-      value: engineState
-        ? `${fmt(engineState.longest_steps)} steps`
-        : topTrajectory
-          ? `${fmt(topTrajectory.steps)} steps`
+      value: topTrajectory
+        ? `${fmt(topTrajectory.steps)} steps`
+        : engineState
+          ? `${fmt(engineState.longest_steps)} steps`
           : "Pending",
       sub: topTrajectory
-        ? `n = ${fmt(topTrajectory.n)}`
+        ? `n = ${fmt(topTrajectory.startingNumber)}`
         : engineState
           ? "All-time engine record"
           : "Awaiting dataset growth",
@@ -61,11 +58,9 @@ function buildRecords(
     {
       icon: "▲",
       label: "Highest Peak",
-      value: topPeaks[0] ? formatLargeNumber(topPeaks[0].peak) : "Pending",
-      valueTitle: topPeaks[0] ? formatLargeNumberTitle(topPeaks[0].peak) : undefined,
-      sub: topPeaks[0]
-        ? `n = ${fmt(topPeaks[0].n)}`
-        : "Awaiting dataset growth",
+      value: topPeak ? formatLargeNumber(topPeak.peakValue) : "Pending",
+      valueTitle: topPeak ? formatLargeNumberTitle(topPeak.peakValue) : undefined,
+      sub: topPeak ? `n = ${fmt(topPeak.startingNumber)}` : "Awaiting dataset growth",
       color: EVENT_COLORS.amber.text,
       ring: EVENT_COLORS.amber.ring,
       bg: EVENT_COLORS.amber.bg,
@@ -127,40 +122,12 @@ function buildRecords(
 }
 
 export function RecordsPreview() {
-  const [engineState, setEngineState] = useState<EngineState | null>(null);
-  const [topTrajectory, setTopTrajectory] = useState<CollatzResultRow | null>(null);
-  const [topPeaks, setTopPeaks] = useState<CollatzResultRow[]>([]);
-  const mountedRef = useRef(false);
+  const { data } = useDashboardData();
+  const engineState = data?.engineState ?? null;
+  const longestTrajectories = data?.records.longestTrajectories ?? [];
+  const highestPeaks = data?.records.highestPeaks ?? [];
 
-  useEffect(() => {
-    mountedRef.current = true;
-
-    async function poll() {
-      try {
-        const [state, trajectories, peaks] = await Promise.all([
-          getEngineState(),
-          getTopLongestTrajectories(1),
-          getTopHighestPeaks(20),
-        ]);
-        if (!mountedRef.current) return;
-        setEngineState(state);
-        setTopTrajectory(trajectories[0] ?? null);
-        setTopPeaks(peaks);
-      } catch {
-        // Keep last known data on transient errors
-      }
-    }
-
-    poll();
-    const pollId = window.setInterval(poll, POLL_MS);
-
-    return () => {
-      mountedRef.current = false;
-      window.clearInterval(pollId);
-    };
-  }, []);
-
-  const records = buildRecords(engineState, topTrajectory, topPeaks);
+  const records = buildRecords(engineState, longestTrajectories, highestPeaks);
   const totalChecked = engineState?.total_numbers_checked ?? 0;
 
   return (

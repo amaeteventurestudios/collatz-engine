@@ -2,6 +2,9 @@ import { getClient, jsonError, runtimeSeconds, secondsSince } from "@/lib/collat
 import { readEngineState } from "@/lib/collatz/verify";
 
 export const dynamic = "force-dynamic";
+// 10-second CDN / server cache; browsers may also serve stale for 5 s.
+// Admin reads still work — the 10 s window is fine for observability.
+const CACHE_HEADER = "public, s-maxage=10, stale-while-revalidate=5";
 
 export async function GET() {
   try {
@@ -38,7 +41,7 @@ export async function GET() {
       heartbeatAgeSeconds: secondsSince(state.worker_heartbeat_at),
       runtimeSeconds: runtimeSeconds(state.started_at),
       startedAt: state.started_at ?? null,
-    });
+    }, { headers: { "Cache-Control": CACHE_HEADER } });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unable to read live state.";
     return jsonError(message, 500);

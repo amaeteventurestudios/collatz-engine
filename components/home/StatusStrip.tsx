@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { supabase } from "@/lib/supabase";
+import { useMemo } from "react";
+import { useCollatzLiveState } from "@/hooks/useCollatzLiveState";
 import { LocalTimeCard } from "@/components/home/TimeStatusCards";
 import { PanelHelp } from "@/components/ui/PanelHelp";
-import type { EngineState } from "@/lib/collatz/store";
 import { formatLargeNumber, formatLargeNumberTitle } from "@/lib/collatz/format";
 import { EVENT_COLORS } from "@/lib/collatz/event-visuals";
 
@@ -57,71 +56,13 @@ function StatusCard({
 }
 
 export function StatusStrip() {
-  const [state, setState] = useState<EngineState | null>(null);
-  const [now, setNow] = useState(() => Date.now());
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const { state, runtimeSeconds, error: loadError } = useCollatzLiveState();
 
-  // Ref so the custom event listener can trigger an immediate reload
-  // without recreating intervals.
-  const reloadRef = useRef<(() => void) | null>(null);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    async function loadEngineState() {
-      if (!supabase) {
-        if (isMounted) setLoadError("Catalog unavailable");
-        return;
-      }
-
-      const { data, error } = await supabase
-        .from("collatz_engine_state")
-        .select("*")
-        .eq("id", "main")
-        .single();
-
-      if (!isMounted) return;
-
-      if (error) {
-        console.error("[Collatz Engine] Failed to load dashboard state", error);
-        setLoadError("Unable to load live catalog");
-        return;
-      }
-
-      setState(data as EngineState);
-      setLoadError(null);
-    }
-
-    // Expose for the event listener below
-    reloadRef.current = loadEngineState;
-
-    loadEngineState();
-
-    const refreshInterval = window.setInterval(loadEngineState, 5_000);
-    const clockInterval = window.setInterval(() => setNow(Date.now()), 1_000);
-
-    return () => {
-      isMounted = false;
-      reloadRef.current = null;
-      window.clearInterval(refreshInterval);
-      window.clearInterval(clockInterval);
-    };
-  }, []);
-
-  // Listen for the custom event (dispatched by admin tools after a successful batch run)
-  // so the public dashboard refreshes immediately without waiting for the 5 s poll.
-  useEffect(() => {
-    function handleStateUpdated() {
-      reloadRef.current?.();
-    }
-    window.addEventListener("collatz-state-updated", handleStateUpdated);
-    return () => window.removeEventListener("collatz-state-updated", handleStateUpdated);
-  }, []);
-
-  const runtime = useMemo(() => {
-    void now; // Re-evaluate every second because `now` updates every second
-    return formatRuntime(state?.started_at ?? null);
-  }, [state?.started_at, now]);
+  const runtime = useMemo(
+    () => formatRuntime(state?.started_at ?? null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [state?.started_at, runtimeSeconds],
+  );
 
   const currentNumber = Number(state?.last_checked_number ?? 0) + 1;
   const status = state?.current_status ?? "offline";
