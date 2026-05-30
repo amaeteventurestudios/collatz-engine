@@ -20,6 +20,7 @@
     "collatz:verify-sequential": "tsx scripts/verify-sequential.ts",
     "collatz:verify-worker-lock": "tsx scripts/verify-worker-lock.ts",
     "collatz:repair-duplicate-worker-incident": "tsx scripts/repair-duplicate-worker-incident.ts",
+    "records:verify-permanent": "tsx scripts/verify-permanent-records.ts",
     "observatory:verify-settings": "tsx scripts/verify-ai-observatory-settings.ts"
   },
   "dependencies": {
