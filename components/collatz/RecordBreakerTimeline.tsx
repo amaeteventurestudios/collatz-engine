@@ -6,12 +6,7 @@ import { EventColorLegend } from "@/components/collatz/EventColorLegend";
 import { formatLargeNumber, formatLargeNumberTitle } from "@/lib/collatz/format";
 import { EVENT_COLORS, getEventVisualStyle } from "@/lib/collatz/event-visuals";
 import type { AnalyticsRecordRow } from "@/hooks/useCollatzAnalyticsData";
-import {
-  getAllTimeRecords,
-  getEngineState,
-  type CollatzAllTimeRecordRow,
-  type EngineState,
-} from "@/lib/collatz/store";
+import type { CollatzAllTimeRecordRow, EngineState } from "@/lib/collatz/store";
 
 type RecordType = "trajectory" | "peak";
 
@@ -32,6 +27,13 @@ interface RecordTimelineProps {
   topBySteps: AnalyticsRecordRow[];
   topByPeak: AnalyticsRecordRow[];
   loading?: boolean;
+}
+
+interface AllTimeRecordsSnapshot {
+  ok: true;
+  engineState: EngineState | null;
+  longestRecords: CollatzAllTimeRecordRow[];
+  peakRecords: CollatzAllTimeRecordRow[];
 }
 
 function fmtNumber(value: number): string {
@@ -266,6 +268,19 @@ function AllTimeRecordsTable({
   );
 }
 
+async function getAllTimeRecordsSnapshot(): Promise<AllTimeRecordsSnapshot | null> {
+  const res = await fetch("/api/collatz/all-time-records?limit=10", {
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    console.error("[Collatz Engine] all-time records snapshot failed", await res.text());
+    return null;
+  }
+
+  return (await res.json()) as AllTimeRecordsSnapshot;
+}
+
 export function AllTimeEngineRecords() {
   const [engineState, setEngineState] = useState<EngineState | null>(null);
   const [longestRows, setLongestRows] = useState<CollatzAllTimeRecordRow[]>([]);
@@ -280,15 +295,12 @@ export function AllTimeEngineRecords() {
 
     async function poll() {
       try {
-        const [state, longest, peaks] = await Promise.all([
-          getEngineState(),
-          getAllTimeRecords("longest_trajectory", 10),
-          getAllTimeRecords("highest_peak", 10),
-        ]);
+        const snapshot = await getAllTimeRecordsSnapshot();
         if (!mountedRef.current) return;
-        setEngineState(state);
-        setLongestRows(longest);
-        setPeakRows(peaks);
+        if (!snapshot) return;
+        setEngineState(snapshot.engineState);
+        setLongestRows(snapshot.longestRecords);
+        setPeakRows(snapshot.peakRecords);
       } finally {
         if (mountedRef.current) setLoading(false);
       }
