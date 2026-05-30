@@ -30,7 +30,7 @@ const catalogMilestones = [
 
 function fmtRate(value: number | null | undefined): string {
   if (!value || value <= 0) return "Pending";
-  return `${value.toFixed(1)}/sec`;
+  return `~${value.toFixed(1)}/sec`;
 }
 
 function milestoneTitle(value: number): string {
@@ -163,14 +163,19 @@ export function MilestoneFeed() {
                   </p>
                   <p className="live-value mt-2 font-mono text-2xl font-bold text-slate-100">
                     {milestoneState.secondsRemaining != null && milestoneState.target
-                      ? formatDurationApprox(milestoneState.secondsRemaining)
+                      ? `~${formatDurationApprox(milestoneState.secondsRemaining)}`
                       : "Pending"}
                   </p>
                   <p className="mt-1 text-xs text-slate-500">
                     {milestoneState.secondsRemaining != null && milestoneState.target
-                      ? `estimated at current throughput · ${fmtRate(throughput)}`
+                      ? `estimated from live progress · ${fmtRate(throughput)}`
                       : "estimated once throughput is available"}
                   </p>
+                  {milestoneState.secondsRemaining != null && milestoneState.target && (
+                    <p className="mt-1 text-[10px] text-slate-600">
+                      Based on sustained live progress. Actual time may vary.
+                    </p>
+                  )}
                 </div>
               </div>
 
