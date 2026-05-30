@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Activity,
   CheckCircle2,
@@ -17,11 +17,12 @@ import {
   Zap,
   type LucideIcon,
 } from "lucide-react";
-import { getRecentActivityLogs } from "@/lib/collatz/store";
 import { PanelHelp } from "@/components/ui/PanelHelp";
 import { EventColorLegend } from "@/components/collatz/EventColorLegend";
 import { useCollatzLiveState } from "@/hooks/useCollatzLiveState";
+import { useSafePolling } from "@/hooks/useSafePolling";
 import { formatLargeNumber } from "@/lib/collatz/format";
+import { COLLATZ_POLL_MS } from "@/lib/collatz/cache-policy";
 import {
   EVENT_COLORS,
   getActivityLogEventKind,
@@ -32,9 +33,9 @@ import {
   type EventVisualStyle,
 } from "@/lib/collatz/event-visuals";
 import type { ActivityLogRow } from "@/lib/collatz/store";
+import type { DashboardEvent } from "@/app/api/collatz/dashboard/route";
 
-const FEED_LIMIT = 20;
-const REFRESH_CADENCE_MS = 30_000;
+const REFRESH_CADENCE_MS = COLLATZ_POLL_MS.PUBLIC_DASHBOARD;
 
 type ChipTone = "default" | "source" | "verified";
 
@@ -497,6 +498,21 @@ function EmptyState() {
   );
 }
 
+function dashboardEventToActivityLog(event: DashboardEvent): ActivityLogRow {
+  return {
+    id: event.id ?? undefined,
+    event_type: event.eventType,
+    message: event.message,
+    batch_start: event.batchStart,
+    batch_end: event.batchEnd,
+    numbers_processed: event.numbersProcessed,
+    duration_ms: event.durationMs,
+    numbers_per_second: event.numbersPerSecond,
+    metadata: event.metadata ?? {},
+    created_at: event.createdAt ?? undefined,
+  };
+}
+
 export function DiscoveryFeed() {
   const [logs, setLogs] = useState<ActivityLogRow[]>([]);
   const logsRef = useRef<ActivityLogRow[]>([]);
@@ -507,45 +523,48 @@ export function DiscoveryFeed() {
   const [now, setNow] = useState(() => new Date());
   const { state } = useCollatzLiveState(REFRESH_CADENCE_MS);
 
-  useEffect(() => {
-    let isMounted = true;
+  const load = useCallback(async (signal: AbortSignal) => {
+    const res = await fetch("/api/collatz/dashboard", { signal });
+    const json = await res.json();
+    if (!res.ok || !json.ok) throw new Error("Public discovery feed unavailable.");
+    const rows = ((json.meaningfulEvents ?? []) as DashboardEvent[]).map(dashboardEventToActivityLog);
 
-    async function load() {
-      const rows = await getRecentActivityLogs(FEED_LIMIT);
-      if (!isMounted) return;
-
-      const currentLogs = logsRef.current;
-      if (currentLogs.length === 0 || sameLogList(rows, currentLogs)) {
+    const currentLogs = logsRef.current;
+    if (currentLogs.length === 0 || sameLogList(rows, currentLogs)) {
+      logsRef.current = rows;
+      setLogs(rows);
+      setPendingLogs(null);
+      setPendingCount(0);
+    } else {
+      const newRows = countNewLogs(rows, currentLogs);
+      if (newRows > 0) {
+        setPendingLogs(rows);
+        setPendingCount(newRows);
+      } else {
         logsRef.current = rows;
         setLogs(rows);
         setPendingLogs(null);
         setPendingCount(0);
-      } else {
-        const newRows = countNewLogs(rows, currentLogs);
-        if (newRows > 0) {
-          setPendingLogs(rows);
-          setPendingCount(newRows);
-        } else {
-          logsRef.current = rows;
-          setLogs(rows);
-          setPendingLogs(null);
-          setPendingCount(0);
-        }
       }
-
-      setLoaded(true);
-      setLastRefreshedAt(new Date());
     }
 
-    load();
-    const interval = window.setInterval(load, REFRESH_CADENCE_MS);
+    setLoaded(true);
+    setLastRefreshedAt(json.generatedAt ? new Date(json.generatedAt as string) : new Date());
+  }, []);
+
+  useSafePolling({
+    intervalMs: REFRESH_CADENCE_MS,
+    minIntervalMs: 60_000,
+    staleAfterMs: REFRESH_CADENCE_MS * 2,
+    poll: load,
+  });
+
+  useEffect(() => {
     // 30s precision is enough: relativeTime only changes at minute boundaries
     // for entries > 60s old, and "just now" is stable for the first 60s.
     // Reducing from 1s to 30s eliminates per-second re-renders of all 20 cards.
     const clock = window.setInterval(() => setNow(new Date()), 30_000);
     return () => {
-      isMounted = false;
-      window.clearInterval(interval);
       window.clearInterval(clock);
     };
   }, []);
@@ -597,17 +616,17 @@ export function DiscoveryFeed() {
               </h2>
               <PanelHelp
                 title="Discovery Feed"
-                description="Shows verified activity from the live Collatz engine, including batch starts, completed checks, record events, and integrity updates. The feed is based on persisted engine activity, not simulated events."
+                description="Shows public-safe scientific milestones from the Collatz engine, such as record trajectories, high peaks, verified milestones, and Observatory insights."
                 align="left"
               />
               <PanelHelp
-                title="Activity Logs"
-                description="Displays recent engine events, state changes, record updates, and system activity so the exploration remains transparent."
+                title="Public Milestones"
+                description="Operational logs, admin actions, worker incidents, and raw errors are intentionally kept inside authenticated admin views."
                 align="left"
               />
             </div>
             <p className="mx-auto mt-3 max-w-2xl text-base leading-relaxed text-slate-300 lg:mx-0">
-              Verified live events from the autonomous Collatz engine.
+              Public-safe computational milestones from the autonomous Collatz engine.
             </p>
           </div>
 

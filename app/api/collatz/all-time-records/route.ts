@@ -1,5 +1,11 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { jsonError, parseLimit } from "@/lib/collatz/api";
+import { COLLATZ_CACHE_TTL_MS } from "@/lib/collatz/cache-policy";
+import {
+  getCachedRead,
+  logReadCacheDiagnostic,
+  makeReadCacheHeaders,
+} from "@/lib/collatz/read-cache";
 import type {
   AllTimeRecordCategory,
   CollatzAllTimeRecordRow,
@@ -7,13 +13,15 @@ import type {
 } from "@/lib/collatz/store";
 
 export const dynamic = "force-dynamic";
-export const revalidate = 0;
 
 const RECORD_FIELDS =
   "id, record_category, starting_number, steps, peak_value, rank_scope, source, source_batch_start, source_batch_end, discovered_at, created_at, updated_at";
 
 const BACKFILL_STATE_FIELDS =
-  "id, status, start_number, target_number, current_number, processed_count, top_n_limit, started_at, completed_at, last_heartbeat_at, error_message, updated_at";
+  "id, status, start_number, target_number, current_number, processed_count, top_n_limit, started_at, completed_at, last_heartbeat_at, updated_at";
+
+const ENGINE_STATE_FIELDS =
+  "id, started_at, last_checked_number, current_number, total_numbers_checked, highest_peak, longest_steps, current_status, updated_at, last_batch_size, last_batch_duration_ms, numbers_per_second, last_run_at, worker_heartbeat_at, last_error";
 
 function getServiceClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
@@ -48,7 +56,7 @@ function coerceRecord(row: Record<string, unknown>): CollatzAllTimeRecordRow {
 async function readEngineState(client: SupabaseClient): Promise<EngineState | null> {
   const { data, error } = await client
     .from("collatz_engine_state")
-    .select("*")
+    .select(ENGINE_STATE_FIELDS)
     .eq("id", "main")
     .single();
 
@@ -56,7 +64,14 @@ async function readEngineState(client: SupabaseClient): Promise<EngineState | nu
     throw new Error(`Unable to read engine state: ${error.message}`);
   }
 
-  return (data ?? null) as EngineState | null;
+  const state = (data ?? null) as EngineState | null;
+  if (!state) return null;
+  return {
+    ...state,
+    last_error: state.last_error
+      ? "Operational error reported. Details are available to administrators."
+      : null,
+  };
 }
 
 async function readRecords(
@@ -91,35 +106,43 @@ async function readBackfillState(client: SupabaseClient) {
   return data ?? null;
 }
 
+async function readAllTimeRecordsPayload(limit: number) {
+  const client = getServiceClient();
+  const [engineState, longestRecords, peakRecords, backfillState] = await Promise.all([
+    readEngineState(client),
+    readRecords(client, "longest_trajectory", limit),
+    readRecords(client, "highest_peak", limit),
+    readBackfillState(client),
+  ]);
+
+  return {
+    ok: true,
+    generatedAt: new Date().toISOString(),
+    engineState,
+    longestRecords,
+    peakRecords,
+    backfillState,
+  };
+}
+
 export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const { limit, error } = parseLimit(searchParams.get("limit"), 10, 100);
+  if (error) return jsonError(error, 400);
+
+  const startedAt = Date.now();
+  const ttlMs = COLLATZ_CACHE_TTL_MS.PUBLIC_ALL_TIME_RECORDS;
+
   try {
-    const { searchParams } = new URL(request.url);
-    const { limit, error } = parseLimit(searchParams.get("limit"), 10, 100);
-    if (error) return jsonError(error, 400);
-
-    const client = getServiceClient();
-    const [engineState, longestRecords, peakRecords, backfillState] = await Promise.all([
-      readEngineState(client),
-      readRecords(client, "longest_trajectory", limit),
-      readRecords(client, "highest_peak", limit),
-      readBackfillState(client),
-    ]);
-
-    return Response.json(
-      {
-        ok: true,
-        generatedAt: new Date().toISOString(),
-        engineState,
-        longestRecords,
-        peakRecords,
-        backfillState,
-      },
-      {
-        headers: {
-          "Cache-Control": "no-store, max-age=0",
-        },
-      },
+    const { data, meta } = await getCachedRead(
+      `collatz:all-time-records:v1:limit=${limit}`,
+      ttlMs,
+      () => readAllTimeRecordsPayload(limit),
     );
+    logReadCacheDiagnostic("api/collatz/all-time-records", meta, startedAt, data);
+    return Response.json(data, {
+      headers: makeReadCacheHeaders(meta, { ttlMs, visibility: "public" }),
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unable to read all-time records.";
     return jsonError(message, 500);

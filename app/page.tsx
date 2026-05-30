@@ -33,7 +33,6 @@ import { HowItWorks } from "@/components/home/HowItWorks";
 import { AIObservatorySection } from "@/components/ai/AIObservatorySection";
 import { PatternViews } from "@/components/home/PatternViews";
 import { NearEscapeCandidates } from "@/components/home/NearEscapeCandidates";
-import { LatestMeaningfulEvents } from "@/components/home/LatestMeaningfulEvents";
 import { AboutSection } from "@/components/home/AboutSection";
 import { DataMethodology } from "@/components/home/DataMethodology";
 import { PriorWork } from "@/components/home/PriorWork";
@@ -59,7 +58,6 @@ export default function HomePage() {
           <PatternViews />
           <NearEscapeCandidates />
         </CollatzVisualizationProvider>
-        <LatestMeaningfulEvents />
         <AboutSection />
         <DataMethodology />
         <PriorWork />

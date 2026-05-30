@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { supabase } from "@/lib/supabase";
+import { COLLATZ_POLL_MS } from "@/lib/collatz/cache-policy";
+import { useSafePolling } from "@/hooks/useSafePolling";
 import { deriveVisualTrajectory, type CollatzVisualSourceRow } from "./collatzTransforms";
 import type {
   VisualStudioDataResult,
@@ -25,10 +26,15 @@ interface RawEngineState {
   highest_peak?: unknown;
 }
 
-const POLL_MS = 8_000;
-const ENGINE_ID = "main";
+const POLL_MS = COLLATZ_POLL_MS.PUBLIC_VISUAL_STUDIO;
 const MAX_FETCH_LIMIT = 1_000;
-const QUERY_TIMEOUT_MS = 7_000;
+
+interface VisualStudioApiResponse {
+  ok: boolean;
+  rows?: Record<string, unknown>[];
+  engineState?: RawEngineState | null;
+  error?: string;
+}
 
 function numeric(value: unknown): number {
   if (typeof value === "number" && Number.isFinite(value)) return value;
@@ -106,19 +112,6 @@ function normalizeEngineState(
   };
 }
 
-function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    const timeoutId = window.setTimeout(() => {
-      reject(new Error("Visual Studio data request timed out."));
-    }, timeoutMs);
-
-    promise
-      .then((value) => resolve(value))
-      .catch((err: unknown) => reject(err))
-      .finally(() => window.clearTimeout(timeoutId));
-  });
-}
-
 export function useVisualStudioData({
   visiblePathCount,
   liveUpdates,
@@ -134,48 +127,24 @@ export function useVisualStudioData({
 
   const fetchLimit = Math.min(MAX_FETCH_LIMIT, Math.max(50, visiblePathCount));
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (signal?: AbortSignal) => {
     const requestId = requestIdRef.current + 1;
     requestIdRef.current = requestId;
-
-    if (!supabase) {
-      setTrajectories([]);
-      setEngineRaw(null);
-      setDataSource("unconfigured");
-      setError(null);
-      setLoading(false);
-      setLastSyncAt(new Date());
-      return;
-    }
+    setLoading(true);
 
     try {
-      const [resultResponse, engineResponse] = await withTimeout(
-        Promise.all([
-          supabase
-            .from("collatz_results")
-            .select("n, steps, peak, reached_one, created_at")
-            .order("n", { ascending: false })
-            .limit(fetchLimit),
-          supabase
-            .from("collatz_engine_state")
-            .select(
-              "current_status, total_numbers_checked, last_checked_number, worker_heartbeat_at, longest_steps, highest_peak",
-            )
-            .eq("id", ENGINE_ID)
-            .maybeSingle(),
-        ]),
-        QUERY_TIMEOUT_MS,
-      );
+      const res = await fetch(`/api/collatz/visual-studio?limit=${fetchLimit}`, { signal });
+      const json = (await res.json()) as VisualStudioApiResponse;
 
       if (requestIdRef.current !== requestId) return;
 
-      if (resultResponse.error) {
-        throw new Error(resultResponse.error.message);
+      if (!res.ok || !json.ok) {
+        throw new Error(json.error ?? "Unable to load Visual Studio data right now.");
       }
 
       const nextSyncAt = new Date();
-      const nextEngine = (engineResponse.data ?? null) as RawEngineState | null;
-      const rows = ((resultResponse.data ?? []) as Record<string, unknown>[])
+      const nextEngine = (json.engineState ?? null) as RawEngineState | null;
+      const rows = (json.rows ?? [])
         .map(normalizeResultRow)
         .filter((row): row is CollatzVisualSourceRow => row !== null);
 
@@ -194,8 +163,9 @@ export function useVisualStudioData({
       setDataSource("connected");
       setError(null);
     } catch (err) {
+      if (signal?.aborted) return;
       if (requestIdRef.current !== requestId) return;
-      setDataSource("error");
+      setDataSource(err instanceof Error && err.message.includes("unavailable") ? "unconfigured" : "error");
       setError(
         err instanceof Error
           ? err.message
@@ -207,15 +177,25 @@ export function useVisualStudioData({
   }, [fetchLimit, includeFullValues]);
 
   useEffect(() => {
-    const initialPollId = window.setTimeout(fetchData, 0);
-    const pollId = liveUpdates ? window.setInterval(fetchData, POLL_MS) : null;
+    const controller = new AbortController();
+    const initialPollId = window.setTimeout(() => {
+      void fetchData(controller.signal);
+    }, 0);
 
     return () => {
       window.clearTimeout(initialPollId);
-      if (pollId) window.clearInterval(pollId);
+      controller.abort();
       requestIdRef.current += 1;
     };
-  }, [fetchData, liveUpdates]);
+  }, [fetchData]);
+
+  useSafePolling({
+    enabled: liveUpdates,
+    intervalMs: POLL_MS,
+    minIntervalMs: 60_000,
+    staleAfterMs: POLL_MS * 2,
+    poll: fetchData,
+  });
 
   const engine = useMemo(
     () => normalizeEngineState(engineRaw, lastSyncAt),

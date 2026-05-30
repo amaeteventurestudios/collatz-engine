@@ -1,14 +1,16 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { COLLATZ_POLL_MS, clampClientPollMs } from "@/lib/collatz/cache-policy";
+import { useSafePolling } from "@/hooks/useSafePolling";
 import type { EngineState } from "@/lib/collatz/store";
 
 // Match useDashboardData so both hooks share one effective poll interval.
 function resolvePollMs(): number {
-  const raw = process.env.NEXT_PUBLIC_PUBLIC_DASHBOARD_POLL_MS;
-  const n = raw ? parseInt(raw, 10) : NaN;
-  if (!Number.isFinite(n) || n < 30_000) return 60_000;
-  return Math.min(n, 300_000);
+  return clampClientPollMs(
+    process.env.NEXT_PUBLIC_PUBLIC_DASHBOARD_POLL_MS,
+    COLLATZ_POLL_MS.PUBLIC_DASHBOARD,
+  );
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -83,41 +85,32 @@ export function useCollatzLiveState(
   const [error, setError] = useState<string | null>(null);
   const [now, setNow] = useState<number>(0);
   const [payloadGeneratedAt, setPayloadGeneratedAt] = useState<Date | null>(null);
-  const mountedRef = useRef(false);
 
   // ── Data polling ────────────────────────────────────────────────────────────
-  useEffect(() => {
-    mountedRef.current = true;
-
-    async function poll() {
-      try {
-        const res = await fetch("/api/collatz/dashboard");
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const json = await res.json();
-        if (!mountedRef.current) return;
-        setState((json.engineState as EngineState) ?? null);
-        setPayloadGeneratedAt(
-          json.generatedAt ? new Date(json.generatedAt as string) : null,
-        );
-        setError(null);
-      } catch (err: unknown) {
-        if (!mountedRef.current) return;
-        setError(
-          err instanceof Error ? err.message : "Failed to load engine state",
-        );
-      } finally {
-        if (mountedRef.current) setLoading(false);
-      }
+  const poll = useCallback(async (signal: AbortSignal) => {
+    try {
+      const res = await fetch("/api/collatz/dashboard", { signal });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      setState((json.engineState as EngineState) ?? null);
+      setPayloadGeneratedAt(
+        json.generatedAt ? new Date(json.generatedAt as string) : null,
+      );
+      setError(null);
+    } catch (err: unknown) {
+      if (signal.aborted) return;
+      setError(err instanceof Error ? err.message : "Failed to load engine state");
+    } finally {
+      setLoading(false);
     }
+  }, []);
 
-    poll();
-    const pollId = window.setInterval(poll, pollMs);
-
-    return () => {
-      mountedRef.current = false;
-      window.clearInterval(pollId);
-    };
-  }, [pollMs]);
+  useSafePolling({
+    intervalMs: pollMs,
+    minIntervalMs: 60_000,
+    staleAfterMs: pollMs * 2,
+    poll,
+  });
 
   // ── Clock tick (drives live runtime + heartbeat age) ────────────────────────
   // setNow is called inside `tick` (not directly in the effect body) to satisfy

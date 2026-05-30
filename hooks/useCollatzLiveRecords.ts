@@ -1,11 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import {
-  getTopLongestTrajectories,
-  getTopHighestPeaks,
-} from "@/lib/collatz/store";
-import type { CollatzResultRow } from "@/lib/collatz/store";
+import { useCallback, useState } from "react";
+import { COLLATZ_POLL_MS } from "@/lib/collatz/cache-policy";
+import { useSafePolling } from "@/hooks/useSafePolling";
+import type { CollatzAllTimeRecordRow, CollatzResultRow } from "@/lib/collatz/store";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -22,7 +20,24 @@ export interface LiveRecordsResult {
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
-const DEFAULT_POLL_MS = 5_000;
+const DEFAULT_POLL_MS = COLLATZ_POLL_MS.PUBLIC_RECORDS;
+
+interface AllTimeRecordsApiResponse {
+  ok: boolean;
+  longestRecords?: CollatzAllTimeRecordRow[];
+  peakRecords?: CollatzAllTimeRecordRow[];
+  error?: string;
+}
+
+function toResultRow(row: CollatzAllTimeRecordRow): CollatzResultRow {
+  return {
+    n: row.starting_number,
+    steps: row.steps,
+    peak: row.peak_value,
+    reached_one: true,
+    created_at: row.discovered_at ?? row.created_at ?? null,
+  };
+}
 
 export function useCollatzLiveRecords(
   limit = 10,
@@ -32,39 +47,31 @@ export function useCollatzLiveRecords(
   const [topPeaks, setTopPeaks] = useState<CollatzResultRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const mountedRef = useRef(false);
 
-  useEffect(() => {
-    mountedRef.current = true;
-
-    async function poll() {
-      try {
-        const [trajectories, peaks] = await Promise.all([
-          getTopLongestTrajectories(limit),
-          getTopHighestPeaks(limit),
-        ]);
-        if (!mountedRef.current) return;
-        setTopTrajectories(trajectories);
-        setTopPeaks(peaks);
-        setError(null);
-      } catch (err: unknown) {
-        if (!mountedRef.current) return;
-        setError(
-          err instanceof Error ? err.message : "Failed to load records",
-        );
-      } finally {
-        if (mountedRef.current) setLoading(false);
+  const poll = useCallback(async (signal: AbortSignal) => {
+    try {
+      const res = await fetch(`/api/collatz/all-time-records?limit=${limit}`, { signal });
+      const json = (await res.json()) as AllTimeRecordsApiResponse;
+      if (!res.ok || !json.ok) {
+        throw new Error(json.error ?? "Failed to load records");
       }
+      setTopTrajectories((json.longestRecords ?? []).map(toResultRow));
+      setTopPeaks((json.peakRecords ?? []).map(toResultRow));
+      setError(null);
+    } catch (err: unknown) {
+      if (signal.aborted) return;
+      setError(err instanceof Error ? err.message : "Failed to load records");
+    } finally {
+      setLoading(false);
     }
+  }, [limit]);
 
-    poll();
-    const pollId = window.setInterval(poll, pollMs);
+  const polling = useSafePolling({
+    intervalMs: pollMs,
+    minIntervalMs: 60_000,
+    staleAfterMs: Math.max(pollMs * 2, 120_000),
+    poll,
+  });
 
-    return () => {
-      mountedRef.current = false;
-      window.clearInterval(pollId);
-    };
-  }, [limit, pollMs]);
-
-  return { topTrajectories, topPeaks, loading, error };
+  return { topTrajectories, topPeaks, loading, error: error ?? polling.error };
 }

@@ -96,6 +96,7 @@ export interface ActivityLogEntry {
   created_at: string;
   numbers_processed?: number | null;
   numbers_per_second?: number | null;
+  metadata?: Record<string, unknown> | null;
 }
 
 export interface HealthPanel {

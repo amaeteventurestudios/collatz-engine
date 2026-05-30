@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import Link from "next/link";
 import { PanelHelp } from "@/components/ui/PanelHelp";
+import { COLLATZ_POLL_MS } from "@/lib/collatz/cache-policy";
+import { useSafePolling } from "@/hooks/useSafePolling";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -75,9 +77,9 @@ export default function ActivityLogPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [lastFetched, setLastFetched] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (signal: AbortSignal) => {
     try {
-      const res = await fetch("/api/admin/metrics", { cache: "no-store", headers: { "x-poll": "1" } });
+      const res = await fetch("/api/admin/metrics", { signal, headers: { "x-poll": "1" } });
       if (res.ok) {
         const json = await res.json();
         setEvents((json.activity ?? []) as ActivityEntry[]);
@@ -90,12 +92,12 @@ export default function ActivityLogPage() {
     }
   }, []);
 
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    void load();
-    const id = setInterval(() => void load(), 15_000);
-    return () => clearInterval(id);
-  }, [load]);
+  useSafePolling({
+    intervalMs: COLLATZ_POLL_MS.ADMIN_ACTIVITY_LOG,
+    minIntervalMs: 30_000,
+    staleAfterMs: 90_000,
+    poll: load,
+  });
 
   const filtered = events.filter((e) => {
     const type = e.event_type.toLowerCase();

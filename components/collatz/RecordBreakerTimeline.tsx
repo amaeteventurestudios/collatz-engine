@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { PanelHelp } from "@/components/ui/PanelHelp";
 import { EventColorLegend } from "@/components/collatz/EventColorLegend";
 import { formatLargeNumber, formatLargeNumberTitle } from "@/lib/collatz/format";
 import { EVENT_COLORS, getEventVisualStyle } from "@/lib/collatz/event-visuals";
+import { COLLATZ_POLL_MS } from "@/lib/collatz/cache-policy";
+import { useSafePolling } from "@/hooks/useSafePolling";
 import type { VisualizationRecordRow } from "@/hooks/useEstimatedLiveCollatz";
 import type { CollatzAllTimeRecordRow, EngineState } from "@/lib/collatz/store";
 
@@ -47,7 +49,6 @@ interface BackfillState {
   started_at: string | null;
   completed_at: string | null;
   last_heartbeat_at: string | null;
-  error_message: string | null;
 }
 
 type AllTimeDisplaySource = "engine_state" | "permanent_record";
@@ -113,7 +114,7 @@ function backfillStatusNote(state: BackfillState | null): string {
     return `Historical reconstruction paused at n = ${current} of frozen checkpoint n = ${target}.`;
   }
   if (state.status === "failed") {
-    return `Historical reconstruction failed at n = ${current}. ${state.error_message ?? "Check operator logs."}`;
+    return `Historical reconstruction paused for operator review at n = ${current}.`;
   }
   return "Historical reconstruction not started. Permanent rows currently reflect retained data and future live preservation.";
 }
@@ -418,10 +419,8 @@ function composeAllTimeDisplayRows(
   return [headlineRow, ...remainingRows].slice(0, 10);
 }
 
-async function getAllTimeRecordsSnapshot(): Promise<AllTimeRecordsSnapshot | null> {
-  const res = await fetch("/api/collatz/all-time-records?limit=10", {
-    cache: "no-store",
-  });
+async function getAllTimeRecordsSnapshot(signal: AbortSignal): Promise<AllTimeRecordsSnapshot | null> {
+  const res = await fetch("/api/collatz/all-time-records?limit=10", { signal });
 
   if (!res.ok) {
     console.error("[Collatz Engine] all-time records snapshot failed", await res.text());
@@ -453,7 +452,6 @@ export function AllTimeEngineRecords() {
   const [peakRows, setPeakRows] = useState<CollatzAllTimeRecordRow[]>([]);
   const [backfillState, setBackfillState] = useState<BackfillState | null>(null);
   const [loading, setLoading] = useState(true);
-  const mountedRef = useRef(false);
   const hasLoadedRef = useRef(false);
   const headlineLongest = longestRows[0]?.steps === engineState?.longest_steps ? longestRows[0] : null;
   const headlinePeak = peakRows[0]?.peak_value === engineState?.highest_peak ? peakRows[0] : null;
@@ -466,37 +464,32 @@ export function AllTimeEngineRecords() {
     [engineState, peakRows],
   );
 
-  useEffect(() => {
-    mountedRef.current = true;
-
-    async function poll() {
-      try {
-        const snapshot = await getAllTimeRecordsSnapshot();
-        if (!mountedRef.current) return;
-        if (!snapshot) return;
-        const shouldPreserveScroll = hasLoadedRef.current;
-        const scrollX = window.scrollX;
-        const scrollY = window.scrollY;
-        setEngineState(snapshot.engineState);
-        setLongestRows(snapshot.longestRecords);
-        setPeakRows(snapshot.peakRecords);
-        setBackfillState(snapshot.backfillState);
-        hasLoadedRef.current = true;
-        if (shouldPreserveScroll) {
-          preserveScrollAfterLivePaint(scrollX, scrollY);
-        }
-      } finally {
-        if (mountedRef.current) setLoading(false);
+  const poll = useCallback(async (signal: AbortSignal) => {
+    try {
+      const snapshot = await getAllTimeRecordsSnapshot(signal);
+      if (!snapshot) return;
+      const shouldPreserveScroll = hasLoadedRef.current;
+      const scrollX = window.scrollX;
+      const scrollY = window.scrollY;
+      setEngineState(snapshot.engineState);
+      setLongestRows(snapshot.longestRecords);
+      setPeakRows(snapshot.peakRecords);
+      setBackfillState(snapshot.backfillState);
+      hasLoadedRef.current = true;
+      if (shouldPreserveScroll) {
+        preserveScrollAfterLivePaint(scrollX, scrollY);
       }
+    } finally {
+      setLoading(false);
     }
-
-    poll();
-    const id = window.setInterval(poll, 5_000);
-    return () => {
-      mountedRef.current = false;
-      window.clearInterval(id);
-    };
   }, []);
+
+  useSafePolling({
+    intervalMs: COLLATZ_POLL_MS.PUBLIC_RECORDS,
+    minIntervalMs: 60_000,
+    staleAfterMs: COLLATZ_POLL_MS.PUBLIC_RECORDS * 2,
+    poll,
+  });
 
   return (
     <section id="all-time-records" className="live-stable scroll-mt-20 px-4 pb-10 sm:pb-14">
