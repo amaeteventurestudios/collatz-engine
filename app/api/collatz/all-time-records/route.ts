@@ -12,6 +12,9 @@ export const revalidate = 0;
 const RECORD_FIELDS =
   "id, record_category, starting_number, steps, peak_value, rank_scope, source, source_batch_start, source_batch_end, discovered_at, created_at, updated_at";
 
+const BACKFILL_STATE_FIELDS =
+  "id, status, start_number, target_number, current_number, processed_count, top_n_limit, started_at, completed_at, last_heartbeat_at, error_message, updated_at";
+
 function getServiceClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
@@ -77,6 +80,17 @@ async function readRecords(
   return ((data ?? []) as Record<string, unknown>[]).map(coerceRecord);
 }
 
+async function readBackfillState(client: SupabaseClient) {
+  const { data, error } = await client
+    .from("collatz_record_backfill_state")
+    .select(BACKFILL_STATE_FIELDS)
+    .eq("id", "main")
+    .maybeSingle();
+
+  if (error) return null;
+  return data ?? null;
+}
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -84,10 +98,11 @@ export async function GET(request: Request) {
     if (error) return jsonError(error, 400);
 
     const client = getServiceClient();
-    const [engineState, longestRecords, peakRecords] = await Promise.all([
+    const [engineState, longestRecords, peakRecords, backfillState] = await Promise.all([
       readEngineState(client),
       readRecords(client, "longest_trajectory", limit),
       readRecords(client, "highest_peak", limit),
+      readBackfillState(client),
     ]);
 
     return Response.json(
@@ -97,6 +112,7 @@ export async function GET(request: Request) {
         engineState,
         longestRecords,
         peakRecords,
+        backfillState,
       },
       {
         headers: {

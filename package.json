@@ -21,6 +21,10 @@
     "collatz:verify-worker-lock": "tsx scripts/verify-worker-lock.ts",
     "collatz:repair-duplicate-worker-incident": "tsx scripts/repair-duplicate-worker-incident.ts",
     "records:verify-permanent": "tsx scripts/verify-permanent-records.ts",
+    "records:backfill": "tsx scripts/backfill-collatz-records.ts",
+    "records:backfill:dry-run": "tsx scripts/backfill-collatz-records.ts --dry-run --start 1 --end 1000",
+    "records:backfill:status": "tsx scripts/backfill-collatz-records.ts --status",
+    "records:verify-backfill": "tsx scripts/verify-backfill-records.ts",
     "observatory:verify-settings": "tsx scripts/verify-ai-observatory-settings.ts"
   },
   "dependencies": {

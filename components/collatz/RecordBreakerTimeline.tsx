@@ -34,6 +34,20 @@ interface AllTimeRecordsSnapshot {
   engineState: EngineState | null;
   longestRecords: CollatzAllTimeRecordRow[];
   peakRecords: CollatzAllTimeRecordRow[];
+  backfillState: BackfillState | null;
+}
+
+interface BackfillState {
+  status: "idle" | "running" | "paused" | "completed" | "failed";
+  start_number: number;
+  target_number: number | null;
+  current_number: number;
+  processed_count: number;
+  top_n_limit: number;
+  started_at: string | null;
+  completed_at: string | null;
+  last_heartbeat_at: string | null;
+  error_message: string | null;
 }
 
 type AllTimeDisplaySource = "engine_state" | "permanent_record";
@@ -83,6 +97,25 @@ function formatMaybeLargeNumber(value: number | null): string {
 
 function formatMaybeLargeNumberTitle(value: number | null): string | undefined {
   return value == null ? undefined : formatLargeNumberTitle(value);
+}
+
+function backfillStatusNote(state: BackfillState | null): string {
+  if (!state) return "Historical reconstruction not started. Permanent rows currently reflect retained data and future live preservation.";
+  const target = state.target_number != null ? fmtNumber(state.target_number) : "a pending checkpoint";
+  const current = fmtNumber(state.current_number);
+  if (state.status === "completed") {
+    return `Historical rankings reconstructed through frozen checkpoint n = ${target}.`;
+  }
+  if (state.status === "running") {
+    return `Historical reconstruction in progress: processed through n = ${current} of frozen checkpoint n = ${target}.`;
+  }
+  if (state.status === "paused") {
+    return `Historical reconstruction paused at n = ${current} of frozen checkpoint n = ${target}.`;
+  }
+  if (state.status === "failed") {
+    return `Historical reconstruction failed at n = ${current}. ${state.error_message ?? "Check operator logs."}`;
+  }
+  return "Historical reconstruction not started. Permanent rows currently reflect retained data and future live preservation.";
 }
 
 function relativeTime(iso: string | null): string {
@@ -229,6 +262,7 @@ function AllTimeRecordsTable({
   const hasMissingHeadlineDetails = rows.some(
     (row) => row.displaySource === "engine_state" && row.missingDetails,
   );
+  const placeholderRows = Math.max(0, 10 - rows.length);
 
   return (
     <div className={`overflow-hidden rounded-xl border ${color.subtleBorder} bg-slate-950/30`}>
@@ -303,6 +337,16 @@ function AllTimeRecordsTable({
                 </tr>
               ))
             )}
+            {Array.from({ length: rows.length === 0 ? 9 : placeholderRows }).map((_, idx) => (
+              <tr key={`placeholder-${type}-${idx}`} aria-hidden="true">
+                <td className="px-3 py-3 text-transparent">-</td>
+                <td className="px-3 py-3 text-transparent">-</td>
+                <td className="px-3 py-3 text-transparent">-</td>
+                <td className="px-3 py-3 text-transparent">-</td>
+                <td className="px-3 py-3 text-transparent">-</td>
+                <td className="px-3 py-3 text-transparent">-</td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
@@ -388,6 +432,7 @@ export function AllTimeEngineRecords() {
   const [engineState, setEngineState] = useState<EngineState | null>(null);
   const [longestRows, setLongestRows] = useState<CollatzAllTimeRecordRow[]>([]);
   const [peakRows, setPeakRows] = useState<CollatzAllTimeRecordRow[]>([]);
+  const [backfillState, setBackfillState] = useState<BackfillState | null>(null);
   const [loading, setLoading] = useState(true);
   const mountedRef = useRef(false);
   const headlineLongest = longestRows[0]?.steps === engineState?.longest_steps ? longestRows[0] : null;
@@ -412,6 +457,7 @@ export function AllTimeEngineRecords() {
         setEngineState(snapshot.engineState);
         setLongestRows(snapshot.longestRecords);
         setPeakRows(snapshot.peakRecords);
+        setBackfillState(snapshot.backfillState);
       } finally {
         if (mountedRef.current) setLoading(false);
       }
@@ -446,11 +492,11 @@ export function AllTimeEngineRecords() {
                 Authoritative records preserved in engine state and permanent record storage.
               </p>
             </div>
-            {loading && (
-              <span className="rounded-full bg-slate-800 px-2.5 py-1 text-[10px] font-semibold text-slate-500 sm:self-start">
-                Updating...
-              </span>
-            )}
+            <span
+              className={`rounded-full bg-slate-800 px-2.5 py-1 text-[10px] font-semibold text-slate-500 sm:self-start ${loading ? "" : "invisible"}`}
+            >
+              Updating...
+            </span>
           </div>
 
           <div className="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
@@ -501,7 +547,7 @@ export function AllTimeEngineRecords() {
           </div>
 
           <p className="mt-5 rounded-lg border border-violet-400/20 bg-violet-400/10 px-3 py-2 text-center text-[11px] text-slate-300">
-            Historical top records are preserved from available retained data and future engine runs. Missing historical starting numbers are not inferred.
+            {backfillStatusNote(backfillState)} Missing historical starting numbers are not inferred.
           </p>
         </div>
       </div>
@@ -653,11 +699,11 @@ export function RecordBreakerTimeline({
                 Chronicles the engine&apos;s most notable recorded events over time.
               </p>
             </div>
-            {loading && (
-              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-400 dark:bg-slate-800 dark:text-slate-500 sm:self-start">
-                Updating...
-              </span>
-            )}
+            <span
+              className={`rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-400 dark:bg-slate-800 dark:text-slate-500 sm:self-start ${loading ? "" : "invisible"}`}
+            >
+              Updating...
+            </span>
           </div>
 
           <div className="mb-6 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
@@ -710,6 +756,8 @@ function LeaderboardTable({
   rows: AnalyticsRecordRow[];
 }) {
   const color = type === "peak" ? EVENT_COLORS.amber : EVENT_COLORS.violet;
+  const displayRows = rows.slice(0, 10);
+  const placeholderRows = Math.max(0, 10 - displayRows.length);
 
   return (
     <div className={`overflow-hidden rounded-xl border ${color.border}`}>
@@ -731,14 +779,14 @@ function LeaderboardTable({
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
-            {rows.length === 0 ? (
+            {displayRows.length === 0 ? (
               <tr>
                 <td colSpan={4} className="px-3 py-6 text-center text-slate-500 dark:text-slate-400">
                   No persisted records available yet.
                 </td>
               </tr>
             ) : (
-              rows.slice(0, 10).map((row, index) => (
+              displayRows.map((row, index) => (
                 <tr
                   key={`${type}-${row.n}`}
                   className={index === 0 ? `${color.bg}` : "bg-white dark:bg-slate-900/30"}
@@ -779,6 +827,14 @@ function LeaderboardTable({
                 </tr>
               ))
             )}
+            {Array.from({ length: displayRows.length === 0 ? 9 : placeholderRows }).map((_, index) => (
+              <tr key={`retained-placeholder-${type}-${index}`} aria-hidden="true" className="bg-white dark:bg-slate-900/30">
+                <td className="px-3 py-3 text-transparent">-</td>
+                <td className="px-3 py-3 text-transparent">-</td>
+                <td className="px-3 py-3 text-transparent">-</td>
+                <td className="px-3 py-3 text-transparent">-</td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
@@ -809,11 +865,11 @@ export function RecordLeaderboards({
                 Top retained results from the recent catalog buffer. These are not all-time records.
               </p>
             </div>
-            {loading && (
-              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-400 dark:bg-slate-800 dark:text-slate-500 sm:self-start">
-                Updating...
-              </span>
-            )}
+            <span
+              className={`rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-400 dark:bg-slate-800 dark:text-slate-500 sm:self-start ${loading ? "" : "invisible"}`}
+            >
+              Updating...
+            </span>
           </div>
 
           <div className="grid gap-5 lg:grid-cols-2">
