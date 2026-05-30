@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useCollatzLiveState } from "@/hooks/useCollatzLiveState";
 import type { HealthStatus } from "@/hooks/useCollatzLiveState";
@@ -205,6 +206,32 @@ function NoDataState({ error }: { error: string | null }) {
   );
 }
 
+// ─── Estimated position helper ────────────────────────────────────────────────
+
+/**
+ * Project the engine's current number forward from a synced baseline.
+ * Uses the backend-reported sustained rate and time elapsed since the server
+ * generated the payload (which accounts for server-side cache age too).
+ * Returns null when the estimate is not available (engine stopped, no rate, no timestamp).
+ */
+function getEstimatedN(
+  backendN: number,
+  ratePerSecond: number | null | undefined,
+  generatedAt: Date | null,
+  status: string | null | undefined,
+): number | null {
+  if (
+    status !== "running" ||
+    !ratePerSecond ||
+    !Number.isFinite(ratePerSecond) ||
+    ratePerSecond <= 0 ||
+    !generatedAt
+  )
+    return null;
+  const elapsed = Math.max(0, (Date.now() - generatedAt.getTime()) / 1000);
+  return Math.round(backendN + ratePerSecond * elapsed);
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function LiveEngineStatus() {
@@ -220,12 +247,41 @@ export function LiveEngineStatus() {
     nextBatchStart,
     nextBatchEnd,
     batchSize,
+    payloadGeneratedAt,
+    pollIntervalMs,
   } = useCollatzLiveState();
+
+  // ── Estimated position counter ─────────────────────────────────────────────
+  // A second-resolution clock drives the estimate between backend syncs.
+  // setState is only called inside the interval callback (not the effect body),
+  // so no cascading-render lint issues arise.
+  const [now, setNow] = useState<number>(() => Date.now());
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      setNow(Date.now());
+    }, 1_000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  const estimatedN = useMemo<number | null>(() => {
+    const backendN = Number(state?.last_checked_number ?? 0) + 1;
+    return getEstimatedN(
+      backendN,
+      state?.numbers_per_second,
+      payloadGeneratedAt,
+      state?.current_status,
+    );
+    // `now` is intentionally included — it drives the 1-second update cadence
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state?.last_checked_number, state?.numbers_per_second, state?.current_status, payloadGeneratedAt, now]);
 
   if (loading) return <LoadingSkeleton />;
   if (!state) return <NoDataState error={error} />;
 
   const currentN = Number(state.last_checked_number ?? 0) + 1;
+  const displayN = estimatedN !== null && estimatedN > currentN ? estimatedN : currentN;
+  const isEstimated = displayN > currentN;
+  const pollSec = Math.round(pollIntervalMs / 1000);
 
   return (
     <section className="live-stable border-y border-slate-800 bg-slate-950">
@@ -266,15 +322,31 @@ export function LiveEngineStatus() {
 
         {/* ── Primary metrics ─────────────────────────────────────────────── */}
         <div className="grid grid-cols-1 gap-px border-b border-slate-800/70 sm:grid-cols-2">
-          {/* Current n */}
+          {/* Current n — estimated between backend syncs */}
           <div className="py-6 text-center sm:pr-8 md:text-left">
-            <Label>Currently Analyzing</Label>
-            <p className="live-value mt-2 font-mono text-4xl font-bold tracking-tight text-slate-50 sm:text-5xl">
-              n = {fmtN(currentN)}
+            <Label>Current Engine Position</Label>
+            <p
+              className={`live-value mt-2 font-mono text-4xl font-bold tracking-tight sm:text-5xl ${
+                isEstimated ? EVENT_COLORS.cyan.text : "text-slate-50"
+              }`}
+            >
+              {isEstimated ? "~" : "n = "}
+              {fmtN(displayN)}
             </p>
-            <p className="mt-1.5 font-mono text-[11px] text-slate-600">
-              next integer queued for trajectory computation
-            </p>
+            {isEstimated ? (
+              <>
+                <p className="mt-1.5 font-mono text-[11px] text-slate-500">
+                  Estimated from sustained live rate. Verified position updates on sync.
+                </p>
+                <p className="mt-1 font-mono text-[10px] text-slate-600">
+                  Last verified: n = {fmtN(currentN)} · Synced with backend every {pollSec}s
+                </p>
+              </>
+            ) : (
+              <p className="mt-1.5 font-mono text-[11px] text-slate-600">
+                next integer queued for trajectory computation
+              </p>
+            )}
           </div>
 
           {/* Catalog size */}

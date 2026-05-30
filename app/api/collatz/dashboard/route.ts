@@ -1,3 +1,4 @@
+import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import type { EngineState } from "@/lib/collatz/store";
 
@@ -103,9 +104,9 @@ export async function GET() {
   // ── Serve from in-memory cache if still fresh ─────────────────────────────
   const now = Date.now();
   if (moduleCache && now < moduleCache.expiresAt) {
-    return Response.json(moduleCache.payload, {
+    return NextResponse.json(moduleCache.payload, {
       headers: {
-        "Cache-Control": `public, s-maxage=${cacheWindowSeconds}, stale-while-revalidate=${Math.floor(cacheWindowSeconds / 2)}`,
+        "Cache-Control": `public, s-maxage=${cacheWindowSeconds}, stale-while-revalidate=30`,
         "X-Cache": "HIT",
         "X-Cache-Expires-In": String(Math.ceil((moduleCache.expiresAt - now) / 1000)),
       },
@@ -114,7 +115,7 @@ export async function GET() {
 
   const client = getServiceClient();
   if (!client) {
-    return Response.json(
+    return NextResponse.json(
       { ok: false, error: "Supabase not configured" },
       {
         status: 503,
@@ -216,16 +217,16 @@ export async function GET() {
       expiresAt: Date.now() + cacheWindowMs,
     };
 
-    return Response.json(payload, {
+    return NextResponse.json(payload, {
       headers: {
-        "Cache-Control": `public, s-maxage=${cacheWindowSeconds}, stale-while-revalidate=${Math.floor(cacheWindowSeconds / 2)}`,
+        "Cache-Control": `public, s-maxage=${cacheWindowSeconds}, stale-while-revalidate=30`,
         "X-Cache": "MISS",
       },
     });
   } catch (err) {
     const message =
       err instanceof Error ? err.message : "Dashboard data unavailable.";
-    return Response.json(
+    return NextResponse.json(
       { ok: false, error: message },
       {
         status: 500,

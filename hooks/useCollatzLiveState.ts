@@ -3,6 +3,14 @@
 import { useEffect, useRef, useState } from "react";
 import type { EngineState } from "@/lib/collatz/store";
 
+// Match useDashboardData so both hooks share one effective poll interval.
+function resolvePollMs(): number {
+  const raw = process.env.NEXT_PUBLIC_PUBLIC_DASHBOARD_POLL_MS;
+  const n = raw ? parseInt(raw, 10) : NaN;
+  if (!Number.isFinite(n) || n < 30_000) return 60_000;
+  return Math.min(n, 300_000);
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type HealthStatus = "live" | "delayed" | "stalled" | "stopped" | "error";
@@ -41,6 +49,10 @@ export interface LiveEngineStateResult {
   nextBatchStart: number;
   nextBatchEnd: number;
   batchSize: number;
+  /** When the server generated the dashboard payload (accounts for server-side cache age). */
+  payloadGeneratedAt: Date | null;
+  /** Effective client-side poll interval in milliseconds. */
+  pollIntervalMs: number;
 }
 
 // ─── Health derivation ────────────────────────────────────────────────────────
@@ -60,8 +72,8 @@ function deriveHealth(
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
 // Poll the cached dashboard API — never the Supabase anon client directly.
-// Default matches the public dashboard poll interval (60 s).
-const DEFAULT_POLL_MS = 60_000;
+// Reads the same env var as useDashboardData for a consistent public refresh interval.
+const DEFAULT_POLL_MS = resolvePollMs();
 
 export function useCollatzLiveState(
   pollMs: number = DEFAULT_POLL_MS,
@@ -70,6 +82,7 @@ export function useCollatzLiveState(
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [now, setNow] = useState<number>(0);
+  const [payloadGeneratedAt, setPayloadGeneratedAt] = useState<Date | null>(null);
   const mountedRef = useRef(false);
 
   // ── Data polling ────────────────────────────────────────────────────────────
@@ -83,6 +96,9 @@ export function useCollatzLiveState(
         const json = await res.json();
         if (!mountedRef.current) return;
         setState((json.engineState as EngineState) ?? null);
+        setPayloadGeneratedAt(
+          json.generatedAt ? new Date(json.generatedAt as string) : null,
+        );
         setError(null);
       } catch (err: unknown) {
         if (!mountedRef.current) return;
@@ -155,5 +171,7 @@ export function useCollatzLiveState(
     nextBatchStart,
     nextBatchEnd,
     batchSize,
+    payloadGeneratedAt,
+    pollIntervalMs: pollMs,
   };
 }
