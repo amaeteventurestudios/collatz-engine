@@ -36,6 +36,19 @@ interface AllTimeRecordsSnapshot {
   peakRecords: CollatzAllTimeRecordRow[];
 }
 
+type AllTimeDisplaySource = "engine_state" | "permanent_record";
+
+interface AllTimeDisplayRow {
+  id: string;
+  record_category: CollatzAllTimeRecordRow["record_category"];
+  starting_number: number | null;
+  steps: number | null;
+  peak_value: number | null;
+  discovered_at?: string | null;
+  displaySource: AllTimeDisplaySource;
+  missingDetails: boolean;
+}
+
 function fmtNumber(value: number): string {
   return value.toLocaleString("en-US");
 }
@@ -58,6 +71,18 @@ function formatDate(iso: string | null | undefined): string {
     day: "numeric",
     year: "numeric",
   });
+}
+
+function formatMaybeNumber(value: number | null): string {
+  return value == null ? "not retained" : fmtNumber(value);
+}
+
+function formatMaybeLargeNumber(value: number | null): string {
+  return value == null ? "not retained" : formatLargeNumber(value);
+}
+
+function formatMaybeLargeNumberTitle(value: number | null): string | undefined {
+  return value == null ? undefined : formatLargeNumberTitle(value);
 }
 
 function relativeTime(iso: string | null): string {
@@ -198,9 +223,12 @@ function AllTimeRecordsTable({
 }: {
   title: string;
   type: RecordType;
-  rows: CollatzAllTimeRecordRow[];
+  rows: AllTimeDisplayRow[];
 }) {
   const color = type === "peak" ? EVENT_COLORS.amber : EVENT_COLORS.violet;
+  const hasMissingHeadlineDetails = rows.some(
+    (row) => row.displaySource === "engine_state" && row.missingDetails,
+  );
 
   return (
     <div className={`overflow-hidden rounded-xl border ${color.subtleBorder} bg-slate-950/30`}>
@@ -218,54 +246,129 @@ function AllTimeRecordsTable({
               <th className="px-3 py-3 font-semibold">{type === "peak" ? "Peak Value" : "Steps"}</th>
               <th className="px-3 py-3 font-semibold">{type === "peak" ? "Steps" : "Peak Value"}</th>
               <th className="px-3 py-3 font-semibold">Discovered</th>
+              <th className="px-3 py-3 font-semibold">Source</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800/70">
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-3 py-6 text-center text-slate-500">
+                <td colSpan={6} className="px-3 py-6 text-center text-slate-500">
                   No permanent records preserved yet.
                 </td>
               </tr>
             ) : (
               rows.map((row, idx) => (
-                <tr key={`${row.record_category}-${row.starting_number}`} className="hover:bg-slate-900/50">
+                <tr key={row.id} className="hover:bg-slate-900/50">
                   <td className="px-3 py-3 text-slate-500">{idx + 1}</td>
                   <td className="px-3 py-3 font-mono font-semibold text-slate-200">
-                    {fmtNumber(row.starting_number)}
+                    {formatMaybeNumber(row.starting_number)}
                   </td>
                   {type === "peak" ? (
                     <>
                       <td
                         className={`px-3 py-3 font-semibold tabular-nums ${color.text}`}
-                        title={formatLargeNumberTitle(row.peak_value)}
+                        title={formatMaybeLargeNumberTitle(row.peak_value)}
                       >
-                        {formatLargeNumber(row.peak_value)}
+                        {formatMaybeLargeNumber(row.peak_value)}
                       </td>
-                      <td className="px-3 py-3 tabular-nums text-slate-400">{fmtNumber(row.steps)}</td>
+                      <td className="px-3 py-3 tabular-nums text-slate-400">
+                        {formatMaybeNumber(row.steps)}
+                      </td>
                     </>
                   ) : (
                     <>
                       <td className={`px-3 py-3 font-semibold tabular-nums ${color.text}`}>
-                        {fmtNumber(row.steps)}
+                        {formatMaybeNumber(row.steps)}
                       </td>
                       <td
                         className="px-3 py-3 tabular-nums text-slate-400"
-                        title={formatLargeNumberTitle(row.peak_value)}
+                        title={formatMaybeLargeNumberTitle(row.peak_value)}
                       >
-                        {formatLargeNumber(row.peak_value)}
+                        {formatMaybeLargeNumber(row.peak_value)}
                       </td>
                     </>
                   )}
                   <td className="px-3 py-3 text-slate-400">{formatDate(row.discovered_at)}</td>
+                  <td className="px-3 py-3">
+                    <span
+                      className={`rounded-full border px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] ${
+                        row.displaySource === "engine_state"
+                          ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-200"
+                          : "border-slate-500/25 bg-slate-500/10 text-slate-300"
+                      }`}
+                    >
+                      {row.displaySource === "engine_state" ? "Engine State Record" : "Permanent Record"}
+                    </span>
+                  </td>
                 </tr>
               ))
             )}
           </tbody>
         </table>
       </div>
+      {hasMissingHeadlineDetails && (
+        <p className="border-t border-violet-400/20 px-4 py-3 text-[11px] leading-relaxed text-slate-400">
+          Detailed starting number for this historical record was not retained. A reconstruction backfill can restore it.
+        </p>
+      )}
     </div>
   );
+}
+
+function toPermanentDisplayRow(row: CollatzAllTimeRecordRow): AllTimeDisplayRow {
+  return {
+    id: `permanent-${row.record_category}-${row.starting_number}`,
+    record_category: row.record_category,
+    starting_number: row.starting_number,
+    steps: row.steps,
+    peak_value: row.peak_value,
+    discovered_at: row.discovered_at,
+    displaySource: "permanent_record",
+    missingDetails: false,
+  };
+}
+
+function composeAllTimeDisplayRows(
+  engineState: EngineState | null,
+  records: CollatzAllTimeRecordRow[],
+  type: RecordType,
+): AllTimeDisplayRow[] {
+  if (!engineState) return records.slice(0, 10).map(toPermanentDisplayRow);
+
+  const category = type === "peak" ? "highest_peak" : "longest_trajectory";
+  const headlineValue = type === "peak" ? engineState.highest_peak : engineState.longest_steps;
+  const matchingStoredRecord = records.find((row) =>
+    type === "peak"
+      ? row.peak_value === headlineValue
+      : row.steps === headlineValue,
+  );
+
+  const headlineRow: AllTimeDisplayRow = {
+    id: `engine-state-${category}`,
+    record_category: category,
+    starting_number: matchingStoredRecord?.starting_number ?? null,
+    steps: type === "peak" ? matchingStoredRecord?.steps ?? null : headlineValue,
+    peak_value: type === "peak" ? headlineValue : matchingStoredRecord?.peak_value ?? null,
+    discovered_at:
+      matchingStoredRecord?.discovered_at ??
+      engineState.worker_heartbeat_at ??
+      engineState.updated_at,
+    displaySource: "engine_state",
+    missingDetails:
+      matchingStoredRecord?.starting_number == null ||
+      (type === "peak" ? matchingStoredRecord?.steps == null : matchingStoredRecord?.peak_value == null),
+  };
+
+  const remainingRows = records
+    .filter((row) =>
+      matchingStoredRecord
+        ? row.record_category !== matchingStoredRecord.record_category ||
+          row.starting_number !== matchingStoredRecord.starting_number
+        : true,
+    )
+    .map(toPermanentDisplayRow);
+
+  return [headlineRow, ...remainingRows].slice(0, 10);
 }
 
 async function getAllTimeRecordsSnapshot(): Promise<AllTimeRecordsSnapshot | null> {
@@ -289,6 +392,14 @@ export function AllTimeEngineRecords() {
   const mountedRef = useRef(false);
   const headlineLongest = longestRows[0]?.steps === engineState?.longest_steps ? longestRows[0] : null;
   const headlinePeak = peakRows[0]?.peak_value === engineState?.highest_peak ? peakRows[0] : null;
+  const allTimeLongestRows = useMemo(
+    () => composeAllTimeDisplayRows(engineState, longestRows, "trajectory"),
+    [engineState, longestRows],
+  );
+  const allTimePeakRows = useMemo(
+    () => composeAllTimeDisplayRows(engineState, peakRows, "peak"),
+    [engineState, peakRows],
+  );
 
   useEffect(() => {
     mountedRef.current = true;
@@ -380,12 +491,12 @@ export function AllTimeEngineRecords() {
             <AllTimeRecordsTable
               title="Top 10 All-Time Longest Trajectories"
               type="trajectory"
-              rows={longestRows}
+              rows={allTimeLongestRows}
             />
             <AllTimeRecordsTable
               title="Top 10 All-Time Highest Peaks"
               type="peak"
-              rows={peakRows}
+              rows={allTimePeakRows}
             />
           </div>
 
