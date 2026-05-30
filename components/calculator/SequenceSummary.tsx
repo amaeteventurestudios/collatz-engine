@@ -15,12 +15,18 @@ export function SequenceSummary({ result }: Props) {
       {/* Card 1: Sequence Summary */}
       <SummaryCard title="Sequence Summary">
         <SummaryRow label="Start Number" value={fmtBig(result.startNumber)} accent />
-        <SummaryRow label={CALCULATOR_STEP_COPY.sequenceLengthLabel} value={fmtNum(result.sequenceLength)} />
-        <SummaryRow label={CALCULATOR_STEP_COPY.stoppingTimeLabel} value={fmtNum(result.stoppingTime)} />
+        <SummaryRow label={CALCULATOR_STEP_COPY.stepsLabel} value={fmtNum(result.stoppingTime)} />
         <SummaryRow label="Highest Peak" value={fmtBig(result.highestPeak)} />
         <SummaryRow label="Odd Steps" value={`${fmtNum(result.oddSteps)} (${fmtPct(result.oddPercent)})`} />
         <SummaryRow label="Even Steps" value={`${fmtNum(result.evenSteps)} (${fmtPct(result.evenPercent)})`} />
         <SummaryRow label="Average Value" value={result.averageValue.toLocaleString("en-US", { maximumFractionDigits: 2 })} />
+        <div className="mt-2 border-t border-slate-800 pt-2">
+          <SummaryRow
+            label={CALCULATOR_STEP_COPY.sequenceLengthLabel}
+            value={fmtNum(result.sequenceLength)}
+            hint={CALCULATOR_STEP_COPY.sequenceLengthCaption}
+          />
+        </div>
         <p className="pt-2 text-[11px] leading-relaxed text-slate-500">
           {CALCULATOR_STEP_COPY.recordsNote}
         </p>
@@ -111,10 +117,10 @@ function SummaryCard({ title, children }: { title: string; children: React.React
   );
 }
 
-function SummaryRow({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
+function SummaryRow({ label, value, accent, hint }: { label: string; value: string; accent?: boolean; hint?: string }) {
   return (
     <div className="flex flex-col items-center justify-between gap-1 sm:flex-row sm:items-baseline">
-      <dt className="shrink-0 text-[11px] text-slate-500">{label}</dt>
+      <dt className="shrink-0 text-[11px] text-slate-500" title={hint}>{label}</dt>
       <dd className={`max-w-full truncate text-center text-[11px] font-semibold tabular-nums sm:text-right ${accent ? "text-teal-400" : "text-slate-200"}`}>
         {value}
       </dd>

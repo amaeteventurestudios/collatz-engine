@@ -1,8 +1,13 @@
 export const CALCULATOR_STEP_COPY = {
-  sequenceLengthLabel: "Sequence Length",
-  sequenceLengthCaption: "Values in trajectory, including starting number",
-  stoppingTimeLabel: "Stopping Time",
-  stoppingTimeCaption: "Steps to reach 1",
+  // Main headline metric — matches records table definition
+  stepsLabel: "Steps",
+  stepsCaption: "Transitions required to reach 1",
+  // Secondary detail — shown in summary panel only
+  sequenceLengthLabel: "Sequence length",
+  sequenceLengthCaption: "Includes the starting value",
+  // Keep stoppingTimeLabel for backward-compat references in tests
+  stoppingTimeLabel: "Steps",
+  stoppingTimeCaption: "Transitions required to reach 1",
   recordsNote:
-    "Records use stopping time. The calculator also shows sequence length, which includes the starting value.",
+    "Steps = transitions to reach 1. This matches the records table definition. Sequence length (one more) is shown below.",
 } as const;

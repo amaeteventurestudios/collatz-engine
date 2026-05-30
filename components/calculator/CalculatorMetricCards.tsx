@@ -11,9 +11,9 @@ interface Props {
 export function CalculatorMetricCards({ result }: Props) {
   const cards = [
     {
-      label: CALCULATOR_STEP_COPY.sequenceLengthLabel,
-      value: fmtNum(result.sequenceLength),
-      caption: CALCULATOR_STEP_COPY.sequenceLengthCaption,
+      label: CALCULATOR_STEP_COPY.stepsLabel,
+      value: fmtNum(result.stoppingTime),
+      caption: CALCULATOR_STEP_COPY.stepsCaption,
       icon: <StepsIcon />,
       color: "text-teal-400",
       bg: "bg-teal-500/10",
@@ -31,7 +31,7 @@ export function CalculatorMetricCards({ result }: Props) {
     {
       label: "Odd Steps",
       value: fmtNum(result.oddSteps),
-      caption: `${fmtPct(result.oddPercent)} of stopping time`,
+      caption: `${fmtPct(result.oddPercent)} of total`,
       icon: <OddIcon />,
       color: "text-pink-400",
       bg: "bg-pink-500/10",
@@ -40,20 +40,11 @@ export function CalculatorMetricCards({ result }: Props) {
     {
       label: "Even Steps",
       value: fmtNum(result.evenSteps),
-      caption: `${fmtPct(result.evenPercent)} of stopping time`,
+      caption: `${fmtPct(result.evenPercent)} of total`,
       icon: <EvenIcon />,
       color: "text-sky-400",
       bg: "bg-sky-500/10",
       ring: "ring-sky-500/20",
-    },
-    {
-      label: CALCULATOR_STEP_COPY.stoppingTimeLabel,
-      value: fmtNum(result.stoppingTime),
-      caption: CALCULATOR_STEP_COPY.stoppingTimeCaption,
-      icon: <TimeIcon />,
-      color: "text-amber-400",
-      bg: "bg-amber-500/10",
-      ring: "ring-amber-500/20",
     },
     {
       label: "Final Value",
@@ -67,7 +58,7 @@ export function CalculatorMetricCards({ result }: Props) {
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
       {cards.map((card) => (
         <div
           key={card.label}
@@ -118,14 +109,6 @@ function EvenIcon() {
   return (
     <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2}>
       <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
-    </svg>
-  );
-}
-function TimeIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2}>
-      <circle cx="12" cy="12" r="10" />
-      <polyline points="12 6 12 12 16 14" />
     </svg>
   );
 }

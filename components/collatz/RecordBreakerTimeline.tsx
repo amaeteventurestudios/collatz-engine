@@ -325,13 +325,14 @@ function AllTimeRecordsTable({
                   <td className="px-3 py-3 text-slate-400">{formatDate(row.discovered_at)}</td>
                   <td className="px-3 py-3">
                     <span
-                      className={`rounded-full border px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] ${
+                      className={`whitespace-nowrap rounded-full border px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] ${
                         row.displaySource === "engine_state"
                           ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-200"
                           : "border-slate-500/25 bg-slate-500/10 text-slate-300"
                       }`}
+                      title={row.displaySource === "engine_state" ? "Engine State Record" : "Permanent Record"}
                     >
-                      {row.displaySource === "engine_state" ? "Engine State Record" : "Permanent Record"}
+                      {row.displaySource === "engine_state" ? "Engine State" : "Preserved"}
                     </span>
                   </td>
                 </tr>
